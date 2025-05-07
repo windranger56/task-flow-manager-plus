@@ -9,7 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Settings, Mail, Bell } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 
-export default function LeftSidebar() {
+// Add the props interface for LeftSidebar
+interface LeftSidebarProps {
+  onItemClick?: () => void;
+}
+
+export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
   const { 
     currentUser, 
     departments, 
@@ -36,6 +41,12 @@ export default function LeftSidebar() {
       setNewDeptManager("");
       setShowNewDepartment(false);
     }
+  };
+
+  const handleDepartmentClick = (department: any) => {
+    selectDepartment(department);
+    // Call onItemClick if it exists
+    if (onItemClick) onItemClick();
   };
 
   return (
@@ -175,7 +186,7 @@ export default function LeftSidebar() {
             <li 
               key={department.id}
               className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded"
-              onClick={() => selectDepartment(department)}
+              onClick={() => handleDepartmentClick(department)}
             >
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: department.color }} />
               <span className="ml-2 text-sm">{department.name.toLowerCase()}</span>
