@@ -225,7 +225,7 @@ export const messages: Message[] = [
     id: '2',
     taskId: '1',
     userId: '2',
-    content: 'I've finished the first draft, will send it over for review by tomorrow.',
+    content: "I've finished the first draft, will send it over for review by tomorrow.",
     timestamp: new Date(2019, 1, 23)
   },
   {
