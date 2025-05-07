@@ -1,0 +1,301 @@
+
+import React, { useState } from 'react';
+import { format } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import { Trash2, User, Ticket, Check, Send } from "lucide-react";
+import { useTaskContext } from '@/contexts/TaskContext';
+import { cn } from '@/lib/utils';
+
+export default function TaskDetail() {
+  const { 
+    selectedTask, 
+    getUserById, 
+    deleteTask, 
+    reassignTask, 
+    toggleProtocol, 
+    completeTask,
+    messages,
+    getMessagesByTask,
+    addMessage,
+    users
+  } = useTaskContext();
+  
+  const [messageText, setMessageText] = useState('');
+  const [showReassign, setShowReassign] = useState(false);
+  const [reassignTo, setReassignTo] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newDeadline, setNewDeadline] = useState<Date | undefined>(undefined);
+  
+  if (!selectedTask) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center text-gray-500">
+        <p>Select a task to view details</p>
+      </div>
+    );
+  }
+  
+  const creator = getUserById(selectedTask.createdBy);
+  const assignee = getUserById(selectedTask.assignedTo);
+  const taskMessages = getMessagesByTask(selectedTask.id);
+  
+  const handleSendMessage = () => {
+    if (messageText.trim()) {
+      addMessage(selectedTask.id, messageText);
+      setMessageText('');
+    }
+  };
+  
+  const handleReassign = () => {
+    if (reassignTo) {
+      reassignTask(
+        selectedTask.id, 
+        reassignTo, 
+        newTitle || undefined,
+        newDescription || undefined,
+        newDeadline
+      );
+      setShowReassign(false);
+    }
+  };
+
+  return (
+    <div className="w-full h-screen flex flex-col">
+      {/* Task Header */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center">
+          {creator && (
+            <>
+              <Avatar className="h-10 w-10 mr-3">
+                <AvatarImage src={creator.avatar} alt={creator.name} />
+                <AvatarFallback>{creator.name.slice(0, 2)}</AvatarFallback>
+              </Avatar>
+              <span className="font-medium">{creator.name}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => deleteTask(selectedTask.id)}
+          >
+            <Trash2 className="h-5 w-5 text-gray-600" />
+          </Button>
+          
+          <Dialog open={showReassign} onOpenChange={setShowReassign}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <User className="h-5 w-5 text-gray-600" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reassign Task</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reassign-to">Reassign to</Label>
+                  <Select value={reassignTo} onValueChange={setReassignTo}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users
+                        .filter(user => user.id !== selectedTask.assignedTo)
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-title">New Title (Optional)</Label>
+                  <Input 
+                    id="new-title" 
+                    placeholder={selectedTask.title}
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-description">New Description (Optional)</Label>
+                  <Textarea 
+                    id="new-description" 
+                    placeholder={selectedTask.description}
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>New Deadline (Optional)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left">
+                        {newDeadline ? (
+                          format(newDeadline, 'PPP')
+                        ) : (
+                          <span>Current: {format(selectedTask.deadline, 'PPP')}</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 pointer-events-auto">
+                      <Calendar
+                        mode="single"
+                        selected={newDeadline}
+                        onSelect={(date) => setNewDeadline(date || undefined)}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <Button onClick={handleReassign} className="w-full">
+                  Reassign Task
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => toggleProtocol(selectedTask.id)}
+            className={cn(
+              selectedTask.isProtocol ? "bg-blue-100" : ""
+            )}
+          >
+            <Ticket className={cn(
+              "h-5 w-5",
+              selectedTask.isProtocol ? "text-taskBlue" : "text-gray-600"
+            )} />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => completeTask(selectedTask.id)}
+            disabled={selectedTask.completed}
+          >
+            <Check className="h-5 w-5 text-gray-600" />
+          </Button>
+        </div>
+      </div>
+      
+      {/* Task Content */}
+      <div className="flex-1 overflow-auto p-4">
+        {/* Task Title & Status */}
+        <div className="flex items-center space-x-3 mb-6">
+          <div className={cn(
+            "h-10 w-10 rounded-full flex items-center justify-center",
+            selectedTask.completed ? "bg-taskBlue" : "bg-gray-200"
+          )}>
+            {selectedTask.completed && <Check className="h-6 w-6 text-white" />}
+          </div>
+          <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
+        </div>
+        
+        {/* Date */}
+        <p className="text-sm text-gray-500 mb-6">
+          {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+        </p>
+        
+        {/* Task Description */}
+        <div className="mb-8">
+          <p className="text-gray-700">{selectedTask.description}</p>
+        </div>
+        
+        {/* Task Messages */}
+        <div className="space-y-4">
+          {taskMessages.map((message) => {
+            const messageUser = getUserById(message.userId);
+            return (
+              <div key={message.id} className="flex">
+                {messageUser && (
+                  <Avatar className="h-8 w-8 mr-3 mt-1">
+                    <AvatarImage src={messageUser.avatar} alt={messageUser.name} />
+                    <AvatarFallback>{messageUser.name.slice(0, 2)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div>
+                  <div className="flex items-center">
+                    <span className="font-medium">{messageUser?.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {format(message.timestamp, 'dd MMM, yyyy')}
+                    </span>
+                  </div>
+                  <p className="text-gray-700">{message.content}</p>
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Task Actions */}
+          {selectedTask.assignedTo === assignee?.id && (
+            <div className="mt-4">
+              <div className="flex items-center mb-2">
+                <span className="text-sm text-gray-500">Task assigned to {assignee.name}</span>
+                <span className="text-xs text-gray-500 ml-4">
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                </span>
+              </div>
+              <div className="flex items-center mb-2">
+                <span className="text-sm text-gray-500">Added to department</span>
+                <span className="text-xs text-gray-500 ml-4">
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                </span>
+              </div>
+              <div className="flex items-center mb-2">
+                <span className="text-sm text-gray-500">Task created</span>
+                <span className="text-xs text-gray-500 ml-4">
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                </span>
+              </div>
+              {selectedTask.completed && (
+                <div className="flex items-center">
+                  <span className="text-sm text-green-500">Task completed</span>
+                  <span className="text-xs text-gray-500 ml-4">
+                    {format(new Date(), 'dd MMM, yyyy')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Message Input */}
+      <div className="p-4 border-t border-gray-200 flex">
+        <Input 
+          className="flex-1 mr-2"
+          placeholder="Write a comment..."
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSendMessage();
+            }
+          }}
+        />
+        <Button size="icon" onClick={handleSendMessage}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}

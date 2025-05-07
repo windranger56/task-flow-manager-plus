@@ -1,14 +1,39 @@
-// Update this page (the content is just a fallback if you fail to update the page)
 
-const Index = () => {
+import React from 'react';
+import LeftSidebar from '@/components/LeftSidebar';
+import TaskList from '@/components/TaskList';
+import TaskDetail from '@/components/TaskDetail';
+import SearchBar from '@/components/SearchBar';
+import { TaskProvider } from '@/contexts/TaskContext';
+
+export default function Index() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <TaskProvider>
+      <div className="flex h-screen bg-white">
+        {/* Left Sidebar */}
+        <LeftSidebar />
+        
+        {/* Main Content */}
+        <div className="flex flex-col flex-1">
+          {/* Search Bar */}
+          <div className="p-4 border-b border-gray-200">
+            <SearchBar />
+          </div>
+          
+          {/* Task Content */}
+          <div className="flex flex-1">
+            {/* Task List */}
+            <div className="w-96">
+              <TaskList />
+            </div>
+            
+            {/* Task Detail */}
+            <div className="flex-1">
+              <TaskDetail />
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </TaskProvider>
   );
-};
-
-export default Index;
+}
