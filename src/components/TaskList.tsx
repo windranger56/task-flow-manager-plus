@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -103,86 +102,53 @@ export default function TaskList() {
             <div className="divide-y divide-gray-100">
               {departmentTasks.map((task) => {
                 const assignee = getUserById(task.assignedTo);
-                return isMobile ? (
-                  <Drawer key={task.id} open={showTaskDetail && selectedTask?.id === task.id} onOpenChange={setShowTaskDetail}>
-                    <DrawerTrigger asChild>
-                      <div 
-                        className={cn(
-                          "p-4 cursor-pointer hover:bg-gray-50 flex items-center",
-                          task.completed ? "bg-gray-50" : ""
-                        )}
-                        onClick={() => handleTaskClick(task)}
-                      >
-                        <div className="mr-3">
-                          {task.completed ? (
-                            <div className="h-6 w-6 bg-taskBlue rounded-full flex items-center justify-center">
-                              <Check className="h-4 w-4 text-white" />
-                            </div>
-                          ) : (
-                            <div className="h-6 w-6 border-2 border-gray-200 rounded-full"></div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className={cn(
-                            "font-medium", 
-                            task.completed ? "text-gray-400" : ""
-                          )}>
-                            {task.title}
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            {format(task.createdAt, 'dd MMM, yyyy')}
-                          </p>
-                        </div>
-                        {assignee && (
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={assignee.avatar} alt={assignee.name} />
-                            <AvatarFallback>{assignee.name.slice(0, 2)}</AvatarFallback>
-                          </Avatar>
+                return (
+                  <React.Fragment key={task.id}>
+                    <div 
+                      className={cn(
+                        "p-4 cursor-pointer hover:bg-gray-50 flex items-center",
+                        task.completed ? "bg-gray-50" : ""
+                      )}
+                      onClick={() => handleTaskClick(task)}
+                    >
+                      <div className="mr-3">
+                        {task.completed ? (
+                          <div className="h-6 w-6 bg-taskBlue rounded-full flex items-center justify-center">
+                            <Check className="h-4 w-4 text-white" />
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 border-2 border-gray-200 rounded-full"></div>
                         )}
                       </div>
-                    </DrawerTrigger>
-                    <DrawerContent className="h-[85vh]">
-                      <div className="px-4 py-2">
-                        <TaskDetail />
+                      <div className="flex-1">
+                        <h4 className={cn(
+                          "font-medium", 
+                          task.completed ? "text-gray-400" : ""
+                        )}>
+                          {task.title}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {format(task.createdAt, 'dd MMM, yyyy')}
+                        </p>
                       </div>
-                    </DrawerContent>
-                  </Drawer>
-                ) : (
-                  <div 
-                    key={task.id}
-                    className={cn(
-                      "p-4 cursor-pointer hover:bg-gray-50 flex items-center",
-                      task.completed ? "bg-gray-50" : ""
-                    )}
-                    onClick={() => selectTask(task)}
-                  >
-                    <div className="mr-3">
-                      {task.completed ? (
-                        <div className="h-6 w-6 bg-taskBlue rounded-full flex items-center justify-center">
-                          <Check className="h-4 w-4 text-white" />
-                        </div>
-                      ) : (
-                        <div className="h-6 w-6 border-2 border-gray-200 rounded-full"></div>
+                      {assignee && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={assignee.avatar} alt={assignee.name} />
+                          <AvatarFallback>{assignee.name.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h4 className={cn(
-                        "font-medium", 
-                        task.completed ? "text-gray-400" : ""
-                      )}>
-                        {task.title}
-                      </h4>
-                      <p className="text-xs text-gray-500">
-                        {format(task.createdAt, 'dd MMM, yyyy')}
-                      </p>
-                    </div>
-                    {assignee && (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={assignee.avatar} alt={assignee.name} />
-                        <AvatarFallback>{assignee.name.slice(0, 2)}</AvatarFallback>
-                      </Avatar>
+                    
+                    {isMobile && selectedTask?.id === task.id && (
+                      <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
+                        <DrawerContent className="h-[85vh]">
+                          <div className="px-4 py-2 max-h-full overflow-auto">
+                            <TaskDetail />
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
                     )}
-                  </div>
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -202,7 +168,7 @@ export default function TaskList() {
               <Plus className="h-4 w-4 mr-2" /> Add task
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className={cn("sm:max-w-[500px]", isMobile ? "w-[90%] max-h-[90vh] overflow-auto" : "")}>
             <DialogHeader>
               <DialogTitle>Add New Task</DialogTitle>
             </DialogHeader>
