@@ -9,7 +9,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Drawer, 
   DrawerContent,
+  DrawerClose,
 } from '@/components/ui/drawer';
+import { X } from 'lucide-react';
 
 export default function Index() {
   const isMobile = useIsMobile();
@@ -23,8 +25,13 @@ export default function Index() {
           <LeftSidebar />
         ) : (
           <Drawer open={showMobileDrawer} onOpenChange={setShowMobileDrawer}>
-            <DrawerContent className="p-0 h-[85vh]">
-              <LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
+            <DrawerContent className="h-[100vh] p-0">
+              <div className="relative">
+                <DrawerClose className="absolute right-4 top-4 z-50">
+                  <X className="h-6 w-6" />
+                </DrawerClose>
+                <LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
+              </div>
             </DrawerContent>
           </Drawer>
         )}

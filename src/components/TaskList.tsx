@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,8 +16,8 @@ import { Priority } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Drawer, 
-  DrawerContent, 
-  DrawerTrigger 
+  DrawerContent,
+  DrawerClose,
 } from '@/components/ui/drawer';
 import TaskDetail from './TaskDetail';
 
@@ -141,9 +141,14 @@ export default function TaskList() {
                     
                     {isMobile && selectedTask?.id === task.id && (
                       <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-                        <DrawerContent className="h-[85vh]">
-                          <div className="px-4 py-2 max-h-full overflow-auto">
-                            <TaskDetail />
+                        <DrawerContent className="h-[100vh] max-h-[100vh]">
+                          <div className="relative h-full">
+                            <DrawerClose className="absolute right-4 top-4 z-50">
+                              <X className="h-6 w-6" />
+                            </DrawerClose>
+                            <div className="px-4 py-2 h-full overflow-auto">
+                              <TaskDetail />
+                            </div>
                           </div>
                         </DrawerContent>
                       </Drawer>
