@@ -14,12 +14,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn } from '@/lib/utils';
 import { Priority } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { 
+  Drawer, 
+  DrawerContent, 
+  DrawerTrigger 
+} from '@/components/ui/drawer';
+import TaskDetail from './TaskDetail';
 
 export default function TaskList() {
   const { 
     selectedDepartment, 
     tasks, 
     selectTask, 
+    selectedTask,
     getUserById, 
     departments,
     getTasksByDepartment,
@@ -27,7 +35,9 @@ export default function TaskList() {
     users
   } = useTaskContext();
   
+  const isMobile = useIsMobile();
   const [showAddTask, setShowAddTask] = useState(false);
+  const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
@@ -68,10 +78,15 @@ export default function TaskList() {
     }
   };
 
+  const handleTaskClick = (task: any) => {
+    selectTask(task);
+    if (isMobile) {
+      setShowTaskDetail(true);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen border-r border-gray-200">
-      {/* Search - Will be handled by parent component */}
-      
+    <div className="flex flex-col h-full border-r border-gray-200">
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {selectedDepartment ? (
@@ -88,7 +103,51 @@ export default function TaskList() {
             <div className="divide-y divide-gray-100">
               {departmentTasks.map((task) => {
                 const assignee = getUserById(task.assignedTo);
-                return (
+                return isMobile ? (
+                  <Drawer key={task.id} open={showTaskDetail && selectedTask?.id === task.id} onOpenChange={setShowTaskDetail}>
+                    <DrawerTrigger asChild>
+                      <div 
+                        className={cn(
+                          "p-4 cursor-pointer hover:bg-gray-50 flex items-center",
+                          task.completed ? "bg-gray-50" : ""
+                        )}
+                        onClick={() => handleTaskClick(task)}
+                      >
+                        <div className="mr-3">
+                          {task.completed ? (
+                            <div className="h-6 w-6 bg-taskBlue rounded-full flex items-center justify-center">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          ) : (
+                            <div className="h-6 w-6 border-2 border-gray-200 rounded-full"></div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={cn(
+                            "font-medium", 
+                            task.completed ? "text-gray-400" : ""
+                          )}>
+                            {task.title}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            {format(task.createdAt, 'dd MMM, yyyy')}
+                          </p>
+                        </div>
+                        {assignee && (
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={assignee.avatar} alt={assignee.name} />
+                            <AvatarFallback>{assignee.name.slice(0, 2)}</AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                    </DrawerTrigger>
+                    <DrawerContent className="h-[85vh]">
+                      <div className="px-4 py-2">
+                        <TaskDetail />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
+                ) : (
                   <div 
                     key={task.id}
                     className={cn(
