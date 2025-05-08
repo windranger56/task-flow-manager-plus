@@ -64,7 +64,7 @@ export default function Index() {
           ) : (
             /* Desktop layout */
             <div className="flex flex-1 overflow-hidden">
-              <div className="w-96 min-w-0 border-r border-gray-200">
+              <div className="w-1/3 min-w-0 border-r border-gray-200 overflow-auto">
                 <TaskList />
               </div>
               <div className="flex-1 overflow-auto">

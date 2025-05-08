@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { 
   User, 
@@ -80,7 +79,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const selectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
-    setSelectedTask(null);
+    // Не сбрасываем выбранную задачу
   };
 
   const selectTask = (task: Task | null) => {

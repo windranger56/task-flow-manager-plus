@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, Bell, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
