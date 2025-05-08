@@ -115,9 +115,9 @@ export default function TaskDetail() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col relative">
+    <div className="w-full h-full flex flex-col relative">
       {/* Task Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="py-[16px] pl-[20px] pr-[30px] border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center">
           {creator && (
             <>
@@ -131,17 +131,21 @@ export default function TaskDetail() {
         </div>
         <div className="flex items-center space-x-2">
           <Button 
-            variant="ghost" 
-            size="icon"
+						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
             onClick={() => deleteTask(selectedTask.id)}
           >
-            <Trash2 className="h-5 w-5 text-gray-600" />
+						<svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+   				    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+			 			</svg>
           </Button>
           
           <Dialog open={showReassign} onOpenChange={setShowReassign}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5 text-gray-600" />
+              <Button className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'>
+								<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+       						<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+       						<circle cx="12" cy="7" r="4"></circle>
+								</svg>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -220,36 +224,33 @@ export default function TaskDetail() {
           </Dialog>
           
           <Button 
-            variant="ghost" 
-            size="icon"
             onClick={() => toggleProtocol(selectedTask.id)}
-            className={cn(
-              selectedTask.isProtocol ? "bg-blue-100" : ""
-            )}
+						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
           >
-            <Ticket className={cn(
-              "h-5 w-5",
-              selectedTask.isProtocol ? "text-taskBlue" : "text-gray-600"
-            )} />
+						<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      			 <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path>
+						</svg>
           </Button>
           
           <Button 
-            variant="ghost" 
-            size="icon"
             onClick={() => completeTask(selectedTask.id)}
+						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
             disabled={selectedTask.completed}
           >
-            <Check className="h-5 w-5 text-gray-600" />
+						<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+       				<path d="M9 11l3 3L22 4"></path>
+       				<path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+						</svg>
           </Button>
         </div>
       </div>
       
       {/* Task Content */}
-      <div className="flex-1 overflow-auto p-4 pb-20">
+      <div className="flex flex-col flex-1 overflow-auto p-[30px]">
         {/* Task Title & Status */}
-        <div className="flex items-center space-x-3 mb-6">
+        <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
-            "h-10 w-10 rounded-full flex items-center justify-center",
+            "h-[46px] w-[46px] rounded-full flex items-center justify-center",
             selectedTask.completed ? "bg-taskBlue" : "bg-gray-200"
           )}>
             {selectedTask.completed && <Check className="h-6 w-6 text-white" />}
@@ -258,17 +259,17 @@ export default function TaskDetail() {
         </div>
         
         {/* Date */}
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-6 ml-[65px]">
           {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
         </p>
         
         {/* Task Description */}
-        <div className="mb-8">
+        <div className="mb-8  ml-[65px]">
           <p className="text-gray-700">{selectedTask.description}</p>
         </div>
         
         {/* Task Messages */}
-        <div className="space-y-4">
+        <div className="space-y-4  ml-[65px]">
           {taskMessages.map((message) => {
             const messageUser = getUserById(message.userId);
             return (
@@ -326,9 +327,8 @@ export default function TaskDetail() {
         </div>
         
         {/* Чат интерфейс */}
-        <div className="mt-8 border-t pt-4 pb-16">
-          <h3 className="text-sm font-medium uppercase tracking-wider mb-4">ЧАТ</h3>
-          <div className="h-48 overflow-y-auto mb-4 p-2 border border-gray-200 rounded-md">
+        <div className="flex-1 mt-8 pt-4 pb-16  ml-[65px]">
+          <div className="h-full overflow-y-auto mb-4 rounded-md">
             {chatMessages.map(msg => (
               <div 
                 key={msg.id} 
@@ -347,36 +347,20 @@ export default function TaskDetail() {
       
       {/* Сообщения и чат сообщения в нижней части с абсолютным позиционированием */}
       <div className="absolute bottom-0 left-0 right-0 flex">
-        <div className="w-1/2 p-4 border-t border-r border-gray-200 bg-white flex">
-          <Input 
-            className="flex-1 mr-2"
-            placeholder="Написать комментарий..."
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSendMessage();
-              }
-            }}
-          />
-          <Button size="icon" onClick={handleSendMessage}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="w-1/2 p-4 border-t border-gray-200 bg-white flex">
+        <div className="w-full h-[57px] border-t border-gray-200 bg-white flex">
           <Input 
             value={chatMessage}
             onChange={(e) => setChatMessage(e.target.value)}
             placeholder="Чат сообщение..."
-            className="flex-1 mr-2"
+            className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb]"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSendChatMessage();
               }
             }}
           />
-          <Button onClick={handleSendChatMessage} size="sm">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendChatMessage} className='w-[55px] h-full bg-[#4d76fd] rounded-none'>
+            <Send size={30} />
           </Button>
         </div>
       </div>

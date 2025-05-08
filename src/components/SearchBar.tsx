@@ -36,7 +36,7 @@ export default function SearchBar() {
       <Input
         type="search"
         placeholder="Поиск задач..."
-        className="w-full"
+        className="w-full bg-[#f0f0f7] border-0"
         value={searchQuery}
         onChange={handleSearch}
         onFocus={() => setIsFocused(true)}
