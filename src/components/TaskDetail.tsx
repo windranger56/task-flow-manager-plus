@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, User, Ticket, Check, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn } from '@/lib/utils';
+import { ru } from 'date-fns/locale';
 
 export default function TaskDetail() {
   const { 
@@ -147,9 +148,9 @@ export default function TaskDetail() {
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left">
                         {newDeadline ? (
-                          format(newDeadline, 'PPP')
+                          format(newDeadline, 'PPP', { locale: ru })
                         ) : (
-                          <span>Текущий: {format(selectedTask.deadline, 'PPP')}</span>
+                          <span>Текущий: {format(selectedTask.deadline, 'PPP', { locale: ru })}</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -212,7 +213,7 @@ export default function TaskDetail() {
         
         {/* Date */}
         <p className="text-sm text-gray-500 mb-6">
-          {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+          {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
         </p>
         
         {/* Task Description */}
@@ -236,7 +237,7 @@ export default function TaskDetail() {
                   <div className="flex items-center">
                     <span className="font-medium">{messageUser?.name}</span>
                     <span className="text-xs text-gray-500 ml-2">
-                      {format(message.timestamp, 'dd MMM, yyyy')}
+                      {format(message.timestamp, 'dd MMM, yyyy', { locale: ru })}
                     </span>
                   </div>
                   <p className="text-gray-700">{message.content}</p>
@@ -251,26 +252,26 @@ export default function TaskDetail() {
               <div className="flex items-center mb-2">
                 <span className="text-sm text-gray-500">Задача назначена {assignee.name}</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
               <div className="flex items-center mb-2">
                 <span className="text-sm text-gray-500">Добавлено в подразделение</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
               <div className="flex items-center mb-2">
                 <span className="text-sm text-gray-500">Задача создана</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
               {selectedTask.completed && (
                 <div className="flex items-center">
                   <span className="text-sm text-green-500">Задача завершена</span>
                   <span className="text-xs text-gray-500 ml-4">
-                    {format(new Date(), 'dd MMM, yyyy')}
+                    {format(new Date(), 'dd MMM, yyyy', { locale: ru })}
                   </span>
                 </div>
               )}
