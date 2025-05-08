@@ -38,7 +38,7 @@ export default function TaskDetail() {
   if (!selectedTask) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-gray-500">
-        <p>Select a task to view details</p>
+        <p>Выберите задачу для просмотра деталей</p>
       </div>
     );
   }
@@ -68,7 +68,7 @@ export default function TaskDetail() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col">
+    <div className="w-full h-screen flex flex-col relative">
       {/* Task Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center">
@@ -99,14 +99,14 @@ export default function TaskDetail() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Reassign Task</DialogTitle>
+                <DialogTitle>Переназначить задачу</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reassign-to">Reassign to</Label>
+                  <Label htmlFor="reassign-to">Переназначить</Label>
                   <Select value={reassignTo} onValueChange={setReassignTo}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
+                      <SelectValue placeholder="Выберите сотрудника" />
                     </SelectTrigger>
                     <SelectContent>
                       {users
@@ -122,7 +122,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="new-title">New Title (Optional)</Label>
+                  <Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
                   <Input 
                     id="new-title" 
                     placeholder={selectedTask.title}
@@ -132,7 +132,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="new-description">New Description (Optional)</Label>
+                  <Label htmlFor="new-description">Новое описание (Опционально)</Label>
                   <Textarea 
                     id="new-description" 
                     placeholder={selectedTask.description}
@@ -142,14 +142,14 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>New Deadline (Optional)</Label>
+                  <Label>Новый дедлайн (Опционально)</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left">
                         {newDeadline ? (
                           format(newDeadline, 'PPP')
                         ) : (
-                          <span>Current: {format(selectedTask.deadline, 'PPP')}</span>
+                          <span>Текущий: {format(selectedTask.deadline, 'PPP')}</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -166,7 +166,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <Button onClick={handleReassign} className="w-full">
-                  Reassign Task
+                  Переназначить задачу
                 </Button>
               </div>
             </DialogContent>
@@ -198,7 +198,7 @@ export default function TaskDetail() {
       </div>
       
       {/* Task Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 pb-20">
         {/* Task Title & Status */}
         <div className="flex items-center space-x-3 mb-6">
           <div className={cn(
@@ -249,26 +249,26 @@ export default function TaskDetail() {
           {selectedTask.assignedTo === assignee?.id && (
             <div className="mt-4">
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Task assigned to {assignee.name}</span>
+                <span className="text-sm text-gray-500">Задача назначена {assignee.name}</span>
                 <span className="text-xs text-gray-500 ml-4">
                   {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Added to department</span>
+                <span className="text-sm text-gray-500">Добавлено в подразделение</span>
                 <span className="text-xs text-gray-500 ml-4">
                   {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Task created</span>
+                <span className="text-sm text-gray-500">Задача создана</span>
                 <span className="text-xs text-gray-500 ml-4">
                   {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               {selectedTask.completed && (
                 <div className="flex items-center">
-                  <span className="text-sm text-green-500">Task completed</span>
+                  <span className="text-sm text-green-500">Задача завершена</span>
                   <span className="text-xs text-gray-500 ml-4">
                     {format(new Date(), 'dd MMM, yyyy')}
                   </span>
@@ -279,11 +279,11 @@ export default function TaskDetail() {
         </div>
       </div>
       
-      {/* Message Input */}
-      <div className="p-4 border-t border-gray-200 flex">
+      {/* Message Input - Positioned absolutely at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white flex">
         <Input 
           className="flex-1 mr-2"
-          placeholder="Write a comment..."
+          placeholder="Написать комментарий..."
           value={messageText}
           onChange={(e) => setMessageText(e.target.value)}
           onKeyDown={(e) => {

@@ -3,7 +3,7 @@ import { User, Department, Task, Message, TaskAction } from './types';
 
 export const currentUser: User = {
   id: '1',
-  name: 'Natalie Smith',
+  name: 'Наталья Смирнова',
   email: 'natalie.smith@gmail.com',
   avatar: '/lovable-uploads/c5169996-d67c-4a43-ace3-c62a65517e9d.png',
   role: 'manager'
@@ -13,28 +13,28 @@ export const users: User[] = [
   currentUser,
   {
     id: '2',
-    name: 'Okla Nowak',
+    name: 'Ольга Новак',
     email: 'okla.nowak@gmail.com',
     avatar: 'https://i.pravatar.cc/150?img=32',
     role: 'employee'
   },
   {
     id: '3',
-    name: 'Mike Johnson',
+    name: 'Михаил Иванов',
     email: 'mike.johnson@gmail.com',
     avatar: 'https://i.pravatar.cc/150?img=33',
     role: 'employee'
   },
   {
     id: '4',
-    name: 'Sarah Lee',
+    name: 'Светлана Лебедева',
     email: 'sarah.lee@gmail.com',
     avatar: 'https://i.pravatar.cc/150?img=20',
     role: 'employee'
   },
   {
     id: '5',
-    name: 'David Chen',
+    name: 'Дмитрий Чен',
     email: 'david.chen@gmail.com',
     avatar: 'https://i.pravatar.cc/150?img=69',
     role: 'employee'
@@ -71,8 +71,8 @@ export const departments: Department[] = [
 export const tasks: Task[] = [
   {
     id: '1',
-    title: 'Write an article about design',
-    description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce accumsan commodo lectus gravida dictum. Aliquam a dui eu arcu hendrerit porta sed in velit. Fusce eu semper magna. Aenean porta facilisis neque, ac dignissim magna vestibulum eu. Etiam id ligula eget neque placerat ultricies in sed neque. Nam vitae rutrum est. Etiam non condimentum ante, eu consequat orci. Aliquam a dui eu arcu hendrerit porta sed in velit. Fusce eu semper magna.',
+    title: 'Написать статью о дизайне',
+    description: 'Необходимо написать детальную статью о современных трендах в дизайне интерфейсов с примерами и рекомендациями для начинающих дизайнеров. Статья должна включать разделы о цветовых решениях, типографике, микроанимации и адаптивном дизайне.',
     assignedTo: '2',
     createdBy: '1',
     departmentId: '1',
@@ -84,8 +84,8 @@ export const tasks: Task[] = [
   },
   {
     id: '2',
-    title: 'Disrupt next level aesthetic raw',
-    description: 'Create something that disrupts current design standards with a raw aesthetic approach.',
+    title: 'Разработать инновационный подход',
+    description: 'Создать что-то, что нарушает текущие стандарты дизайна с необработанным эстетическим подходом.',
     assignedTo: '3',
     createdBy: '1',
     departmentId: '1',
@@ -97,8 +97,8 @@ export const tasks: Task[] = [
   },
   {
     id: '3',
-    title: 'Chicharrones craft beer tattooed',
-    description: 'Research on the intersection of hipster food trends and craft beer culture.',
+    title: 'Исследовать современные тренды',
+    description: 'Исследование на пересечении трендов хипстерской еды и культуры крафтового пива.',
     assignedTo: '4',
     createdBy: '1',
     departmentId: '1',
@@ -110,8 +110,8 @@ export const tasks: Task[] = [
   },
   {
     id: '4',
-    title: 'Vaporware readymade shabby',
-    description: 'Analyze the trend of vaporware aesthetics in contemporary design.',
+    title: 'Анализ эстетики вейпорвейва',
+    description: 'Анализ тенденции эстетики вейпорвейва в современном дизайне.',
     assignedTo: '5',
     createdBy: '1',
     departmentId: '1',
@@ -123,8 +123,8 @@ export const tasks: Task[] = [
   },
   {
     id: '5',
-    title: 'Four dollar toast taxidermy',
-    description: 'Investigate the economic implications of artisanal toast pricing across urban centers.',
+    title: 'Экономический анализ тостов',
+    description: 'Исследовать экономические последствия ценообразования на артезиальные тосты в городских центрах.',
     assignedTo: '2',
     createdBy: '1',
     departmentId: '1',
@@ -136,8 +136,8 @@ export const tasks: Task[] = [
   },
   {
     id: '6',
-    title: 'Slow-carb disrupt kogi tote bag',
-    description: 'Study the impact of dietary trends on fashion accessories in urban environments.',
+    title: 'Влияние диетических трендов',
+    description: 'Изучить влияние диетических тенденций на модные аксессуары в городской среде.',
     assignedTo: '3',
     createdBy: '1',
     departmentId: '1',
@@ -149,8 +149,8 @@ export const tasks: Task[] = [
   },
   {
     id: '7',
-    title: 'Inventory check for Q1',
-    description: 'Complete inventory check for first quarter and prepare report.',
+    title: 'Проверка инвентаря за Q1',
+    description: 'Завершить проверку инвентаря за первый квартал и подготовить отчет.',
     assignedTo: '4',
     createdBy: '1',
     departmentId: '2',
@@ -162,8 +162,8 @@ export const tasks: Task[] = [
   },
   {
     id: '8',
-    title: 'Route optimization for delivery',
-    description: 'Analyze and optimize delivery routes for maximum efficiency.',
+    title: 'Оптимизация маршрутов доставки',
+    description: 'Анализ и оптимизация маршрутов доставки для максимальной эффективности.',
     assignedTo: '5',
     createdBy: '1',
     departmentId: '3',
@@ -175,8 +175,8 @@ export const tasks: Task[] = [
   },
   {
     id: '9',
-    title: 'Negotiate with new suppliers',
-    description: 'Contact and negotiate terms with potential new suppliers.',
+    title: 'Переговоры с новыми поставщиками',
+    description: 'Связаться и договориться об условиях с потенциальными новыми поставщиками.',
     assignedTo: '2',
     createdBy: '1',
     departmentId: '4',
@@ -190,26 +190,26 @@ export const tasks: Task[] = [
 
 export const taskActions: TaskAction[] = [
   {
-    userId: '2', // Okla Nowak
+    userId: '2', // Ольга Новак
     action: 'assigned',
-    target: 'Natalie Smith',
-    timestamp: new Date(2019, 10, 25) // 25 Nov, 2019
+    target: 'Наталья Смирнова',
+    timestamp: new Date(2019, 10, 25) // 25 Ноя, 2019
   },
   {
-    userId: '2', // Okla Nowak
+    userId: '2', // Ольга Новак
     action: 'added',
-    target: 'Marketing',
-    timestamp: new Date(2019, 1, 18) // 18 Feb, 2019
+    target: 'Маркетинг',
+    timestamp: new Date(2019, 1, 18) // 18 Фев, 2019
   },
   {
-    userId: '2', // Okla Nowak
+    userId: '2', // Ольга Новак
     action: 'created',
-    timestamp: new Date(2019, 1, 18) // 18 Feb, 2019
+    timestamp: new Date(2019, 1, 18) // 18 Фев, 2019
   },
   {
-    userId: '1', // Natalie Smith
+    userId: '1', // Наталья Смирнова
     action: 'completed',
-    timestamp: new Date(2020, 4, 19) // 19 May, 2020
+    timestamp: new Date(2020, 4, 19) // 19 Май, 2020
   }
 ];
 
@@ -218,23 +218,31 @@ export const messages: Message[] = [
     id: '1',
     taskId: '1',
     userId: '1',
-    content: 'How is the article coming along?',
+    content: 'Как продвигается статья?',
     timestamp: new Date(2019, 1, 23)
   },
   {
     id: '2',
     taskId: '1',
     userId: '2',
-    content: "I've finished the first draft, will send it over for review by tomorrow.",
+    content: "Я закончила первый черновик, отправлю на проверку завтра.",
     timestamp: new Date(2019, 1, 23)
   },
   {
     id: '3',
     taskId: '1',
     userId: '1',
-    content: 'Great! Looking forward to it.',
+    content: 'Отлично! Жду с нетерпением.',
     timestamp: new Date(2019, 1, 24)
   }
+];
+
+// Mapping of which users belong to which departments for the mock data
+const userDepartments: {userId: string, departmentId: string}[] = [
+  { userId: '2', departmentId: '1' },
+  { userId: '3', departmentId: '2' },
+  { userId: '4', departmentId: '3' },
+  { userId: '5', departmentId: '4' },
 ];
 
 // Helper function to get user by ID
@@ -262,4 +270,11 @@ export const getSubordinates = (): User[] => {
   // In a real app, you would filter based on reporting relationships
   // For this mock, we'll return all users except the current user
   return users.filter(user => user.id !== currentUser.id);
+};
+
+// Helper function to get department by user ID
+export const getDepartmentByUserId = (userId: string): Department | undefined => {
+  const userDept = userDepartments.find(ud => ud.userId === userId);
+  if (!userDept) return undefined;
+  return departments.find(dept => dept.id === userDept.departmentId);
 };
