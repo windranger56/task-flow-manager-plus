@@ -36,6 +36,13 @@ export default function TaskDetail() {
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState<Date | undefined>(undefined);
   
+  // Состояние для чата
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    { id: '1', content: 'Привет, как дела?', sender: 'system' },
+    { id: '2', content: 'Добрый день! Как продвигается проект?', sender: 'system' }
+  ]);
+  
   if (!selectedTask) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-gray-500">
@@ -65,6 +72,45 @@ export default function TaskDetail() {
         newDeadline
       );
       setShowReassign(false);
+    }
+  };
+
+  // Функция для генерации случайного русского сообщения
+  const generateRandomMessage = () => {
+    const characters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+    let result = '';
+    const words = Math.floor(Math.random() * 5) + 1;
+    
+    for (let w = 0; w < words; w++) {
+      const length = Math.floor(Math.random() * 8) + 3;
+      for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      result += ' ';
+    }
+    
+    return result.trim();
+  };
+
+  // Функция отправки сообщения в чат
+  const handleSendChatMessage = () => {
+    if (chatMessage.trim()) {
+      // Добавляем сообщение пользователя
+      const newUserMessage = {
+        id: `user-${Date.now()}`,
+        content: chatMessage,
+        sender: 'user'
+      };
+      
+      // Генерируем случайный ответ
+      const responseMessage = {
+        id: `system-${Date.now()}`,
+        content: generateRandomMessage(),
+        sender: 'system'
+      };
+      
+      setChatMessages([...chatMessages, newUserMessage, responseMessage]);
+      setChatMessage('');
     }
   };
 
@@ -278,25 +324,63 @@ export default function TaskDetail() {
             </div>
           )}
         </div>
+        
+        {/* Чат интерфейс */}
+        <div className="mt-8 border-t pt-4 pb-16">
+          <h3 className="text-sm font-medium uppercase tracking-wider mb-4">ЧАТ</h3>
+          <div className="h-48 overflow-y-auto mb-4 p-2 border border-gray-200 rounded-md">
+            {chatMessages.map(msg => (
+              <div 
+                key={msg.id} 
+                className={`mb-2 p-2 rounded-md ${
+                  msg.sender === 'user' 
+                    ? 'ml-auto bg-blue-100 max-w-[80%]' 
+                    : 'bg-gray-100 max-w-[80%]'
+                }`}
+              >
+                {msg.content}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       
-      {/* Message Input - Positioned absolutely at the bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white flex">
-        <Input 
-          className="flex-1 mr-2"
-          placeholder="Написать комментарий..."
-          value={messageText}
-          onChange={(e) => setMessageText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleSendMessage();
-            }
-          }}
-        />
-        <Button size="icon" onClick={handleSendMessage}>
-          <Send className="h-4 w-4" />
-        </Button>
+      {/* Сообщения и чат сообщения в нижней части с абсолютным позиционированием */}
+      <div className="absolute bottom-0 left-0 right-0 flex">
+        <div className="w-1/2 p-4 border-t border-r border-gray-200 bg-white flex">
+          <Input 
+            className="flex-1 mr-2"
+            placeholder="Написать комментарий..."
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSendMessage();
+              }
+            }}
+          />
+          <Button size="icon" onClick={handleSendMessage}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="w-1/2 p-4 border-t border-gray-200 bg-white flex">
+          <Input 
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
+            placeholder="Чат сообщение..."
+            className="flex-1 mr-2"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSendChatMessage();
+              }
+            }}
+          />
+          <Button onClick={handleSendChatMessage} size="sm">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
+
