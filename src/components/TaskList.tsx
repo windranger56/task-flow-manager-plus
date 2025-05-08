@@ -94,15 +94,80 @@ export default function TaskList() {
   });
   
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-lg font-medium">Задачи по подразделениям</h2>
-        <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
+    <div className="h-full flex flex-col relative">
+      
+      {/* Task List by Departments */}
+      <div className="flex-1 overflow-auto">
+        <Accordion type="multiple" className="w-full">
+          {tasksByDepartment.map(({ department, tasks }) => (
+            <AccordionItem key={department.id} value={department.id} className='relative'>
+              <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline">
+                <div className="flex items-center">
+                  <div 
+                    className="w-[4px] h-full absolute left-0 bottom-0"
+                    style={{ backgroundColor: department.color }}
+                  />
+                  <span className='font-semibold text-[16px]'>{department.name}</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ul className="divide-y divide-gray-200">
+                  {tasks.map((task) => (
+                    <li 
+                      key={task.id}
+                      className={cn(
+                        "p-[20px] cursor-pointer hover:bg-gray-50",
+                        selectedTask?.id === task.id && "bg-gray-50"
+                      )}
+                      onClick={() => handleTaskClick(task.id)}
+                    >
+                      <div className="flex justify-between">
+                        <div className="flex items-center gap-[10px]">
+													{task.completed ? (
+														<div className="flex justify-center items-center bg-taskBlue text-white rounded-full h-[24px] w-[24px]">
+															<Check className="h-3 w-3" />
+														</div>
+													) : (
+														<div className="rounded-full h-[24px] w-[24px] border-[#7a7e9d] border-[2px]" />
+													)}
+                          <div>
+                            <h3 className="text-sm font-medium mb-1">{task.title}</h3>
+														<p className='text-[#a1a4b9]'>22 Feb, 2019</p>
+                          </div>
+                        </div>
+												<div className='bg-gray-200 rounded-full w-[32px] h-[32px]' />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+      
+      {/* Mobile Task Detail Drawer */}
+      {isMobile && selectedTask && (
+        <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
+          <DrawerContent className="h-[100vh] max-h-[100vh]">
+            <div className="relative h-full">
+              <DrawerClose className="absolute right-4 top-4 z-50">
+                <X className="h-6 w-6" />
+              </DrawerClose>
+              <div className="px-4 py-2 h-full overflow-auto">
+                <TaskDetail />
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
+
+			{/* Add task */}
+			<div className='h-[57px] bg-[#f9f9fb] border-[#e5e4e9] border-t flex justify-center items-center'>
+				<Dialog open={showNewTask} onOpenChange={setShowNewTask}>
           <DialogTrigger asChild>
-            <Button size="sm" className="flex items-center">
-              <Plus className="h-4 w-4 mr-1" />
-              <span>Новая</span>
+            <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-[8px] px-[26px]'>
+              <span>Добавить задачу</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -215,90 +280,7 @@ export default function TaskList() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-      
-      {/* Task List by Departments */}
-      <div className="flex-1 overflow-auto">
-        <Accordion type="multiple" className="w-full">
-          {tasksByDepartment.map(({ department, tasks }) => (
-            <AccordionItem key={department.id} value={department.id}>
-              <AccordionTrigger className="p-4 hover:bg-gray-50">
-                <div className="flex items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-3"
-                    style={{ backgroundColor: department.color }}
-                  />
-                  <span>{department.name}</span>
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({tasks.length} задач)
-                  </span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="divide-y divide-gray-200">
-                  {tasks.map((task) => (
-                    <li 
-                      key={task.id}
-                      className={cn(
-                        "p-4 cursor-pointer hover:bg-gray-50",
-                        selectedTask?.id === task.id && "bg-gray-50"
-                      )}
-                      onClick={() => handleTaskClick(task.id)}
-                    >
-                      <div className="flex justify-between">
-                        <div className="flex items-center">
-                          <div 
-                            className={cn(
-                              "w-3 h-3 rounded-full mr-3",
-                              task.priority === 'high' ? "bg-red-500" :
-                              task.priority === 'medium' ? "bg-yellow-500" : "bg-green-500"
-                            )}
-                          />
-                          <div>
-                            <h3 className="text-sm font-medium mb-1">{task.title}</h3>
-                            <p className="text-xs text-gray-500 truncate max-w-xs">{task.description}</p>
-                          </div>
-                        </div>
-                        {task.completed && (
-                          <div className="bg-taskBlue text-white rounded-full p-1">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-between mt-2">
-                        <div className="text-xs text-gray-500">
-                          Дедлайн: {format(task.deadline, 'dd MMM', { locale: ru })}
-                        </div>
-                        {task.isProtocol && (
-                          <div className="bg-purple-100 text-purple-800 text-xs py-1 px-2 rounded-full">
-                            Протокол
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-      
-      {/* Mobile Task Detail Drawer */}
-      {isMobile && selectedTask && (
-        <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-          <DrawerContent className="h-[100vh] max-h-[100vh]">
-            <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50">
-                <X className="h-6 w-6" />
-              </DrawerClose>
-              <div className="px-4 py-2 h-full overflow-auto">
-                <TaskDetail />
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
+			</div>
     </div>
   );
 }

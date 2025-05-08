@@ -5,7 +5,7 @@ export const currentUser: User = {
   id: '1',
   name: 'Наталья Смирнова',
   email: 'natalie.smith@gmail.com',
-  avatar: '/lovable-uploads/c5169996-d67c-4a43-ace3-c62a65517e9d.png',
+  avatar: '/img/slut.webp',
   role: 'manager'
 };
 

@@ -19,61 +19,63 @@ export default function Index() {
   
   return (
     <TaskProvider>
-      <div className="flex h-screen bg-white">
-        {/* Left Sidebar - collapsible on mobile */}
-        {!isMobile ? (
-          <LeftSidebar />
-        ) : (
-          <Drawer open={showMobileDrawer} onOpenChange={setShowMobileDrawer}>
-            <DrawerContent className="h-[100vh] p-0">
-              <div className="relative">
-                <DrawerClose className="absolute right-4 top-4 z-50">
-                  <X className="h-6 w-6" />
-                </DrawerClose>
-                <LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
-              </div>
-            </DrawerContent>
-          </Drawer>
-        )}
-        
-        {/* Main Content */}
-        <div className="flex flex-col flex-1 min-w-0">
-          {/* Search Bar */}
-          <div className="p-4 border-b border-gray-200 flex items-center">
-            {isMobile && (
-              <button 
-                className="mr-3 p-1 rounded-md hover:bg-gray-100"
-                onClick={() => setShowMobileDrawer(true)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            )}
-            <div className="flex-1">
-              <SearchBar />
-            </div>
-          </div>
-          
-          {/* Task Content */}
-          {isMobile ? (
-            /* Mobile layout */
-            <div className="flex-1 overflow-auto">
-              <TaskList />
-            </div>
-          ) : (
-            /* Desktop layout */
-            <div className="flex flex-1 overflow-hidden">
-              <div className="w-1/3 min-w-0 border-r border-gray-200 overflow-auto">
-                <TaskList />
-              </div>
-              <div className="flex-1 overflow-auto">
-                <TaskDetail />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+			<div className='flex h-screen'>
+				<div className="flex container bg-white">
+					{/* Left Sidebar - collapsible on mobile */}
+					{!isMobile ? (
+						<LeftSidebar />
+					) : (
+						<Drawer open={showMobileDrawer} onOpenChange={setShowMobileDrawer}>
+							<DrawerContent className="h-[100vh] p-0">
+								<div className="relative">
+									<DrawerClose className="absolute right-4 top-4 z-50">
+										<X className="h-6 w-6" />
+									</DrawerClose>
+									<LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
+								</div>
+							</DrawerContent>
+						</Drawer>
+					)}
+					
+					{/* Main Content */}
+					<div className="flex flex-col flex-1 min-w-0">
+						{/* Search Bar */}
+						<div className="p-4 border-b border-gray-200 flex items-center">
+							{isMobile && (
+								<button 
+									className="mr-3 p-1 rounded-md hover:bg-gray-100"
+									onClick={() => setShowMobileDrawer(true)}
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+									</svg>
+								</button>
+							)}
+							<div className="flex-1">
+								<SearchBar />
+							</div>
+						</div>
+						
+						{/* Task Content */}
+						{isMobile ? (
+							/* Mobile layout */
+							<div className="flex-1 overflow-auto">
+								<TaskList />
+							</div>
+						) : (
+							/* Desktop layout */
+							<div className="flex flex-1 overflow-hidden">
+								<div className="w-1/3 min-w-0 border-r border-gray-200 overflow-auto">
+									<TaskList />
+								</div>
+								<div className="flex-1 overflow-auto">
+									<TaskDetail />
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+			</div>
     </TaskProvider>
   );
 }

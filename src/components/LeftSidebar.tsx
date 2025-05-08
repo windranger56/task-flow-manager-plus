@@ -107,165 +107,182 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   };
 
   return (
-    <div className="w-64 flex flex-col h-screen bg-white border-r border-gray-200">
-      {/* User Info */}
-      <div className="flex flex-col items-center py-6 border-b border-gray-200">
-        <Avatar className="h-20 w-20 mb-2">
-          <AvatarImage src={profile.image} alt={profile.fullname} />
-          <AvatarFallback>{profile.fullname.slice(0, 2)}</AvatarFallback>
-        </Avatar>
-        <h3 className="text-lg font-medium text-center">{profile.fullname}</h3>
-        <p className="text-sm text-gray-500 text-center">{profile.email}</p>
-      </div>
-      
-      {/* Action Buttons */}
-      <div className="flex justify-center py-4 border-b border-gray-200">
-        <Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Создать новое подразделение</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="department-name">Название подразделения</Label>
-                <Input 
-                  id="department-name" 
-                  value={newDeptName}
-                  onChange={(e) => setNewDeptName(e.target.value)}
-                  placeholder="Введите название подразделения"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department-manager">Руководитель подразделения</Label>
-                <Select value={newDeptManager} onValueChange={setNewDeptManager}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите руководителя" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Сотрудники подразделения</Label>
-                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                  {users
-                    .filter(user => user.id !== currentUser.id && user.id !== newDeptManager)
-                    .map((user) => {
-                      const userDepartment = getDepartmentByUserId(user.id);
-                      return (
-                        <div key={user.id} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`user-${user.id}`} 
-                            checked={selectedUsers.includes(user.id)}
-                            onCheckedChange={() => handleUserSelection(user.id)}
-                          />
-                          <Label htmlFor={`user-${user.id}`} className="flex items-center">
-                            <Avatar className="h-6 w-6 mr-2">
-                              <AvatarImage src={user.avatar} alt={user.name} />
-                              <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-                            </Avatar>
-                            <span>{user.name}</span>
-                            {userDepartment && (
-                              <span className="text-xs text-gray-500 ml-1">
-                                ({userDepartment.name})
-                              </span>
-                            )}
-                          </Label>
-                        </div>
-                      );
-                    })
-                  }
-                </div>
-              </div>
-              <Button onClick={handleCreateDepartment} className="w-full">
-                Создать подразделение
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
+			{/* Application title */}
+			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>Менеджер задач</div>
+			<div className='px-[40px] py-[25px]'>
+				{/* User Info */}
+				<div className="flex flex-col items-center">
+					<Avatar className="h-[70px] w-[70px] mb-2">
+						<AvatarImage src={profile.image} alt={profile.fullname} />
+						<AvatarFallback>{profile.fullname.slice(0, 2)}</AvatarFallback>
+					</Avatar>
+					<h3 className="text-lg font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
+					<p className="text-sm text-gray-500">{profile.email}</p>
+				</div>
+				
+				{/* Action Buttons */}
+				<div className="flex justify-center mt-[25px] gap-[25px]">
+					<Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
+						<DialogTrigger asChild>
+							<Button className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor">
+									<path d="M13.533 5.6h-.961a.894.894 0 01-.834-.57.906.906 0 01.197-.985l.675-.675a.466.466 0 000-.66l-1.32-1.32a.466.466 0 00-.66 0l-.676.677a.9.9 0 01-.994.191.906.906 0 01-.56-.837V.467A.467.467 0 007.933 0H6.067A.467.467 0 005.6.467v.961c0 .35-.199.68-.57.834a.902.902 0 01-.983-.195L3.37 1.39a.466.466 0 00-.66 0L1.39 2.71a.466.466 0 000 .66l.675.675c.25.25.343.63.193.995a.902.902 0 01-.834.56H.467A.467.467 0 000 6.067v1.866c0 .258.21.467.467.467h.961c.35 0 .683.202.834.57a.904.904 0 01-.197.984l-.675.676a.466.466 0 000 .66l1.32 1.32a.466.466 0 00.66 0l.68-.68a.894.894 0 01.994-.187.897.897 0 01.556.829v.961c0 .258.21.467.467.467h1.866c.258 0 .467-.21.467-.467v-.961c0-.35.202-.683.57-.834a.904.904 0 01.984.197l.676.675a.466.466 0 00.66 0l1.32-1.32a.466.466 0 000-.66l-.68-.68a.894.894 0 01-.187-.994.897.897 0 01.829-.556h.961c.258 0 .467-.21.467-.467V6.067a.467.467 0 00-.467-.467zM7 9.333C5.713 9.333 4.667 8.287 4.667 7S5.713 4.667 7 4.667 9.333 5.713 9.333 7 8.287 9.333 7 9.333z"></path>
+								</svg>
+							</Button>
+						</DialogTrigger>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Создать новое подразделение</DialogTitle>
+							</DialogHeader>
+							<div className="space-y-4 py-4">
+								<div className="space-y-2">
+									<Label htmlFor="department-name">Название подразделения</Label>
+									<Input 
+										id="department-name" 
+										value={newDeptName}
+										onChange={(e) => setNewDeptName(e.target.value)}
+										placeholder="Введите название подразделения"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="department-manager">Руководитель подразделения</Label>
+									<Select value={newDeptManager} onValueChange={setNewDeptManager}>
+										<SelectTrigger>
+											<SelectValue placeholder="Выберите руководителя" />
+										</SelectTrigger>
+										<SelectContent>
+											{users.map((user) => (
+												<SelectItem key={user.id} value={user.id}>
+													{user.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+								{/* <div className="space-y-2">
+									<Label>Сотрудники подразделения</Label>
+									<div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+										{users
+											.filter(user => user.id !== currentUser.id && user.id !== newDeptManager)
+											.map((user) => {
+												const userDepartment = getDepartmentByUserId(user.id);
+												return (
+													<div key={user.id} className="flex items-center space-x-2">
+														<Checkbox 
+															id={`user-${user.id}`} 
+															checked={selectedUsers.includes(user.id)}
+															onCheckedChange={() => handleUserSelection(user.id)}
+														/>
+														<Label htmlFor={`user-${user.id}`} className="flex items-center">
+															<Avatar className="h-6 w-6 mr-2">
+																<AvatarImage src={user.avatar} alt={user.name} />
+																<AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+															</Avatar>
+															<span>{user.name}</span>
+															{userDepartment && (
+																<span className="text-xs text-gray-500 ml-1">
+																	({userDepartment.name})
+																</span>
+															)}
+														</Label>
+													</div>
+												);
+											})
+										}
+									</div>
+								</div> */}
+								<Button onClick={handleCreateDepartment} className="w-full">
+									Создать подразделение
+								</Button>
+							</div>
+						</DialogContent>
+					</Dialog>
 
-        <Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative ml-2">
-              <Mail className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                2
-              </span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Новые задачи</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-md">
-                <p className="font-medium">Новая задача: Обзор дизайна</p>
-                <p className="text-sm text-gray-500">Назначил: Иванов Иван</p>
-              </div>
-              <div className="p-3 border rounded-md">
-                <p className="font-medium">Новая задача: Обновление сайта</p>
-                <p className="text-sm text-gray-500">Назначил: Петрова Мария</p>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+					<Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
+						<DialogTrigger asChild>
+							<Button className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+									<path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
+									<path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
+								</svg>
+								<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+									2
+								</span>
+							</Button>
+						</DialogTrigger>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Новые задачи</DialogTitle>
+							</DialogHeader>
+							<div className="space-y-2">
+								<div className="p-3 border rounded-md">
+									<p className="font-medium">Новая задача: Обзор дизайна</p>
+									<p className="text-sm text-gray-500">Назначил: Иванов Иван</p>
+								</div>
+								<div className="p-3 border rounded-md">
+									<p className="font-medium">Новая задача: Обновление сайта</p>
+									<p className="text-sm text-gray-500">Назначил: Петрова Мария</p>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
 
-        <Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative ml-2">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                3
-              </span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Просроченные задачи</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Маркетинговый отчет</p>
-                <p className="text-sm text-red-500">Просрочено на 3 дня</p>
-              </div>
-              <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Презентация для клиента</p>
-                <p className="text-sm text-red-500">Просрочено на 1 день</p>
-              </div>
-              <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Планирование бюджета</p>
-                <p className="text-sm text-red-500">Просрочено на 5 дней</p>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      {/* Stats */}
-      <div className="flex justify-between p-4 border-b border-gray-200">
-        <div className="text-center">
-          <p className="text-2xl font-bold">12</p>
-          <p className="text-xs text-gray-500">Завершено</p>
-        </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold">22</p>
-          <p className="text-xs text-gray-500">Нужно сделать</p>
-        </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold">243</p>
-          <p className="text-xs text-gray-500">Всего завершено</p>
-        </div>
-      </div>
+					<Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
+						<DialogTrigger asChild>
+							<Button className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+									<path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
+								</svg>
+								<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+									3
+								</span>
+							</Button>
+						</DialogTrigger>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Просроченные задачи</DialogTitle>
+							</DialogHeader>
+							<div className="space-y-2">
+								<div className="p-3 border rounded-md">
+									<p className="font-medium">Просрочено: Маркетинговый отчет</p>
+									<p className="text-sm text-red-500">Просрочено на 3 дня</p>
+								</div>
+								<div className="p-3 border rounded-md">
+									<p className="font-medium">Просрочено: Презентация для клиента</p>
+									<p className="text-sm text-red-500">Просрочено на 1 день</p>
+								</div>
+								<div className="p-3 border rounded-md">
+									<p className="font-medium">Просрочено: Планирование бюджета</p>
+									<p className="text-sm text-red-500">Просрочено на 5 дней</p>
+								</div>
+							</div>
+						</DialogContent>
+					</Dialog>
+				</div>
+				
+				{/* Stats */}
+				<div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
+					12/34
+				</div>
+				<div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[5px] relative overflow-hidden'>
+					<div className='bg-[#4d76fd] h-full rounded-full' style={{ width: 12 / 34 * 100 + "%" }} />
+				</div>
+				<div className="flex justify-between p-4 border-b border-gray-200">
+					<div className="text-center">
+						<p className="text-2xl font-bold">12</p>
+						<p className="text-xs text-gray-500">Завершено</p>
+					</div>
+					<div className="text-center">
+						<p className="text-2xl font-bold">22</p>
+						<p className="text-xs text-gray-500">Нужно сделать</p>
+					</div>
+					<div className="text-center">
+						<p className="text-2xl font-bold">243</p>
+						<p className="text-xs text-gray-500">Всего завершено</p>
+					</div>
+				</div>
+			</div>
       
       {/* Departments */}
       <div className="p-4 border-b border-gray-200">
@@ -294,11 +311,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </CollapsibleTrigger>
               <CollapsibleContent className="p-2 bg-gray-50 text-sm">
                 <p>Руководитель: {getUserById(department.managerId)?.name}</p>
-                <p>Количество сотрудников: {
-                  users.filter(user => 
-                    getDepartmentByUserId(user.id)?.id === department.id
-                  ).length
-                }</p>
                 <p>Задачи: активные/завершенные</p>
               </CollapsibleContent>
             </Collapsible>
@@ -318,9 +330,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           ))}
         </div>
       </div>
-
-      {/* Simple Chat Component */}
-      <DepartmentChat />
     </div>
   );
 }
