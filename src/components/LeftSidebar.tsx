@@ -6,14 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Settings, Mail, Bell } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent
-} from '@/components/ui/collapsible';
 
 // Add the props interface for LeftSidebar
 interface LeftSidebarProps {
@@ -28,45 +22,31 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
     getUserById, 
     users,
     addDepartment,
-    getSubordinates,
-    getDepartmentByUserId
+    getSubordinates
   } = useTaskContext();
   
   const [showNewDepartment, setShowNewDepartment] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
   const [newDeptManager, setNewDeptManager] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
-  const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
   
   const subordinates = getSubordinates();
   
   const handleCreateDepartment = () => {
     if (newDeptName && newDeptManager) {
-      addDepartment(newDeptName, newDeptManager, selectedUsers);
+      addDepartment(newDeptName, newDeptManager);
       setNewDeptName("");
       setNewDeptManager("");
-      setSelectedUsers([]);
       setShowNewDepartment(false);
     }
   };
 
-  const toggleDepartment = (departmentId: string) => {
-    setExpandedDepartments(prev => 
-      prev.includes(departmentId) 
-        ? prev.filter(id => id !== departmentId) 
-        : [...prev, departmentId]
-    );
-  };
-
-  const handleUserSelection = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
-        : [...prev, userId]
-    );
+  const handleDepartmentClick = (department: any) => {
+    selectDepartment(department);
+    // Call onItemClick if it exists
+    if (onItemClick) onItemClick();
   };
 
   return (
@@ -91,23 +71,23 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Создать новое подразделение</DialogTitle>
+              <DialogTitle>Create New Department</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="department-name">Название подразделения</Label>
+                <Label htmlFor="department-name">Department Name</Label>
                 <Input 
                   id="department-name" 
                   value={newDeptName}
                   onChange={(e) => setNewDeptName(e.target.value)}
-                  placeholder="Введите название подразделения"
+                  placeholder="Enter department name"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="department-manager">Руководитель подразделения</Label>
+                <Label htmlFor="department-manager">Department Manager</Label>
                 <Select value={newDeptManager} onValueChange={setNewDeptManager}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Выберите руководителя" />
+                    <SelectValue placeholder="Select manager" />
                   </SelectTrigger>
                   <SelectContent>
                     {users.map((user) => (
@@ -118,40 +98,8 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Сотрудники подразделения</Label>
-                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                  {users
-                    .filter(user => user.id !== currentUser.id && user.id !== newDeptManager)
-                    .map((user) => {
-                      const userDepartment = getDepartmentByUserId(user.id);
-                      return (
-                        <div key={user.id} className="flex items-center space-x-2">
-                          <Checkbox 
-                            id={`user-${user.id}`} 
-                            checked={selectedUsers.includes(user.id)}
-                            onCheckedChange={() => handleUserSelection(user.id)}
-                          />
-                          <Label htmlFor={`user-${user.id}`} className="flex items-center">
-                            <Avatar className="h-6 w-6 mr-2">
-                              <AvatarImage src={user.avatar} alt={user.name} />
-                              <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-                            </Avatar>
-                            <span>{user.name}</span>
-                            {userDepartment && (
-                              <span className="text-xs text-gray-500 ml-1">
-                                ({userDepartment.name})
-                              </span>
-                            )}
-                          </Label>
-                        </div>
-                      );
-                    })
-                  }
-                </div>
-              </div>
               <Button onClick={handleCreateDepartment} className="w-full">
-                Создать подразделение
+                Create Department
               </Button>
             </div>
           </DialogContent>
@@ -168,16 +116,16 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Новые задачи</DialogTitle>
+              <DialogTitle>New Tasks</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               <div className="p-3 border rounded-md">
-                <p className="font-medium">Новая задача: Обзор дизайна</p>
-                <p className="text-sm text-gray-500">Назначил: Иванов Иван</p>
+                <p className="font-medium">New task: Design Review</p>
+                <p className="text-sm text-gray-500">Assigned by: Mike Johnson</p>
               </div>
               <div className="p-3 border rounded-md">
-                <p className="font-medium">Новая задача: Обновление сайта</p>
-                <p className="text-sm text-gray-500">Назначил: Петрова Мария</p>
+                <p className="font-medium">New task: Website Update</p>
+                <p className="text-sm text-gray-500">Assigned by: Sarah Lee</p>
               </div>
             </div>
           </DialogContent>
@@ -194,20 +142,20 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Просроченные задачи</DialogTitle>
+              <DialogTitle>Overdue Tasks</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Маркетинговый отчет</p>
-                <p className="text-sm text-red-500">Просрочено на 3 дня</p>
+                <p className="font-medium">Overdue: Marketing Report</p>
+                <p className="text-sm text-red-500">Due 3 days ago</p>
               </div>
               <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Презентация для клиента</p>
-                <p className="text-sm text-red-500">Просрочено на 1 день</p>
+                <p className="font-medium">Overdue: Client Presentation</p>
+                <p className="text-sm text-red-500">Due 1 day ago</p>
               </div>
               <div className="p-3 border rounded-md">
-                <p className="font-medium">Просрочено: Планирование бюджета</p>
-                <p className="text-sm text-red-500">Просрочено на 5 дней</p>
+                <p className="font-medium">Overdue: Budget Planning</p>
+                <p className="text-sm text-red-500">Due 5 days ago</p>
               </div>
             </div>
           </DialogContent>
@@ -218,15 +166,15 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
       <div className="flex justify-between p-4 border-b border-gray-200">
         <div className="text-center">
           <p className="text-2xl font-bold">12</p>
-          <p className="text-xs text-gray-500">Завершено</p>
+          <p className="text-xs text-gray-500">Completed tasks</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold">22</p>
-          <p className="text-xs text-gray-500">Нужно сделать</p>
+          <p className="text-xs text-gray-500">To do tasks</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold">243</p>
-          <p className="text-xs text-gray-500">Всего завершено</p>
+          <p className="text-xs text-gray-500">All completed</p>
         </div>
       </div>
       
@@ -235,36 +183,14 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
         <h4 className="text-sm font-medium uppercase tracking-wider mb-4">ПОДРАЗДЕЛЕНИЯ</h4>
         <ul className="space-y-2">
           {departments.map((department) => (
-            <Collapsible 
+            <li 
               key={department.id}
-              className="border border-gray-100 rounded-sm"
-              open={expandedDepartments.includes(department.id)}
+              className="flex items-center cursor-pointer hover:bg-gray-100 p-1 rounded"
+              onClick={() => handleDepartmentClick(department)}
             >
-              <CollapsibleTrigger asChild>
-                <div 
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded"
-                  onClick={() => toggleDepartment(department.id)}
-                >
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: department.color }} />
-                    <span className="ml-2 text-sm">{department.name.toLowerCase()}</span>
-                  </div>
-                  {expandedDepartments.includes(department.id) 
-                    ? <ChevronUp className="h-4 w-4" /> 
-                    : <ChevronDown className="h-4 w-4" />
-                  }
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="p-2 bg-gray-50 text-sm">
-                <p>Руководитель: {getUserById(department.managerId)?.name}</p>
-                <p>Количество сотрудников: {
-                  users.filter(user => 
-                    getDepartmentByUserId(user.id)?.id === department.id
-                  ).length
-                }</p>
-                <p>Задачи: активные/завершенные</p>
-              </CollapsibleContent>
-            </Collapsible>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: department.color }} />
+              <span className="ml-2 text-sm">{department.name.toLowerCase()}</span>
+            </li>
           ))}
         </ul>
       </div>
@@ -280,91 +206,6 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
             </Avatar>
           ))}
         </div>
-      </div>
-
-      {/* Simple Chat Component */}
-      <DepartmentChat />
-    </div>
-  );
-}
-
-// Simple chat component
-function DepartmentChat() {
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { id: '1', content: 'Привет, как дела?', sender: 'system' },
-    { id: '2', content: 'Добрый день! Как продвигается проект?', sender: 'system' }
-  ]);
-
-  const generateRandomMessage = () => {
-    const characters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
-    let result = '';
-    const words = Math.floor(Math.random() * 5) + 1;
-    
-    for (let w = 0; w < words; w++) {
-      const length = Math.floor(Math.random() * 8) + 3;
-      for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      result += ' ';
-    }
-    
-    return result.trim();
-  };
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // Add user message
-      const newUserMessage = {
-        id: `user-${Date.now()}`,
-        content: message,
-        sender: 'user'
-      };
-      
-      // Generate random response
-      const responseMessage = {
-        id: `system-${Date.now()}`,
-        content: generateRandomMessage(),
-        sender: 'system'
-      };
-      
-      setMessages([...messages, newUserMessage, responseMessage]);
-      setMessage('');
-    }
-  };
-
-  return (
-    <div className="mt-auto border-t border-gray-200 p-4">
-      <h4 className="text-sm font-medium uppercase tracking-wider mb-4">ЧАТ</h4>
-      <div className="h-48 overflow-y-auto mb-4 p-2 border border-gray-200 rounded-md">
-        {messages.map(msg => (
-          <div 
-            key={msg.id} 
-            className={`mb-2 p-2 rounded-md ${
-              msg.sender === 'user' 
-                ? 'ml-auto bg-blue-100 max-w-[80%]' 
-                : 'bg-gray-100 max-w-[80%]'
-            }`}
-          >
-            {msg.content}
-          </div>
-        ))}
-      </div>
-      <div className="flex">
-        <Input 
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Сообщение..."
-          className="mr-2"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleSendMessage();
-            }
-          }}
-        />
-        <Button onClick={handleSendMessage} size="sm">
-          <Send className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );

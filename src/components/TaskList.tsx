@@ -1,138 +1,188 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn } from '@/lib/utils';
+import { Priority } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Drawer, 
   DrawerContent,
   DrawerClose,
 } from '@/components/ui/drawer';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import TaskDetail from './TaskDetail';
 
 export default function TaskList() {
   const { 
+    selectedDepartment, 
     tasks, 
-    departments, 
-    selectedDepartment,
-    selectTask,
-    users,
+    selectTask, 
     selectedTask,
-    addTask
+    getUserById, 
+    departments,
+    getTasksByDepartment,
+    addTask,
+    users
   } = useTaskContext();
   
-  const [showNewTask, setShowNewTask] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskDescription, setTaskDescription] = useState("");
-  const [taskAssignee, setTaskAssignee] = useState("");
-  const [taskDepartment, setTaskDepartment] = useState("");
-  const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
-  const [taskProtocol, setTaskProtocol] = useState(false);
-  const [taskDeadline, setTaskDeadline] = useState<Date>(new Date());
-  
   const isMobile = useIsMobile();
+  const [showAddTask, setShowAddTask] = useState(false);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskAssignee, setNewTaskAssignee] = useState('');
+  const [newTaskDepartment, setNewTaskDepartment] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<Priority>('medium');
+  const [newTaskIsProtocol, setNewTaskIsProtocol] = useState(false);
+  const [newTaskDeadline, setNewTaskDeadline] = useState<Date>(new Date());
   
-  const handleTaskClick = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      selectTask(task);
-      if (isMobile) {
-        setShowTaskDetail(true);
-      }
-    }
-  };
+  const departmentTasks = selectedDepartment 
+    ? getTasksByDepartment(selectedDepartment.id) 
+    : [];
   
-  const handleCreateTask = () => {
-    if (taskTitle && taskDescription && taskAssignee && taskDepartment && taskDeadline) {
+  const handleAddTask = () => {
+    if (
+      newTaskTitle && 
+      newTaskAssignee && 
+      newTaskDepartment
+    ) {
       addTask(
-        taskTitle, 
-        taskDescription, 
-        taskAssignee, 
-        taskDepartment, 
-        taskPriority,
-        taskProtocol, 
-        taskDeadline
+        newTaskTitle,
+        newTaskDescription,
+        newTaskAssignee,
+        newTaskDepartment,
+        newTaskPriority,
+        newTaskIsProtocol,
+        newTaskDeadline
       );
       
       // Reset form
-      setTaskTitle("");
-      setTaskDescription("");
-      setTaskAssignee("");
-      setTaskDepartment("");
-      setTaskPriority('medium');
-      setTaskProtocol(false);
-      setTaskDeadline(new Date());
-      setShowNewTask(false);
+      setNewTaskTitle('');
+      setNewTaskDescription('');
+      setNewTaskAssignee('');
+      setNewTaskDepartment('');
+      setNewTaskPriority('medium');
+      setNewTaskIsProtocol(false);
+      setNewTaskDeadline(new Date());
+      setShowAddTask(false);
     }
   };
-  
-  // Группируем задачи по подразделениям
-  const tasksByDepartment = departments.map(department => {
-    return {
-      department,
-      tasks: tasks.filter(task => task.departmentId === department.id)
-    };
-  });
-  
+
+  const handleTaskClick = (task: any) => {
+    selectTask(task);
+    if (isMobile) {
+      setShowTaskDetail(true);
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-lg font-medium">Задачи по подразделениям</h2>
-        <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
+    <div className="flex flex-col h-full border-r border-gray-200">
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        {selectedDepartment ? (
+          <>
+            {/* Department Header */}
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-medium">{selectedDepartment.name}</h2>
+              <Button variant="ghost" size="sm">
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Tasks */}
+            <div className="divide-y divide-gray-100">
+              {departmentTasks.map((task) => {
+                const assignee = getUserById(task.assignedTo);
+                return (
+                  <React.Fragment key={task.id}>
+                    <div 
+                      className={cn(
+                        "p-4 cursor-pointer hover:bg-gray-50 flex items-center",
+                        task.completed ? "bg-gray-50" : ""
+                      )}
+                      onClick={() => handleTaskClick(task)}
+                    >
+                      <div className="mr-3">
+                        {task.completed ? (
+                          <div className="h-6 w-6 bg-taskBlue rounded-full flex items-center justify-center">
+                            <Check className="h-4 w-4 text-white" />
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 border-2 border-gray-200 rounded-full"></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={cn(
+                          "font-medium", 
+                          task.completed ? "text-gray-400" : ""
+                        )}>
+                          {task.title}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          {format(task.createdAt, 'dd MMM, yyyy')}
+                        </p>
+                      </div>
+                      {assignee && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={assignee.avatar} alt={assignee.name} />
+                          <AvatarFallback>{assignee.name.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                    
+                    {isMobile && selectedTask?.id === task.id && (
+                      <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
+                        <DrawerContent className="h-[100vh] max-h-[100vh]">
+                          <div className="relative h-full">
+                            <DrawerClose className="absolute right-4 top-4 z-50">
+                              <X className="h-6 w-6" />
+                            </DrawerClose>
+                            <div className="px-4 py-2 h-full overflow-auto">
+                              <TaskDetail />
+                            </div>
+                          </div>
+                        </DrawerContent>
+                      </Drawer>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <p>Select a department to view tasks</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Add Task Button */}
+      <div className="p-4 border-t border-gray-200">
+        <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
           <DialogTrigger asChild>
-            <Button size="sm" className="flex items-center">
-              <Plus className="h-4 w-4 mr-1" />
-              <span>Новая</span>
+            <Button className="w-full bg-taskBlue hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" /> Add task
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className={cn("sm:max-w-[500px]", isMobile ? "w-[90%] max-h-[90vh] overflow-auto" : "")}>
             <DialogHeader>
-              <DialogTitle>Создать новую задачу</DialogTitle>
+              <DialogTitle>Add New Task</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="task-title">Заголовок</Label>
-                <Input 
-                  id="task-title" 
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="task-description">Описание</Label>
-                <Textarea 
-                  id="task-description" 
-                  value={taskDescription}
-                  onChange={(e) => setTaskDescription(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="task-assignee">Исполнитель</Label>
-                <Select value={taskAssignee} onValueChange={setTaskAssignee}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="task-assignee">Assign to</Label>
+                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Выберите исполнителя" />
+                    <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
                     {users.map((user) => (
@@ -144,161 +194,110 @@ export default function TaskList() {
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="task-department">Подразделение</Label>
-                <Select value={taskDepartment} onValueChange={setTaskDepartment}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите подразделение" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((department) => (
-                      <SelectItem key={department.id} value={department.id}>
-                        {department.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="task-priority">Приоритет</Label>
+              <div className="grid gap-2">
+                <Label htmlFor="task-priority">Priority</Label>
                 <Select 
-                  value={taskPriority} 
-                  onValueChange={(value) => setTaskPriority(value as 'low' | 'medium' | 'high')}
+                  value={newTaskPriority} 
+                  onValueChange={(value) => setNewTaskPriority(value as Priority)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Низкий</SelectItem>
-                    <SelectItem value="medium">Средний</SelectItem>
-                    <SelectItem value="high">Высокий</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="flex items-center space-x-2">
                 <Checkbox 
-                  id="task-protocol" 
-                  checked={taskProtocol}
-                  onCheckedChange={(checked) => setTaskProtocol(checked === true)}
+                  id="protocol" 
+                  checked={newTaskIsProtocol}
+                  onCheckedChange={(checked) => 
+                    setNewTaskIsProtocol(checked as boolean)
+                  }
                 />
-                <Label htmlFor="task-protocol">Добавить в протокол</Label>
+                <Label htmlFor="protocol">Protocol task</Label>
               </div>
               
-              <div className="space-y-2">
-                <Label>Дедлайн</Label>
+              <div className="grid gap-2">
+                <Label>Current Date</Label>
+                <Input 
+                  value={format(new Date(), 'PPP')} 
+                  disabled 
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label>Deadline</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left">
-                      {taskDeadline ? (
-                        format(taskDeadline, 'PPP', { locale: ru })
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start text-left"
+                    >
+                      {newTaskDeadline ? (
+                        format(newTaskDeadline, 'PPP')
                       ) : (
-                        <span>Выберите дату</span>
+                        <span>Select deadline date</span>
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
+                  <PopoverContent className="w-auto p-0 pointer-events-auto">
                     <Calendar
                       mode="single"
-                      selected={taskDeadline}
-                      onSelect={(date) => setTaskDeadline(date || new Date())}
+                      selected={newTaskDeadline}
+                      onSelect={(date) => date && setNewTaskDeadline(date)}
                       initialFocus
+                      className="p-3 pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
               </div>
               
-              <Button onClick={handleCreateTask} className="w-full">
-                Создать задачу
+              <div className="grid gap-2">
+                <Label htmlFor="task-department">Department</Label>
+                <Select value={newTaskDepartment} onValueChange={setNewTaskDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="task-title">Task Title</Label>
+                <Input 
+                  id="task-title" 
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="task-description">Description</Label>
+                <Input 
+                  id="task-description" 
+                  value={newTaskDescription}
+                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                />
+              </div>
+              
+              <Button onClick={handleAddTask}>
+                Add Task
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
-      
-      {/* Task List by Departments */}
-      <div className="flex-1 overflow-auto">
-        <Accordion type="multiple" className="w-full">
-          {tasksByDepartment.map(({ department, tasks }) => (
-            <AccordionItem key={department.id} value={department.id}>
-              <AccordionTrigger className="p-4 hover:bg-gray-50">
-                <div className="flex items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-3"
-                    style={{ backgroundColor: department.color }}
-                  />
-                  <span>{department.name}</span>
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({tasks.length} задач)
-                  </span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <ul className="divide-y divide-gray-200">
-                  {tasks.map((task) => (
-                    <li 
-                      key={task.id}
-                      className={cn(
-                        "p-4 cursor-pointer hover:bg-gray-50",
-                        selectedTask?.id === task.id && "bg-gray-50"
-                      )}
-                      onClick={() => handleTaskClick(task.id)}
-                    >
-                      <div className="flex justify-between">
-                        <div className="flex items-center">
-                          <div 
-                            className={cn(
-                              "w-3 h-3 rounded-full mr-3",
-                              task.priority === 'high' ? "bg-red-500" :
-                              task.priority === 'medium' ? "bg-yellow-500" : "bg-green-500"
-                            )}
-                          />
-                          <div>
-                            <h3 className="text-sm font-medium mb-1">{task.title}</h3>
-                            <p className="text-xs text-gray-500 truncate max-w-xs">{task.description}</p>
-                          </div>
-                        </div>
-                        {task.completed && (
-                          <div className="bg-taskBlue text-white rounded-full p-1">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-between mt-2">
-                        <div className="text-xs text-gray-500">
-                          Дедлайн: {format(task.deadline, 'dd MMM', { locale: ru })}
-                        </div>
-                        {task.isProtocol && (
-                          <div className="bg-purple-100 text-purple-800 text-xs py-1 px-2 rounded-full">
-                            Протокол
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-      
-      {/* Mobile Task Detail Drawer */}
-      {isMobile && selectedTask && (
-        <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-          <DrawerContent className="h-[100vh] max-h-[100vh]">
-            <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50">
-                <X className="h-6 w-6" />
-              </DrawerClose>
-              <div className="px-4 py-2 h-full overflow-auto">
-                <TaskDetail />
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
     </div>
   );
 }

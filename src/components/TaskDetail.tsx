@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Trash2, User, Ticket, Check, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn } from '@/lib/utils';
-import { ru } from 'date-fns/locale';
 
 export default function TaskDetail() {
   const { 
@@ -36,17 +35,10 @@ export default function TaskDetail() {
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState<Date | undefined>(undefined);
   
-  // Состояние для чата
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { id: '1', content: 'Привет, как дела?', sender: 'system' },
-    { id: '2', content: 'Добрый день! Как продвигается проект?', sender: 'system' }
-  ]);
-  
   if (!selectedTask) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-gray-500">
-        <p>Выберите задачу для просмотра деталей</p>
+        <p>Select a task to view details</p>
       </div>
     );
   }
@@ -75,47 +67,8 @@ export default function TaskDetail() {
     }
   };
 
-  // Функция для генерации случайного русского сообщения
-  const generateRandomMessage = () => {
-    const characters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
-    let result = '';
-    const words = Math.floor(Math.random() * 5) + 1;
-    
-    for (let w = 0; w < words; w++) {
-      const length = Math.floor(Math.random() * 8) + 3;
-      for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      result += ' ';
-    }
-    
-    return result.trim();
-  };
-
-  // Функция отправки сообщения в чат
-  const handleSendChatMessage = () => {
-    if (chatMessage.trim()) {
-      // Добавляем сообщение пользователя
-      const newUserMessage = {
-        id: `user-${Date.now()}`,
-        content: chatMessage,
-        sender: 'user'
-      };
-      
-      // Генерируем случайный ответ
-      const responseMessage = {
-        id: `system-${Date.now()}`,
-        content: generateRandomMessage(),
-        sender: 'system'
-      };
-      
-      setChatMessages([...chatMessages, newUserMessage, responseMessage]);
-      setChatMessage('');
-    }
-  };
-
   return (
-    <div className="w-full h-screen flex flex-col relative">
+    <div className="w-full h-screen flex flex-col">
       {/* Task Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center">
@@ -146,14 +99,14 @@ export default function TaskDetail() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Переназначить задачу</DialogTitle>
+                <DialogTitle>Reassign Task</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reassign-to">Переназначить</Label>
+                  <Label htmlFor="reassign-to">Reassign to</Label>
                   <Select value={reassignTo} onValueChange={setReassignTo}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Выберите сотрудника" />
+                      <SelectValue placeholder="Select employee" />
                     </SelectTrigger>
                     <SelectContent>
                       {users
@@ -169,7 +122,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
+                  <Label htmlFor="new-title">New Title (Optional)</Label>
                   <Input 
                     id="new-title" 
                     placeholder={selectedTask.title}
@@ -179,7 +132,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="new-description">Новое описание (Опционально)</Label>
+                  <Label htmlFor="new-description">New Description (Optional)</Label>
                   <Textarea 
                     id="new-description" 
                     placeholder={selectedTask.description}
@@ -189,14 +142,14 @@ export default function TaskDetail() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Новый дедлайн (Опционально)</Label>
+                  <Label>New Deadline (Optional)</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start text-left">
                         {newDeadline ? (
-                          format(newDeadline, 'PPP', { locale: ru })
+                          format(newDeadline, 'PPP')
                         ) : (
-                          <span>Текущий: {format(selectedTask.deadline, 'PPP', { locale: ru })}</span>
+                          <span>Current: {format(selectedTask.deadline, 'PPP')}</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -213,7 +166,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <Button onClick={handleReassign} className="w-full">
-                  Переназначить задачу
+                  Reassign Task
                 </Button>
               </div>
             </DialogContent>
@@ -245,7 +198,7 @@ export default function TaskDetail() {
       </div>
       
       {/* Task Content */}
-      <div className="flex-1 overflow-auto p-4 pb-20">
+      <div className="flex-1 overflow-auto p-4">
         {/* Task Title & Status */}
         <div className="flex items-center space-x-3 mb-6">
           <div className={cn(
@@ -259,7 +212,7 @@ export default function TaskDetail() {
         
         {/* Date */}
         <p className="text-sm text-gray-500 mb-6">
-          {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
+          {format(selectedTask.createdAt, 'dd MMM, yyyy')}
         </p>
         
         {/* Task Description */}
@@ -283,7 +236,7 @@ export default function TaskDetail() {
                   <div className="flex items-center">
                     <span className="font-medium">{messageUser?.name}</span>
                     <span className="text-xs text-gray-500 ml-2">
-                      {format(message.timestamp, 'dd MMM, yyyy', { locale: ru })}
+                      {format(message.timestamp, 'dd MMM, yyyy')}
                     </span>
                   </div>
                   <p className="text-gray-700">{message.content}</p>
@@ -296,91 +249,53 @@ export default function TaskDetail() {
           {selectedTask.assignedTo === assignee?.id && (
             <div className="mt-4">
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Задача назначена {assignee.name}</span>
+                <span className="text-sm text-gray-500">Task assigned to {assignee.name}</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Добавлено в подразделение</span>
+                <span className="text-sm text-gray-500">Added to department</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Задача создана</span>
+                <span className="text-sm text-gray-500">Task created</span>
                 <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
+                  {format(selectedTask.createdAt, 'dd MMM, yyyy')}
                 </span>
               </div>
               {selectedTask.completed && (
                 <div className="flex items-center">
-                  <span className="text-sm text-green-500">Задача завершена</span>
+                  <span className="text-sm text-green-500">Task completed</span>
                   <span className="text-xs text-gray-500 ml-4">
-                    {format(new Date(), 'dd MMM, yyyy', { locale: ru })}
+                    {format(new Date(), 'dd MMM, yyyy')}
                   </span>
                 </div>
               )}
             </div>
           )}
         </div>
-        
-        {/* Чат интерфейс */}
-        <div className="mt-8 border-t pt-4 pb-16">
-          <h3 className="text-sm font-medium uppercase tracking-wider mb-4">ЧАТ</h3>
-          <div className="h-48 overflow-y-auto mb-4 p-2 border border-gray-200 rounded-md">
-            {chatMessages.map(msg => (
-              <div 
-                key={msg.id} 
-                className={`mb-2 p-2 rounded-md ${
-                  msg.sender === 'user' 
-                    ? 'ml-auto bg-blue-100 max-w-[80%]' 
-                    : 'bg-gray-100 max-w-[80%]'
-                }`}
-              >
-                {msg.content}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
       
-      {/* Сообщения и чат сообщения в нижней части с абсолютным позиционированием */}
-      <div className="absolute bottom-0 left-0 right-0 flex">
-        <div className="w-1/2 p-4 border-t border-r border-gray-200 bg-white flex">
-          <Input 
-            className="flex-1 mr-2"
-            placeholder="Написать комментарий..."
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSendMessage();
-              }
-            }}
-          />
-          <Button size="icon" onClick={handleSendMessage}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="w-1/2 p-4 border-t border-gray-200 bg-white flex">
-          <Input 
-            value={chatMessage}
-            onChange={(e) => setChatMessage(e.target.value)}
-            placeholder="Чат сообщение..."
-            className="flex-1 mr-2"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSendChatMessage();
-              }
-            }}
-          />
-          <Button onClick={handleSendChatMessage} size="sm">
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+      {/* Message Input */}
+      <div className="p-4 border-t border-gray-200 flex">
+        <Input 
+          className="flex-1 mr-2"
+          placeholder="Write a comment..."
+          value={messageText}
+          onChange={(e) => setMessageText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleSendMessage();
+            }
+          }}
+        />
+        <Button size="icon" onClick={handleSendMessage}>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
 }
-
