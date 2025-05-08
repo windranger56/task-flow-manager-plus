@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -8,23 +7,56 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Mail, Bell } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
+import { supabase } from '@/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 // Add the props interface for LeftSidebar
 interface LeftSidebarProps {
   onItemClick?: () => void;
 }
 
-export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
-  const { 
-    currentUser, 
-    departments, 
-    selectDepartment, 
-    getUserById, 
+const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
+  const {
+    currentUser,
+    departments,
+    selectDepartment,
+    getUserById,
     users,
     addDepartment,
     getSubordinates
   } = useTaskContext();
-  
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState({
+    user_unique_id: "",
+    fullname: "",
+    email: "",
+    image: "",
+  });
+
+  const getProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+    }
+
+    const { data, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('user_unique_id', session.user.id)
+    .limit(1);
+    if (userError) throw userError;
+ 
+    console.log(data);
+    if(data) {
+      setProfile({
+        user_unique_id: data[0].user_unique_id || "",
+        fullname: data[0].fullname || "",
+        email: data[0].email || "",
+        image: data[0].image || "",
+      });
+    }
+  }
+
   const [showNewDepartment, setShowNewDepartment] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
   const [newDeptManager, setNewDeptManager] = useState("");
@@ -32,7 +64,12 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   
-  const subordinates = getSubordinates();
+  const [subordinates, setSubordinates] = useState([]);
+  
+  useEffect(() => {
+    getProfile();
+    setSubordinates(getSubordinates());
+  }, []);
   
   const handleCreateDepartment = () => {
     if (newDeptName && newDeptManager) {
@@ -54,11 +91,11 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
       {/* User Info */}
       <div className="flex flex-col items-center py-6 border-b border-gray-200">
         <Avatar className="h-20 w-20 mb-2">
-          <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-          <AvatarFallback>{currentUser.name.slice(0, 2)}</AvatarFallback>
+          <AvatarImage src={profile.image} alt={profile.fullname} />
+          <AvatarFallback>{profile.fullname.slice(0, 2)}</AvatarFallback>
         </Avatar>
-        <h3 className="text-lg font-medium">{currentUser.name}</h3>
-        <p className="text-sm text-gray-500">{currentUser.email}</p>
+        <h3 className="text-lg font-medium text-center">{profile.fullname}</h3>
+        <p className="text-sm text-gray-500 text-center">{profile.email}</p>
       </div>
       
       {/* Action Buttons */}
@@ -210,3 +247,5 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
     </div>
   );
 }
+
+export default LeftSidebar;
