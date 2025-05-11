@@ -5,8 +5,6 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-import { ru } from "date-fns/locale";
-
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({
@@ -19,12 +17,6 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
-      weekStartsOn={1} // 1 = понедельник, 0 = воскресенье
-      locale={ru} // русская локаль
-      // formatters={{
-      //   formatWeekdayName: (day) => 
-      //     ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"][day], // сокращенные русские названия дней
-      // }}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
