@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -8,48 +7,214 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
+import { supabase } from '@/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Collapsible,
   CollapsibleTrigger,
   CollapsibleContent
 } from '@/components/ui/collapsible';
+import { User } from '@/types';
+import { toast } from "@/components/ui/use-toast";
 
 // Add the props interface for LeftSidebar
 interface LeftSidebarProps {
   onItemClick?: () => void;
 }
 
-export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
-  const { 
-    currentUser, 
-    departments, 
-    selectDepartment, 
-    getUserById, 
+const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
+  const {
+    currentUser,
+    departments,
+    selectDepartment,
+    getUserById,
     users,
     addDepartment,
     getSubordinates,
-    getDepartmentByUserId
+    getDepartmentByUserId,
+    addUsersToDepartment
   } = useTaskContext();
-  
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState({
+    user_unique_id: "",
+    fullname: "",
+    email: "",
+    image: "",
+  });
+
+  const getProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+    }
+
+    const { data, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('user_unique_id', session.user.id)
+    .limit(1);
+    if (userError) throw userError;
+ 
+    console.log(data);
+    if(data) {
+      setProfile({
+        user_unique_id: data[0].user_unique_id || "",
+        fullname: data[0].fullname || "",
+        email: data[0].email || "",
+        image: data[0].image || "",
+      });
+    }
+  }
+
   const [showNewDepartment, setShowNewDepartment] = useState(false);
+  const [showAddUsersToDepartment, setShowAddUsersToDepartment] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
   const [newDeptManager, setNewDeptManager] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<{id: string, fullname: string}[]>([]);
+  const [selectedDeptForUsers, setSelectedDeptForUsers] = useState("");
+  const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<string[]>([]);
   
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
   
-  const subordinates = getSubordinates();
+  const [subordinates, setSubordinates] = useState<User[]>([]);
+  
+  useEffect(() => {
+    getProfile();
+    // Загружаем подчиненных сотрудников
+    const loadSubordinates = async () => {
+      try {
+        const subs = await getSubordinates();
+        setSubordinates(subs);
+      } catch (error) {
+        console.error("Ошибка при загрузке подчиненных:", error);
+      }
+    };
+    
+    loadSubordinates();
+  }, []);
+
+  // Загрузка пользователей при открытии диалога создания департамента
+  useEffect(() => {
+    if (showNewDepartment) {
+      fetchUsers();
+    }
+  }, [showNewDepartment]);
+
+  // Загружаем пользователей при открытии диалога добавления в департамент
+  useEffect(() => {
+    if (showAddUsersToDepartment) {
+      fetchUsersForExistingDepartment();
+    }
+  }, [showAddUsersToDepartment]);
+
+  // Функция для загрузки пользователей из базы данных
+  const fetchUsers = async () => {
+    try {
+      // Загружаем только пользователей без руководителя (без leader_id)
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, fullname')
+        .is('leader_id', null)  // Выбираем только пользователей без руководителя
+        .order('fullname');
+        
+      if (error) {
+        console.error("Ошибка при загрузке пользователей:", error);
+        toast({
+          title: "Ошибка", 
+          description: "Не удалось загрузить пользователей",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (data) {
+        if (data.length === 0) {
+          toast({
+            title: "Внимание", 
+            description: "Нет доступных пользователей без руководителя",
+            variant: "default"
+          });
+        }
+        setAvailableUsers(data);
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке пользователей:", error);
+      toast({
+        title: "Ошибка", 
+        description: "Произошла ошибка при загрузке пользователей",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Функция для загрузки пользователей без руководителя для добавления в существующий департамент
+  const fetchUsersForExistingDepartment = async () => {
+    try {
+      // Загружаем только пользователей без руководителя (без leader_id)
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, fullname')
+        .is('leader_id', null)  // Выбираем только пользователей без руководителя
+        .order('fullname');
+        
+      if (error) {
+        console.error("Ошибка при загрузке пользователей:", error);
+        toast({
+          title: "Ошибка", 
+          description: "Не удалось загрузить пользователей",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (data) {
+        if (data.length === 0) {
+          toast({
+            title: "Внимание", 
+            description: "Нет доступных пользователей без руководителя",
+            variant: "default"
+          });
+        }
+        setAvailableUsers(data);
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке пользователей:", error);
+      toast({
+        title: "Ошибка", 
+        description: "Произошла ошибка при загрузке пользователей",
+        variant: "destructive"
+      });
+    }
+  };
   
   const handleCreateDepartment = () => {
     if (newDeptName && newDeptManager) {
-      addDepartment(newDeptName, newDeptManager, selectedUsers);
+      addDepartment(newDeptName, newDeptManager);
       setNewDeptName("");
       setNewDeptManager("");
-      setSelectedUsers([]);
       setShowNewDepartment(false);
+    }
+  };
+
+  // Функция для обработки выбора пользователей
+  const handleUserSelection = (userId: string) => {
+    setSelectedUsersToAdd(prev => 
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  // Функция для добавления выбранных пользователей в департамент
+  const handleAddUsersToDepartment = () => {
+    if (selectedDeptForUsers && selectedUsersToAdd.length > 0) {
+      addUsersToDepartment(selectedDeptForUsers, selectedUsersToAdd);
+      setSelectedDeptForUsers("");
+      setSelectedUsersToAdd([]);
+      setShowAddUsersToDepartment(false);
     }
   };
 
@@ -61,27 +226,19 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
     );
   };
 
-  const handleUserSelection = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
-        : [...prev, userId]
-    );
-  };
-
   return (
     <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
 			{/* Application title */}
-			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>Менеджер задач</div>
+			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ</div>
 			<div className='px-[40px] py-[25px]'>
 				{/* User Info */}
 				<div className="flex flex-col items-center">
 					<Avatar className="h-[70px] w-[70px] mb-2">
-						<AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-						<AvatarFallback>{currentUser.name.slice(0, 2)}</AvatarFallback>
+						<AvatarImage src={profile.image} alt={profile.fullname} />
+						<AvatarFallback>{profile.fullname.slice(0, 2)}</AvatarFallback>
 					</Avatar>
-					<h3 className="text-lg font-semibold mt-[15px] mb-[8px]">{currentUser.name}</h3>
-					<p className="text-sm text-gray-500">{currentUser.email}</p>
+					<h3 className="text-lg font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
+					<p className="text-sm text-gray-500">{profile.email}</p>
 				</div>
 				
 				{/* Action Buttons */}
@@ -115,13 +272,22 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
 											<SelectValue placeholder="Выберите руководителя" />
 										</SelectTrigger>
 										<SelectContent>
-											{users.map((user) => (
-												<SelectItem key={user.id} value={user.id}>
-													{user.name}
-												</SelectItem>
-											))}
+											{availableUsers.length > 0 ? (
+												availableUsers.map((user) => (
+													<SelectItem key={user.id} value={user.id}>
+														{user.fullname}
+													</SelectItem>
+												))
+											) : (
+												<div className="p-2 text-center text-gray-500">
+													Нет доступных пользователей без руководителя
+												</div>
+											)}
 										</SelectContent>
 									</Select>
+									<p className="text-xs text-gray-500 mt-1">
+										Отображаются только пользователи без руководителя
+									</p>
 								</div>
 								{/* <div className="space-y-2">
 									<Label>Сотрудники подразделения</Label>
@@ -238,28 +404,104 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">22</p>
-						<p className="text-xs text-gray-500">Нужно сделать</p>
+						<p className="text-xs text-gray-500">В работе</p>
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">243</p>
-						<p className="text-xs text-gray-500">Всего завершено</p>
+						<p className="text-xs text-gray-500">Срок истек</p>
 					</div>
 				</div>
 			</div>
       
       {/* Departments */}
-      <div className="p-4 border-b border-gray-200">
-        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">ПОДРАЗДЕЛЕНИЯ</h4>
+      <div className=" border-b border-gray-200">
+        <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center">
+        ПОДРАЗДЕЛЕНИЯ
+        <div className="flex space-x-2">
+            <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
+              <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] mr-5" >
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="rgb(77, 118, 253)" stroke="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
+                  <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
+                  <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z"  />
+                </svg>
+              </Button> 
+                {/* <Button size="sm" variant="outline" className="text-xs h-8">
+                  Добавить пользователя
+                </Button> */}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="department-select">Выберите подразделение</Label>
+                    <Select 
+                      value={selectedDeptForUsers} 
+                      onValueChange={setSelectedDeptForUsers}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите подразделение" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Выберите пользователей</Label>
+                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                      {availableUsers.length > 0 ? (
+                        availableUsers.map((user) => (
+                          <div key={user.id} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`user-${user.id}`} 
+                              checked={selectedUsersToAdd.includes(user.id)}
+                              onCheckedChange={() => handleUserSelection(user.id)}
+                            />
+                            <Label htmlFor={`user-${user.id}`} className="flex items-center">
+                              <span>{user.fullname}</span>
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center text-gray-500 py-2">
+                          Нет доступных пользователей без руководителя
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Отображаются только пользователи без руководителя
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleAddUsersToDepartment} 
+                    disabled={!selectedDeptForUsers || selectedUsersToAdd.length === 0} 
+                    className="w-full"
+                  >
+                    Добавить пользователей
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>       
+        </h4>
         <ul className="space-y-2">
           {departments.map((department) => (
             <Collapsible 
               key={department.id}
-              className="border border-gray-100 rounded-sm"
+              className="border border-gray-100 rounded-sm mr-2 mb-2"
               open={expandedDepartments.includes(department.id)}
             >
               <CollapsibleTrigger asChild>
                 <div 
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded"
+                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded "
                   onClick={() => toggleDepartment(department.id)}
                 >
                   <div className="flex items-center">
@@ -273,7 +515,7 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="p-2 bg-gray-50 text-sm">
-                <p>Руководитель: {getUserById(department.managerId)?.name}</p>
+                <p>Руководитель: {department.managerName || getUserById(department.managerId)?.name || 'Не назначен'}</p>
                 <p>Задачи: активные/завершенные</p>
               </CollapsibleContent>
             </Collapsible>
@@ -285,12 +527,16 @@ export default function LeftSidebar({ onItemClick }: LeftSidebarProps) {
       <div className="p-4">
         <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4>
         <div className="flex flex-wrap gap-2">
-          {subordinates.map((user) => (
-            <Avatar key={user.id} className="h-10 w-10">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-            </Avatar>
-          ))}
+          {subordinates.length > 0 ? (
+            subordinates.map((user) => (
+              <Avatar key={user.id} className="h-10 w-10">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+              </Avatar>
+            ))
+          ) : (
+            <p className="text-sm text-gray-500">У вас нет подчиненных сотрудников</p>
+          )}
         </div>
       </div>
     </div>
@@ -378,3 +624,5 @@ function DepartmentChat() {
     </div>
   );
 }
+
+export default LeftSidebar;

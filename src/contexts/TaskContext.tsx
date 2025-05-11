@@ -1,24 +1,21 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { 
   User, 
   Department, 
   Task, 
   Message, 
-  Priority 
+  Priority,
+  ProtocolStatus,
+  TaskStatus
 } from '../types';
 import { 
   currentUser, 
   users, 
-  departments as initialDepartments, 
-  tasks as initialTasks, 
   messages as initialMessages,
-  getUserById,
-  getDepartmentById,
-  getMessagesByTask,
-  getTasksByDepartment,
-  getSubordinates
 } from '../mockData';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface TaskContextType {
   // Data
@@ -27,7 +24,7 @@ interface TaskContextType {
   departments: Department[];
   tasks: Task[];
   messages: Message[];
-  
+
   // Selected items
   selectedDepartment: Department | null;
   selectedTask: Task | null;
@@ -36,15 +33,16 @@ interface TaskContextType {
   selectDepartment: (department: Department | null) => void;
   selectTask: (task: Task | null) => void;
   addDepartment: (name: string, managerId: string, userIds?: string[]) => void;
+  addUsersToDepartment: (departmentId: string, userIds: string[]) => Promise<void>;
   addTask: (
     title: string,
     description: string,
-    assignedTo: string,
-    departmentId: string,
     priority: Priority,
-    isProtocol: boolean,
-    deadline: Date
-  ) => void;
+    isProtocol: ProtocolStatus,
+    deadline: Date,
+    selectedDepartmentId?: string,
+    assigneeId?: string
+  ) => Promise<void>;
   completeTask: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
   reassignTask: (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => void;
@@ -54,18 +52,19 @@ interface TaskContextType {
   
   // Helper functions
   getUserById: (id: string) => User | undefined;
-  getDepartmentById: (id: string) => Department | undefined;
-  getDepartmentByUserId: (userId: string) => Department | undefined;
+  getDepartmentById: (id: string) => Promise<Department | undefined>;
+  getDepartmentByUserId: (userId: string) => Promise<Department | undefined>;
   getTasksByDepartment: (departmentId: string) => Task[];
   getMessagesByTask: (taskId: string) => Message[];
-  getSubordinates: () => User[];
+  getSubordinates: () => Promise<User[]>;
+  updateSelectedDepartmentId: (departmentId: string) => Promise<void>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [userDepartments, setUserDepartments] = useState<{userId: string, departmentId: string}[]>([
     { userId: '2', departmentId: '1' },
@@ -73,81 +72,459 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     { userId: '4', departmentId: '3' },
     { userId: '5', departmentId: '4' },
   ]);
+  const navigate = useNavigate();
   
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
+  const getRandomColor = () => {
+    const colors = ['#4CAF50', '#2196F3', '#FFC107', '#F44336', '#9C27B0', '#00BCD4'];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  // Возвращает цвет по ID департамента (циклично)
+  const getDepartmentColor = (id: string | number) => {
+    const colors = ['#4CAF50', '#2196F3', '#FFC107', '#F44336', '#9C27B0', '#00BCD4'];
+    // Convert id to string to ensure we can use string methods
+    const idString = String(id);
+    // Используем числовое значение первого символа ID для определения индекса цвета
+    const charSum = idString.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return colors[charSum % colors.length];
+  };
+
+  // Функция для загрузки подразделений пользователя
+  const loadUserDepartments = async () => {
+    try {
+      // Получаем данные текущего пользователя
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate("/auth");
+        return;
+      }
+      
+      // Получаем ID пользователя из таблицы users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, departmentId')
+        .eq('user_unique_id', session.user.id)
+        .single();
+        
+      if (userError) {
+        console.error("Ошибка при получении данных пользователя:", userError);
+        toast({ 
+          title: "Ошибка загрузки", 
+          description: "Не удалось получить данные пользователя", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      // Получаем подразделения, где пользователь является создателем или состоит в них
+      let departmentsQuery;
+      
+      if (userData.departmentId) {
+        // Если у пользователя есть подразделение, включаем его в запрос
+        departmentsQuery = await supabase
+          .from('departments')
+          .select('*, manager:users!departments_managerId_fkey(id, fullname)')
+          .or(`created_by.eq.${userData.id},id.eq.${userData.departmentId},managerId.eq.${userData.id}`);
+      } else {
+        // Если departmentId равен null, выбираем созданные пользователем и те, где он руководитель
+        departmentsQuery = await supabase
+          .from('departments')
+          .select('*, manager:users!departments_managerId_fkey(id, fullname)')
+          .or(`created_by.eq.${userData.id},managerId.eq.${userData.id}`);
+      }
+      
+      const { data: departmentsData, error: departmentsError } = departmentsQuery;
+      
+      if (departmentsError) {
+        console.error("Ошибка при загрузке подразделений:", departmentsError);
+        toast({ 
+          title: "Ошибка загрузки", 
+          description: "Не удалось загрузить подразделения", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      if (!departmentsData || departmentsData.length === 0) {
+        // Если подразделений не найдено, используем пустой массив
+        setDepartments([]);
+        return;
+      }
+      
+      // Добавляем цвета к департаментам и информацию о руководителе
+      const departmentsWithColors = departmentsData.map(dept => ({
+        ...dept,
+        color: getDepartmentColor(dept.id),
+        managerName: dept.manager ? dept.manager.fullname : 'Руководитель не назначен'
+      }));
+      
+      setDepartments(departmentsWithColors);
+    } catch (error) {
+      console.error("Ошибка при загрузке подразделений:", error);
+      toast({ 
+        title: "Ошибка загрузки", 
+        description: "Не удалось загрузить подразделения", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Fetch departments on component mount
+  useEffect(() => {
+    loadUserDepartments();
+  }, []);
+
+  // Fetch tasks from Supabase on component mount
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        // Получаем ID доступных подразделений
+        const departmentIds = departments.map(dept => dept.id);
+        
+        if (departmentIds.length === 0) {
+          // Если нет доступных подразделений, устанавливаем пустой массив задач
+          setTasks([]);
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .in('departmentId', departmentIds)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Ошибка при загрузке задач:", error);
+          toast({ 
+            title: "Ошибка загрузки", 
+            description: "Не удалось загрузить задачи", 
+            variant: "destructive" 
+          });
+          return;
+        }
+        
+        if (data) {
+          // Преобразуем данные из Supabase в формат Task
+          const formattedTasks: Task[] = data.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            assignedTo: task.assigned_to,
+            createdBy: task.created_by,
+            departmentId: task.departmentId,
+            priority: task.priority,
+            isProtocol: task.is_protocol as ProtocolStatus,
+            createdAt: new Date(task.created_at),
+            deadline: new Date(task.deadline),
+            status: task.status as TaskStatus
+          }));
+          
+          setTasks(formattedTasks);
+        }
+      } catch (error) {
+        console.error("Ошибка при загрузке задач:", error);
+        toast({ 
+          title: "Ошибка загрузки", 
+          description: "Не удалось загрузить задачи", 
+          variant: "destructive" 
+        });
+      }
+    };
+    
+    // Загружаем задачи после того, как загружены департаменты
+    if (departments.length > 0) {
+      fetchTasks();
+    } else {
+      setTasks([]);
+    }
+  }, [departments]);
+
   const selectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
-    // Не сбрасываем выбранную задачу
+    // Не сбрасываем выбранную 
   };
 
   const selectTask = (task: Task | null) => {
     setSelectedTask(task);
   };
 
-  const addDepartment = (name: string, managerId: string, userIds: string[] = []) => {
-    const newDepartment: Department = {
-      id: `dep-${Date.now()}`,
-      name: name.toUpperCase(),
-      managerId,
-      color: getRandomColor()
-    };
+  const addDepartment = async (name: string, managerId: string, userIds: string[] = []) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+      return;
+    }
     
-    setDepartments([...departments, newDepartment]);
-    
-    // Assign users to the new department
-    const newUserDepartments = [...userDepartments];
-    userIds.forEach(userId => {
-      // Remove user from old department if exists
-      const index = newUserDepartments.findIndex(ud => ud.userId === userId);
-      if (index !== -1) {
-        newUserDepartments.splice(index, 1);
+    try {
+      // Получаем ID текущего пользователя из таблицы users
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных текущего пользователя:", currentUserError);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось получить данные пользователя",
+          variant: "destructive" 
+        });
+        return;
       }
       
-      // Add user to new department
-      newUserDepartments.push({ userId, departmentId: newDepartment.id });
-    });
-    
-    setUserDepartments(newUserDepartments);
-    
-    toast({ title: "Подразделение добавлено", description: `${name} добавлено в подразделения.` });
+      const creatorId = currentUserData[0].id;
+      
+      const newDepartment = {
+        name: name.toUpperCase(),
+        managerId: managerId,
+        created_by: creatorId // Добавляем создателя подразделения
+      };
+
+      // Добавляем департамент в базу данных
+      const { data, error } = await supabase
+        .from('departments')
+        .insert(newDepartment)
+        .select('*, manager:users!departments_managerId_fkey(id, fullname)')
+        .single();
+        
+      if (error) {
+        console.error("Ошибка при добавлении департамента:", error);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось добавить подразделение",
+          variant: "destructive" 
+        });
+
+        return;
+      }
+      
+      // Обновляем leader_id для назначенного руководителя
+      const {error: userError} = await supabase
+        .from('users')
+        .update({leader_id: creatorId}) // Используем ID создателя
+        .eq('id', managerId);           // Только для выбранного руководителя
+      
+      if (userError) {
+        console.error("Ошибка при обновлении данных руководителя:", userError);
+      }
+      
+      // Добавляем новый департамент в локальный стейт с автоматически назначенным цветом
+      const departmentWithColor = {
+        ...data,
+        color: getDepartmentColor(data.id), // Назначаем цвет на основе ID
+        managerName: data.manager ? data.manager.fullname : 'Руководитель не назначен'
+      };
+      
+      // Обновляем список подразделений, чтобы отобразить все доступные пользователю
+      await loadUserDepartments();
+      
+      // Assign users to the new department
+      const newUserDepartments = [...userDepartments];
+      userIds.forEach(userId => {
+        // Remove user from old department if exists
+        const index = newUserDepartments.findIndex(ud => ud.userId === userId);
+        if (index !== -1) {
+          newUserDepartments.splice(index, 1);
+        }
+        
+        // Add user to new department
+        newUserDepartments.push({ userId, departmentId: data.id });
+      });
+      
+      setUserDepartments(newUserDepartments);
+      
+      toast({ 
+        title: "Подразделение добавлено", 
+        description: `${name} добавлено в подразделения.` 
+      });
+    } catch (e) {
+      console.error("Ошибка:", e);
+      toast({ 
+        title: "Ошибка", 
+        description: "Произошла ошибка при добавлении подразделения",
+        variant: "destructive"
+      });
+    }
   };
 
-  const addTask = (
+  // Добавим функцию для обновления выбранного департамента 
+  const updateSelectedDepartmentId = async (departmentId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return;
+    }
+
+    try {
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных пользователя:", currentUserError);
+        return;
+      }
+
+      // Обновляем departmentId у текущего пользователя
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ departmentId: departmentId })
+        .eq('id', currentUserData[0].id);
+      
+      if (updateError) {
+        console.error("Ошибка при обновлении департамента пользователя:", updateError);
+      }
+    } catch (error) {
+      console.error("Ошибка:", error);
+    }
+  };
+
+  const addTask = async (
     title: string,
     description: string,
-    assignedTo: string,
-    departmentId: string,
     priority: Priority,
-    isProtocol: boolean,
-    deadline: Date
+    isProtocol: ProtocolStatus,
+    deadline: Date,
+    selectedDepartmentId?: string,
+    assigneeId?: string
   ) => {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title,
-      description,
-      assignedTo,
-      createdBy: currentUser.id,
-      departmentId,
-      priority,
-      isProtocol,
-      createdAt: new Date(),
-      deadline,
-      completed: false
-    };
-    
-    setTasks([...tasks, newTask]);
-    toast({ title: "Задача добавлена", description: "Новая задача создана." });
+    // Проверка наличия сессии
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      // Получаем ID текущего пользователя из таблицы users
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id, departmentId')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных текущего пользователя:", currentUserError);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось получить данные пользователя",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      const createdBy = currentUserData[0].id;
+      // Используем переданный ID департамента или берем из профиля пользователя
+      const departmentId = selectedDepartmentId || currentUserData[0].departmentId;
+
+      // Если departmentId не указан в профиле, выводим ошибку
+      if (!departmentId) {
+        toast({ 
+          title: "Ошибка", 
+          description: "У вас не выбрано подразделение. Пожалуйста, обратитесь к администратору.",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Подготовка данных для сохранения
+      const taskData = {
+        title,
+        description,
+        created_by: createdBy,
+        departmentId: departmentId,
+        assigned_to: assigneeId || createdBy, // Используем указанного исполнителя или создателя
+        priority,
+        is_protocol: isProtocol,
+        created_at: new Date().toISOString(),
+        deadline: deadline.toISOString(),
+        status: 'in_progress' as TaskStatus
+      };
+
+      // Сохраняем задачу в базу данных
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(taskData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Ошибка при добавлении задачи:", error);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось добавить задачу",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Преобразуем полученные данные в формат Task для локального состояния
+      const newTask: Task = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        assignedTo: data.assigned_to,
+        createdBy: data.created_by,
+        departmentId: data.departmentId,
+        priority: data.priority,
+        isProtocol: data.is_protocol as ProtocolStatus,
+        createdAt: new Date(data.created_at),
+        deadline: new Date(data.deadline),
+        status: data.status as TaskStatus
+      };
+      
+      // Обновляем локальное состояние
+      setTasks([...tasks, newTask]);
+      toast({ title: "Задача добавлена", description: "Новая задача создана." });
+    } catch (e) {
+      console.error("Ошибка:", e);
+      toast({ 
+        title: "Ошибка", 
+        description: "Произошла ошибка при добавлении задачи",
+        variant: "destructive"
+      });
+    }
   };
 
-  const completeTask = (taskId: string) => {
-    setTasks(
-      tasks.map(task => 
-        task.id === taskId ? { ...task, completed: true } : task
-      )
-    );
-    toast({ title: "Задача выполнена", description: "Задача отмечена как выполненная." });
+  const completeTask = async (taskId: string) => {
+    try {
+      // Update task status in Supabase
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', taskId);
+        
+      if (error) {
+        console.error("Ошибка при обновлении статуса задачи:", error);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось обновить статус задачи",
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      // Update local state only after successful DB update
+      setTasks(
+        tasks.map(task => 
+          task.id === taskId ? { ...task, status: 'completed' as TaskStatus } : task
+        )
+      );
+      
+      toast({ title: "Задача выполнена", description: "Задача отмечена как выполненная." });
+    } catch (error) {
+      console.error("Ошибка при выполнении задачи:", error);
+      toast({ 
+        title: "Ошибка", 
+        description: "Произошла ошибка при обновлении статуса задачи",
+        variant: "destructive"
+      });
+    }
   };
 
   const deleteTask = (taskId: string) => {
@@ -177,7 +554,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       isProtocol: task.isProtocol,
       createdAt: new Date(),
       deadline: newDeadline || task.deadline,
-      completed: false
+      status: 'not_started' as TaskStatus
     };
     
     setTasks([...tasks, newTask]);
@@ -190,14 +567,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const toggleProtocol = (taskId: string) => {
     setTasks(
       tasks.map(task => 
-        task.id === taskId ? { ...task, isProtocol: !task.isProtocol } : task
+        task.id === taskId 
+          ? { 
+              ...task, 
+              isProtocol: task.isProtocol === 'active' ? 'inactive' : 'active' 
+            } 
+          : task
       )
     );
     
     const task = tasks.find(t => t.id === taskId);
     if (task) {
-      const action = task.isProtocol ? "удалена из" : "добавлена в";
-      toast({ title: `Статус протокола обновлен`, description: `Задача ${action} протокол.` });
+      const action = task.isProtocol === 'active' ? "удалена из" : "добавлена в";
+      toast({ title: `Задача ${action} список задач` });
     }
   };
 
@@ -223,45 +605,222 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const getRandomColor = () => {
-    const colors = ['#4CAF50', '#2196F3', '#FFC107', '#F44336', '#9C27B0', '#00BCD4'];
-    return colors[Math.floor(Math.random() * colors.length)];
+  const getUserById = (id: string): User | undefined => {
+    return users.find(user => user.id === id);
   };
 
-  const getDepartmentByUserId = (userId: string): Department | undefined => {
+  const getDepartmentById = async (id: string): Promise<Department | undefined> => {
+    // Найдем департамент в локальном состоянии
+    const localDept = departments.find(department => department.id === id);
+    if (localDept) return localDept;
+    
+    // Если не найден, попробуем загрузить из базы данных
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*, manager:users!departments_managerId_fkey(id, fullname)')
+        .eq('id', id)
+        .single();
+        
+      if (error || !data) return undefined;
+      
+      return {
+        ...data,
+        color: getDepartmentColor(data.id),
+        managerName: data.manager ? data.manager.fullname : 'Руководитель не назначен'
+      };
+    } catch (e) {
+      console.error("Ошибка при получении департамента:", e);
+      return undefined;
+    }
+  };
+
+  const getDepartmentByUserId = async (userId: string): Promise<Department | undefined> => {
     const userDept = userDepartments.find(ud => ud.userId === userId);
     if (!userDept) return undefined;
+    
+    // Since departments is now a state array, we don't need an async call here
     return departments.find(dept => dept.id === userDept.departmentId);
   };
 
+  // Функция для добавления пользователей в существующий департамент
+  const addUsersToDepartment = async (departmentId: string, userIds: string[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+      return;
+    }
+    
+    try {
+      // Проверяем, существует ли департамент
+      const selectedDept = departments.find(dept => dept.id === departmentId);
+      if (!selectedDept) {
+        toast({ 
+          title: "Ошибка", 
+          description: "Подразделение не найдено",
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      // Получаем ID текущего пользователя из таблицы users
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных текущего пользователя:", currentUserError);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось получить данные пользователя",
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      // Обновляем department_id для каждого пользователя отдельно
+      const updatePromises = userIds.map(async (userId) => {
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            departmentId: departmentId,
+            leader_id: currentUserData[0].id // Устанавливаем leader_id на id текущего пользователя
+          })
+          .eq('id', userId);
+          
+        if (error) {
+          console.error(`Ошибка при обновлении пользователя ${userId}:`, error);
+          return false;
+        }
+        return true;
+      });
+      
+      // Ждем завершения всех обновлений
+      const results = await Promise.all(updatePromises);
+      
+      // Проверяем, были ли ошибки
+      if (results.includes(false)) {
+        toast({ 
+          title: "Предупреждение", 
+          description: "Некоторые пользователи не были добавлены в подразделение",
+          variant: "destructive" 
+        });
+      } else {
+        // Обновляем локальное состояние
+        const newUserDepartments = [...userDepartments];
+        userIds.forEach(userId => {
+          // Удаляем старую связь, если существует
+          const index = newUserDepartments.findIndex(ud => ud.userId === userId);
+          if (index !== -1) {
+            newUserDepartments.splice(index, 1);
+          }
+          
+          // Добавляем новую связь
+          newUserDepartments.push({ userId, departmentId });
+        });
+        
+        setUserDepartments(newUserDepartments);
+        
+        toast({ 
+          title: "Пользователи добавлены", 
+          description: `Пользователи добавлены в подразделение ${selectedDept.name}` 
+        });
+      }
+    } catch (e) {
+      console.error("Ошибка:", e);
+      toast({ 
+        title: "Ошибка", 
+        description: "Произошла ошибка при добавлении пользователей в подразделение",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getTasksByDepartment = (departmentId: string): Task[] => {
+    return tasks.filter(task => task.departmentId === departmentId);
+  };
+
+  const getMessagesByTask = (taskId: string): Message[] => {
+    return messages.filter(message => message.taskId === taskId);
+  };
+
+  const getSubordinates = async (): Promise<User[]> => {
+    // Получаем сессию пользователя
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return [];
+    }
+
+    try {
+      // Сначала получаем ID текущего пользователя из таблицы users
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных текущего пользователя:", currentUserError);
+        return [];
+      }
+
+      const currentUserId = currentUserData[0].id;
+
+      // Получаем всех пользователей, где leader_id равен ID текущего пользователя
+      const { data: subordinates, error: subordinatesError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('leader_id', currentUserId);
+      
+      if (subordinatesError) {
+        console.error("Ошибка при получении подчиненных:", subordinatesError);
+        return [];
+      }
+
+      // Преобразуем данные в формат User
+      return subordinates.map(user => ({
+        id: user.id,
+        name: user.fullname || '',
+        email: user.email || '',
+        avatar: user.image || '',
+        role: 'employee' // Устанавливаем роль по умолчанию
+      }));
+    } catch (error) {
+      console.error("Ошибка при получении подчиненных:", error);
+      return [];
+    }
+  };
+
   return (
-    <TaskContext.Provider
-      value={{
-        currentUser,
-        users,
-        departments,
-        tasks,
-        messages,
-        selectedDepartment,
-        selectedTask,
-        selectDepartment,
-        selectTask,
-        addDepartment,
-        addTask,
-        completeTask,
-        deleteTask,
-        reassignTask,
-        toggleProtocol,
-        addMessage,
-        searchTasks,
-        getUserById,
-        getDepartmentById,
-        getDepartmentByUserId,
-        getTasksByDepartment,
-        getMessagesByTask,
-        getSubordinates
-      }}
-    >
+    <TaskContext.Provider value={{
+      currentUser,
+      users,
+      departments,
+      tasks,
+      messages,
+      selectedDepartment,
+      selectedTask,
+      selectDepartment,
+      selectTask,
+      addDepartment,
+      addUsersToDepartment,
+      addTask,
+      completeTask,
+      deleteTask,
+      reassignTask,
+      toggleProtocol,
+      addMessage,
+      searchTasks,
+      getUserById,
+      getDepartmentById,
+      getDepartmentByUserId,
+      getTasksByDepartment,
+      getMessagesByTask,
+      getSubordinates,
+      updateSelectedDepartmentId
+    }}>
       {children}
     </TaskContext.Provider>
   );
@@ -269,7 +828,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
 export function useTaskContext() {
   const context = useContext(TaskContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useTaskContext must be used within a TaskProvider');
   }
   return context;
