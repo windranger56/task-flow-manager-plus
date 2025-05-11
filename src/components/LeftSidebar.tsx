@@ -421,10 +421,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
               <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] mr-5" >
-                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="rgb(77, 118, 253)" stroke="rgb(77, 118, 253)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                  
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="rgb(77, 118, 253)" stroke="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
+                  <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
+                  <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z"  />
                 </svg>
               </Button> 
                 {/* <Button size="sm" variant="outline" className="text-xs h-8">
