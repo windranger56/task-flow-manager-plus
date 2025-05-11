@@ -229,7 +229,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   return (
     <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
 			{/* Application title */}
-			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>Менеджер задач</div>
+			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>Управление поручениями</div>
 			<div className='px-[40px] py-[25px]'>
 				{/* User Info */}
 				<div className="flex flex-col items-center">
@@ -404,11 +404,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">22</p>
-						<p className="text-xs text-gray-500">Нужно сделать</p>
+						<p className="text-xs text-gray-500">В работе</p>
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">243</p>
-						<p className="text-xs text-gray-500">Всего завершено</p>
+						<p className="text-xs text-gray-500">Срок истек</p>
 					</div>
 				</div>
 			</div>

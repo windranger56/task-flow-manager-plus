@@ -244,7 +244,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const selectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
-    // Не сбрасываем выбранную задачу
+    // Не сбрасываем выбранную 
   };
 
   const selectTask = (task: Task | null) => {

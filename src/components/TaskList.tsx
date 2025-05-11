@@ -330,9 +330,9 @@ export default function TaskList() {
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline">
                 <div className="flex items-center">
                   <div 
-                    className="w-[4px] h-full absolute left-0 bottom-0"
-                    style={{ backgroundColor: department.color }}
-                  />
+                  className="w-[4px] h-[20px] rounded-sm absolute left-3"
+                  style={{ backgroundColor: department.color }}
+                />
                   <span className='font-semibold text-[16px]'>{department.name}</span>
                   {/* Показываем количество задач в этом департаменте */}
                   <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
@@ -404,12 +404,12 @@ export default function TaskList() {
 				<Dialog open={showNewTask} onOpenChange={setShowNewTask}>
           <DialogTrigger asChild>
             <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-[8px] px-[26px]'>
-              <span>Добавить задачу</span>
+              <span>Добавить поручение</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Создать новую задачу</DialogTitle>
+              <DialogTitle>Создать новое поручение</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -565,7 +565,7 @@ export default function TaskList() {
               </div>
               
               <Button onClick={handleCreateTask} className="w-full">
-                Создать задачу
+                Создать поручение
               </Button>
             </div>
           </DialogContent>
