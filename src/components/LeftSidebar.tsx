@@ -229,7 +229,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   return (
     <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
 			{/* Application title */}
-			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>Управление поручениями</div>
+			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ</div>
 			<div className='px-[40px] py-[25px]'>
 				{/* User Info */}
 				<div className="flex flex-col items-center">
@@ -415,15 +415,21 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       
       {/* Departments */}
       <div className=" border-b border-gray-200">
-        <h4 className="text-sm font-medium uppercase tracking-wider mb-2">ПОДРАЗДЕЛЕНИЯ</h4>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm">Управление</span>
-          <div className="flex space-x-2">
+        <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center">
+        ПОДРАЗДЕЛЕНИЯ
+        <div className="flex space-x-2">
             <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="text-xs h-8">
+              <Button size="sm" variant="outline" className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] mr-5" >
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="rgb(77, 118, 253)" stroke="rgb(77, 118, 253)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                  
+                </svg>
+              </Button> 
+                {/* <Button size="sm" variant="outline" className="text-xs h-8">
                   Добавить пользователя
-                </Button>
+                </Button> */}
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -484,18 +490,18 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
+          </div>       
+        </h4>
         <ul className="space-y-2">
           {departments.map((department) => (
             <Collapsible 
               key={department.id}
-              className="border border-gray-100 rounded-sm"
+              className="border border-gray-100 rounded-sm mr-2 mb-2"
               open={expandedDepartments.includes(department.id)}
             >
               <CollapsibleTrigger asChild>
                 <div 
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded"
+                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded "
                   onClick={() => toggleDepartment(department.id)}
                 >
                   <div className="flex items-center">
