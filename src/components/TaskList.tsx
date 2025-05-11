@@ -7,8 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useTaskContext } from '@/contexts/TaskContext';
@@ -269,6 +267,12 @@ export default function TaskList() {
     if (task && task.status !== 'completed') {
       completeTask(taskId);
     }
+  };
+  
+  // Обработчик изменения даты с использованием нативного датапикера
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value ? new Date(e.target.value) : new Date();
+    setTaskDeadline(date);
   };
   
   const handleCreateTask = () => {
@@ -543,25 +547,13 @@ export default function TaskList() {
               
               <div className="space-y-2">
                 <Label>Дедлайн</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left">
-                      {taskDeadline ? (
-                        format(taskDeadline, 'PPP', { locale: ru })
-                      ) : (
-                        <span>Выберите дату</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={taskDeadline}
-                      onSelect={(date) => setTaskDeadline(date || new Date())}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                {/* Заменяем кастомный календарь на нативный датапикер */}
+                <Input 
+                  type="date"
+                  value={taskDeadline ? format(taskDeadline, 'yyyy-MM-dd') : ''}
+                  onChange={handleDateChange}
+                  className="w-full"
+                />
               </div>
               
               <Button onClick={handleCreateTask} className="w-full">

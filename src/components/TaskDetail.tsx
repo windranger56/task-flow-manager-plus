@@ -62,6 +62,12 @@ export default function TaskDetail() {
     }
   };
   
+  // Изменение для использования нативного датапикера
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value ? new Date(e.target.value) : undefined;
+    setNewDeadline(date);
+  };
+  
   const handleReassign = () => {
     if (reassignTo) {
       reassignTask(
@@ -194,26 +200,13 @@ export default function TaskDetail() {
                 
                 <div className="space-y-2">
                   <Label>Новый дедлайн (Опционально)</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start text-left">
-                        {newDeadline ? (
-                          format(newDeadline, 'PPP', { locale: ru })
-                        ) : (
-                          <span>Текущий: {format(selectedTask.deadline, 'PPP', { locale: ru })}</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 pointer-events-auto">
-                      <Calendar
-                        mode="single"
-                        selected={newDeadline}
-                        onSelect={(date) => setNewDeadline(date || undefined)}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  {/* Заменяем кастомный календарь на нативный датапикер */}
+                  <Input 
+                    type="date"
+                    value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+                    onChange={handleDateChange}
+                    className="w-full"
+                  />
                 </div>
                 
                 <Button onClick={handleReassign} className="w-full">
@@ -366,4 +359,3 @@ export default function TaskDetail() {
     </div>
   );
 }
-
