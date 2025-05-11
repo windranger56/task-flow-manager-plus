@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -10,17 +11,10 @@ export interface Department {
   id: string;
   name: string;
   managerId: string;
-  managerName?: string;
-  color: string;
+  color?: string;
 }
 
 export type Priority = 'high' | 'medium' | 'low';
-
-// Кастомный тип для статуса протокола
-export type ProtocolStatus = 'active' | 'inactive' | 'pending';
-
-// Кастомный тип для статуса задачи
-export type TaskStatus = 'completed' | 'in_progress' | 'overdue';
 
 export interface Task {
   id: string;
@@ -30,10 +24,10 @@ export interface Task {
   createdBy: string;
   departmentId: string;
   priority: Priority;
-  isProtocol: ProtocolStatus; // Используем кастомный тип вместо boolean
+  isProtocol: boolean;
   createdAt: Date;
   deadline: Date;
-  status: TaskStatus; // Используем кастомный тип вместо boolean
+  completed: boolean;
 }
 
 export interface Message {
@@ -46,7 +40,7 @@ export interface Message {
 
 export interface TaskAction {
   userId: string;
-  action: 'assigned' | 'added' | 'created' | 'status';
+  action: 'assigned' | 'added' | 'created' | 'completed';
   target?: string;
   timestamp: Date;
 }

@@ -235,6 +235,7 @@ export default function TaskDetail() {
           <Button 
             onClick={() => completeTask(selectedTask.id)}
 						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+            disabled={selectedTask.completed}
           >
 						<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
        				<path d="M9 11l3 3L22 4"></path>
@@ -250,9 +251,9 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask.status ? "bg-taskBlue" : "bg-gray-200"
+            selectedTask.completed ? "bg-taskBlue" : "bg-gray-200"
           )}>
-            {selectedTask.status && <Check className="h-6 w-6 text-white" />}
+            {selectedTask.completed && <Check className="h-6 w-6 text-white" />}
           </div>
           <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
         </div>
@@ -313,7 +314,7 @@ export default function TaskDetail() {
                   {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
-              {selectedTask.status && (
+              {selectedTask.completed && (
                 <div className="flex items-center">
                   <span className="text-sm text-green-500">Задача завершена</span>
                   <span className="text-xs text-gray-500 ml-4">
