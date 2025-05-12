@@ -19,6 +19,8 @@ import { useNavigate } from 'react-router-dom';
 
 interface TaskContextType {
   // Data
+	user: User,
+	setUser: React.Dispatch<User>,
   currentUser: User;
   users: User[];
   departments: Department[];
@@ -43,7 +45,7 @@ interface TaskContextType {
     selectedDepartmentId?: string,
     assigneeId?: string
   ) => Promise<void>;
-  completeTask: (taskId: string) => void;
+  completeTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   reassignTask: (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => void;
   toggleProtocol: (taskId: string) => void;
@@ -51,7 +53,7 @@ interface TaskContextType {
   searchTasks: (query: string) => Task[];
   
   // Helper functions
-  getUserById: (id: string) => User | undefined;
+  getUserById: (id: string) => Promise<any>;
   getDepartmentById: (id: string) => Promise<Department | undefined>;
   getDepartmentByUserId: (userId: string) => Promise<Department | undefined>;
   getTasksByDepartment: (departmentId: string) => Task[];
@@ -63,6 +65,7 @@ interface TaskContextType {
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
+	const [user, setUser] = useState(null)
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -491,13 +494,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeTask = async (taskId: string) => {
+  const completeTask = async (task: Task) => {
     try {
       // Update task status in Supabase
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'completed' })
-        .eq('id', taskId);
+        .update({ status: task.status != 'completed' ? 'completed' : 'in_progress' })
+        .eq('id', task.id);
         
       if (error) {
         console.error("Ошибка при обновлении статуса задачи:", error);
@@ -510,10 +513,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
       
       // Update local state only after successful DB update
-      setTasks(
-        tasks.map(task => 
-          task.id === taskId ? { ...task, status: 'completed' as TaskStatus } : task
+      setTasks(tasks => {
+				const n = tasks.map(t => 
+          task.id === t.id ? ({ ...task, status: task.status != 'completed' ? 'completed' : 'in_progress' as TaskStatus }) : t
         )
+				if(selectedTask) setSelectedTask(p => n.find(c => c.id == p.id))
+				return n
+			}
       );
       
       toast({ title: "Задача выполнена", description: "Задача отмечена как выполненная." });
@@ -527,7 +533,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
+		await supabase
+			.from('tasks')
+			.delete()
+			.eq('id', Number(taskId))
+
     setTasks(tasks.filter(task => task.id !== taskId));
     
     if (selectedTask && selectedTask.id === taskId) {
@@ -537,34 +548,38 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     toast({ title: "Задача удалена", description: "Задача была удалена." });
   };
 
-  const reassignTask = (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => {
+  const reassignTask = async (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => {
     // Find the task to reassign
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
     // Create a new task based on the original one
     const newTask: Task = {
-      id: `task-${Date.now()}`,
       title: newTitle || task.title,
       description: newDescription || task.description,
-      assignedTo: newAssigneeId,
-      createdBy: currentUser.id,
+      assigned_to: newAssigneeId,
+      created_by: user.id,
       departmentId: task.departmentId,
       priority: task.priority,
-      isProtocol: task.isProtocol,
-      createdAt: new Date(),
+      is_protocol: task.isProtocol,
       deadline: newDeadline || task.deadline,
-      status: 'not_started' as TaskStatus
+			parent_id: task.id
     };
-    
-    setTasks([...tasks, newTask]);
+		console.log(newTask)
+
+		const { data } = await supabase
+			.from('tasks')
+			.insert(newTask)
+			.select()
+
+    setTasks([...tasks, data[0]]);
     toast({ 
       title: "Задача переназначена", 
       description: `Задача переназначена на ${getUserById(newAssigneeId)?.name}.` 
     });
   };
 
-  const toggleProtocol = (taskId: string) => {
+  const toggleProtocol = async (taskId: string) => {
     setTasks(
       tasks.map(task => 
         task.id === taskId 
@@ -577,9 +592,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     );
     
     const task = tasks.find(t => t.id === taskId);
+		await supabase
+			.from('tasks')
+			.update({ is_protocol: task.isProtocol })
+			.eq('id', task.id)
     if (task) {
-      const action = task.isProtocol === 'active' ? "удалена из" : "добавлена в";
-      toast({ title: `Задача ${action} список задач` });
+      toast({ title: `Протокол задачи ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
     }
   };
 
@@ -605,8 +623,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const getUserById = (id: string): User | undefined => {
-    return users.find(user => user.id === id);
+  const getUserById = async (id: string): Promise<User> => {
+		const { data, error } = await supabase.from('users').select('*').eq('id', id)
+    return data[0];
   };
 
   const getDepartmentById = async (id: string): Promise<Department | undefined> => {
@@ -795,7 +814,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   return (
     <TaskContext.Provider value={{
-      currentUser,
+			user,
+			setUser,
       users,
       departments,
       tasks,

@@ -41,7 +41,7 @@ const App = () => {
   const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
     <div className="min-h-screen bg-background">
       <div className="flex">
-        <div className="flex-1 lg:pl-16">
+        <div className="flex-1 px-10">
           {children}
         </div>
       </div>

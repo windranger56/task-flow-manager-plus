@@ -20,7 +20,7 @@ export default function Index() {
   return (
     <TaskProvider>
 			<div className='flex h-screen'>
-				<div className="flex container bg-white">
+				<div className="flex w-full bg-white">
 					{/* Left Sidebar - collapsible on mobile */}
 					{!isMobile ? (
 						<LeftSidebar />

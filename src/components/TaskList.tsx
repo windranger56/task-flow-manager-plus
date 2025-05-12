@@ -280,9 +280,8 @@ export default function TaskList() {
   const handleTaskStatusToggle = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation(); // Prevent task selection
     const task = tasks.find(t => t.id === taskId);
-    if (task && task.status !== 'completed') {
-      completeTask(taskId);
-    }
+		console.log(task)
+    completeTask(task);
   };
   
   // Обработчик изменения даты с использованием нативного датапикера
@@ -338,8 +337,8 @@ export default function TaskList() {
       <div className="flex-1 overflow-auto">
         <Accordion type="multiple" className="w-full">
           {tasksByDepartment.map(({ department, tasks }) => (
-            <AccordionItem key={department.id} value={department.id} className='relative'>
-              <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline">
+            <AccordionItem key={department.id} value={department.id}>
+              <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
                 <div className="flex items-center">
                   <div 
                   className="w-[4px] h-[20px] rounded-sm absolute left-3"
@@ -365,7 +364,7 @@ export default function TaskList() {
                         <div className="flex justify-between">
                           <div className="flex items-center gap-[10px]">
                             {task.status === 'completed' ? (
-                              <div className="flex justify-center items-center bg-taskBlue text-white rounded-full h-[24px] w-[24px]">
+                              <div onClick={e => handleTaskStatusToggle(e, task.id)} className="flex justify-center items-center bg-taskBlue text-white rounded-full h-[24px] w-[24px]">
                                 <Check className="h-3 w-3" />
                               </div>
                             ) : (

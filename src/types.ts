@@ -2,8 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  avatar: string;
-  role?: 'manager' | 'employee';
+  image: string;
 }
 
 export interface Department {

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2, User, Ticket, Check, Send } from "lucide-react";
+import { Trash2, Ticket, Check, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
+import { supabase } from '@/supabase/client';
 
 export default function TaskDetail() {
   const { 
+		user,
     selectedTask, 
     getUserById, 
     deleteTask, 
@@ -26,7 +28,8 @@ export default function TaskDetail() {
     messages,
     getMessagesByTask,
     addMessage,
-    users
+    users,
+		currentUser
   } = useTaskContext();
   
   const [messageText, setMessageText] = useState('');
@@ -35,13 +38,59 @@ export default function TaskDetail() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState<Date | undefined>(undefined);
+	const [creator, setCreator] = useState<any>(null)
+	const [assignee, setAssignee] = useState<any>(null)
   
   // Состояние для чата
   const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { id: '1', content: 'Привет, как дела?', sender: 'system' },
-    { id: '2', content: 'Добрый день! Как продвигается проект?', sender: 'system' }
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
+	useEffect(() => {
+		(async () => {
+			if(!selectedTask) return
+			supabase
+				.channel(`task-${selectedTask.id}-messages`)
+				.on(
+					'postgres_changes',
+					{
+						event: '*', // or 'INSERT', 'UPDATE', 'DELETE'
+						schema: 'public',
+						table: 'messages',
+						filter: `task_id=eq.${selectedTask.id}`,
+					},
+					(payload) => {
+						console.log(payload)
+						if(payload.eventType == 'INSERT') setChatMessages(p => [...p, payload.new])
+						else if (payload.eventType == 'UPDATE') setChatMessages(p => {
+							const n = [...p]
+							n[n.findIndex(m => m.id == payload.old.id)] = payload.new
+							return n
+						})
+						else setChatMessages(p => p.filter(m => m.id != payload.old.id))
+					}
+				)
+				.subscribe()
+			
+			
+			setChatMessages([])
+			setCreator(null)
+			setAssignee(null)
+			const {data, error} = await supabase
+				.from('messages')
+				.select()
+				.eq('task_id', selectedTask.id)
+			
+			if(error) {
+				alert("Can't get task messages")
+				return
+			}
+
+			setChatMessages(data)
+			setCreator(user.id == selectedTask.createdBy ? user : await getUserById(selectedTask.createdBy));
+			setAssignee(user.id == selectedTask.assignedTo ? user : await getUserById(selectedTask.assignedTo));
+		})()
+	}, [selectedTask])
+
+	useEffect(() => {console.log("creator:", creator, "\nassignee:", assignee)}, [assignee])
   
   if (!selectedTask) {
     return (
@@ -50,9 +99,7 @@ export default function TaskDetail() {
       </div>
     );
   }
-  
-  const creator = getUserById(selectedTask.createdBy);
-  const assignee = getUserById(selectedTask.assignedTo);
+
   const taskMessages = getMessagesByTask(selectedTask.id);
   
   const handleSendMessage = () => {
@@ -99,23 +146,17 @@ export default function TaskDetail() {
   };
 
   // Функция отправки сообщения в чат
-  const handleSendChatMessage = () => {
+  const handleSendChatMessage = async () => {
     if (chatMessage.trim()) {
       // Добавляем сообщение пользователя
-      const newUserMessage = {
-        id: `user-${Date.now()}`,
-        content: chatMessage,
-        sender: 'user'
-      };
+			await supabase
+				.from('messages')
+				.insert([{
+					content: chatMessage,
+					task_id: selectedTask.id,
+					sent_by: user.id
+				}])
       
-      // Генерируем случайный ответ
-      const responseMessage = {
-        id: `system-${Date.now()}`,
-        content: generateRandomMessage(),
-        sender: 'system'
-      };
-      
-      setChatMessages([...chatMessages, newUserMessage, responseMessage]);
       setChatMessage('');
     }
   };
@@ -125,15 +166,14 @@ export default function TaskDetail() {
       {/* Task Header */}
       <div className="py-[16px] pl-[20px] pr-[30px] border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center">
-          {creator && (
-            <>
-              <Avatar className="h-10 w-10 mr-3">
-                <AvatarImage src={creator.avatar} alt={creator.name} />
-                <AvatarFallback>{creator.name.slice(0, 2)}</AvatarFallback>
-              </Avatar>
-              <span className="font-medium">{creator.name}</span>
-            </>
-          )}
+					{creator && assignee && (
+						<>
+							<Avatar className="h-10 w-10 mr-3">
+								<AvatarImage src={creator.id == user.id ? assignee.image : creator.image} alt={creator.id == user.id ? assignee.name : creator.name} />
+							</Avatar>
+							<span className="font-medium">{creator.id == user.id ? assignee.fullname : creator.fullname}</span>
+						</>
+					)}
         </div>
         <div className="flex items-center space-x-2">
           <Button 
@@ -226,7 +266,7 @@ export default function TaskDetail() {
           </Button>
           
           <Button 
-            onClick={() => completeTask(selectedTask.id)}
+            onClick={() => completeTask(selectedTask)}
 						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
           >
 						<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -243,7 +283,7 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask.status ? "bg-taskBlue" : "bg-gray-200"
+            selectedTask.status == 'completed' ? "bg-taskBlue" : "bg-gray-200"
           )}>
             {selectedTask.status && <Check className="h-6 w-6 text-white" />}
           </div>
@@ -266,7 +306,7 @@ export default function TaskDetail() {
             const messageUser = getUserById(message.userId);
             return (
               <div key={message.id} className="flex">
-                {messageUser && (
+                {message.sent_by == user.id && (
                   <Avatar className="h-8 w-8 mr-3 mt-1">
                     <AvatarImage src={messageUser.avatar} alt={messageUser.name} />
                     <AvatarFallback>{messageUser.name.slice(0, 2)}</AvatarFallback>
@@ -325,7 +365,7 @@ export default function TaskDetail() {
               <div 
                 key={msg.id} 
                 className={`mb-2 p-2 rounded-md ${
-                  msg.sender === 'user' 
+                  msg.sent_by === user.id 
                     ? 'ml-auto bg-blue-100 max-w-[80%]' 
                     : 'bg-gray-100 max-w-[80%]'
                 }`}

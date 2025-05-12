@@ -25,7 +25,8 @@ interface LeftSidebarProps {
 
 const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const {
-    currentUser,
+    user,
+		setUser,
     departments,
     selectDepartment,
     getUserById,
@@ -33,7 +34,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     addDepartment,
     getSubordinates,
     getDepartmentByUserId,
-    addUsersToDepartment
+    addUsersToDepartment,
+		tasks
   } = useTaskContext();
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
@@ -55,8 +57,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     .eq('user_unique_id', session.user.id)
     .limit(1);
     if (userError) throw userError;
+
+		setUser(data[0])
  
-    console.log(data);
     if(data) {
       setProfile({
         user_unique_id: data[0].user_unique_id || "",
@@ -74,7 +77,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [availableUsers, setAvailableUsers] = useState<{id: string, fullname: string}[]>([]);
   const [selectedDeptForUsers, setSelectedDeptForUsers] = useState("");
   const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<string[]>([]);
-  
+  const [doneTasks, setDoneTasks] = useState([])
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
@@ -95,6 +98,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     
     loadSubordinates();
   }, []);
+
+	useEffect(() => {
+		setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
+	}, [tasks])
 
   // Загрузка пользователей при открытии диалога создания департамента
   useEffect(() => {
@@ -335,16 +342,15 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 									<path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
 									<path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
 								</svg>
-								<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-									2
-								</span>
+								{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+								</span> */}
 							</Button>
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
 								<DialogTitle>Новые задачи</DialogTitle>
 							</DialogHeader>
-							<div className="space-y-2">
+							{/* <div className="space-y-2">
 								<div className="p-3 border rounded-md">
 									<p className="font-medium">Новая задача: Обзор дизайна</p>
 									<p className="text-sm text-gray-500">Назначил: Иванов Иван</p>
@@ -353,7 +359,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 									<p className="font-medium">Новая задача: Обновление сайта</p>
 									<p className="text-sm text-gray-500">Назначил: Петрова Мария</p>
 								</div>
-							</div>
+							</div> */}
 						</DialogContent>
 					</Dialog>
 
@@ -363,16 +369,16 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
 									<path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
 								</svg>
-								<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+								{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
 									3
-								</span>
+								</span> */}
 							</Button>
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
 								<DialogTitle>Просроченные задачи</DialogTitle>
 							</DialogHeader>
-							<div className="space-y-2">
+							{/* <div className="space-y-2">
 								<div className="p-3 border rounded-md">
 									<p className="font-medium">Просрочено: Маркетинговый отчет</p>
 									<p className="text-sm text-red-500">Просрочено на 3 дня</p>
@@ -385,30 +391,30 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 									<p className="font-medium">Просрочено: Планирование бюджета</p>
 									<p className="text-sm text-red-500">Просрочено на 5 дней</p>
 								</div>
-							</div>
+							</div> */}
 						</DialogContent>
 					</Dialog>
 				</div>
 				
 				{/* Stats */}
 				<div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
-					12/34
+					{doneTasks.length}/{tasks.length}
 				</div>
 				<div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[5px] relative overflow-hidden'>
-					<div className='bg-[#4d76fd] h-full rounded-full' style={{ width: 12 / 34 * 100 + "%" }} />
+					<div className='bg-[#4d76fd] h-full rounded-full transition-all duration-300' style={{ width: doneTasks.length / tasks.length * 100 + "%" }} />
 				</div>
 				<div className="flex justify-between p-4 border-b border-gray-200">
 					<div className="text-center">
-						<p className="text-2xl font-bold">12</p>
+						<p className="text-2xl font-bold">{doneTasks.length}</p>
 						<p className="text-xs text-gray-500">Завершено</p>
 					</div>
 					<div className="text-center">
-						<p className="text-2xl font-bold">22</p>
-						<p className="text-xs text-gray-500">В работе</p>
+						<p className="text-2xl font-bold">{tasks.length - doneTasks.length}</p>
+						<p className="text-xs text-gray-500">Нужно сделать</p>
 					</div>
 					<div className="text-center">
-						<p className="text-2xl font-bold">243</p>
-						<p className="text-xs text-gray-500">Срок истек</p>
+						<p className="text-2xl font-bold">{doneTasks.length}</p>
+						<p className="text-xs text-gray-500">Всего завершено</p>
 					</div>
 				</div>
 			</div>
@@ -546,10 +552,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 // Simple chat component
 function DepartmentChat() {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { id: '1', content: 'Привет, как дела?', sender: 'system' },
-    { id: '2', content: 'Добрый день! Как продвигается проект?', sender: 'system' }
-  ]);
+  const [messages, setMessages] = useState([]);
 
   const generateRandomMessage = () => {
     const characters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
