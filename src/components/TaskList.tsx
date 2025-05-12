@@ -28,7 +28,6 @@ import { supabase } from '@/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { ProtocolStatus, TaskStatus } from '@/types';
 import { Avatar, AvatarImage } from '@radix-ui/react-avatar';
-import { getUserById } from '@/mockData';
 
 export default function TaskList() {
   const { 
@@ -39,7 +38,8 @@ export default function TaskList() {
     users,
     selectedTask,
     addTask,
-    completeTask
+    completeTask,
+		getUserById
   } = useTaskContext();
   
   const [showNewTask, setShowNewTask] = useState(false);
@@ -378,8 +378,8 @@ export default function TaskList() {
                               <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>
                             </div>
                           </div>
-													<Avatar className="h-[32px] w-[32px] mr-3">
-														<AvatarImage src={task?.assignee?.image} alt={task?.assignee?.name} />
+													<Avatar className="mr-3">
+														<AvatarImage className='rounded-full h-[32px] w-[32px]' src={task?.assignee?.image} alt={task?.assignee?.name} />
 													</Avatar>
                         </div>
                       </li>
