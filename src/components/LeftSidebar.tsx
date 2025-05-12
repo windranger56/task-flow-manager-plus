@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send, LogOut } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { supabase } from '@/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -233,6 +233,25 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     );
   };
 
+  // Функция для выхода пользователя
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+      toast({
+        title: "Успешный выход",
+        description: "Вы вышли из системы",
+      });
+    } catch (error) {
+      console.error("Ошибка при выходе:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось выйти из системы",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
 			{/* Application title */}
@@ -254,7 +273,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 						<DialogTrigger asChild>
 							<Button className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
 								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor">
-									<path d="M13.533 5.6h-.961a.894.894 0 01-.834-.57.906.906 0 01.197-.985l.675-.675a.466.466 0 000-.66l-1.32-1.32a.466.466 0 00-.66 0l-.676.677a.9.9 0 01-.994.191.906.906 0 01-.56-.837V.467A.467.467 0 007.933 0H6.067A.467.467 0 005.6.467v.961c0 .35-.199.68-.57.834a.902.902 0 01-.983-.195L3.37 1.39a.466.466 0 00-.66 0L1.39 2.71a.466.466 0 000 .66l.675.675c.25.25.343.63.193.995a.902.902 0 01-.834.56H.467A.467.467 0 000 6.067v1.866c0 .258.21.467.467.467h.961c.35 0 .683.202.834.57a.904.904 0 01-.197.984l-.675.676a.466.466 0 000 .66l1.32 1.32a.466.466 0 00.66 0l.68-.68a.894.894 0 01.994-.187.897.897 0 01.556.829v.961c0 .258.21.467.467.467h1.866c.258 0 .467-.21.467-.467v-.961c0-.35.202-.683.57-.834a.904.904 0 01.984.197l.676.675a.466.466 0 00.66 0l1.32-1.32a.466.466 0 000-.66l-.68-.68a.894.894 0 01-.187-.994.897.897 0 01.829-.556h.961c.258 0 .467-.21.467-.467V6.067a.467.467 0 00-.467-.467zM7 9.333C5.713 9.333 4.667 8.287 4.667 7S5.713 4.667 7 4.667 9.333 5.713 9.333 7 8.287 9.333 7 9.333z"></path>
+									<path d="M13.533 5.6h-.961a.894.894 0 01-.834-.57.906.906 0 01.197-.985l.675-.675a.466.466 0 000-.66l-1.32-1.32a.466.466 0 00-.66 0l-.676.677a.9.9 0 01-.994.191.906.906 0 01-.56-.837V.467A.467.467 0 007.933 0H6.067A.467.467 0 005.6.467v.961c0 .35-.199.68-.57.834a.902.902 0 01-.983-.195L3.37 1.39a.466.466 0 00-.66 0L1.39 2.71a.466.466 0 000 .66l.675.675c.25.25.343.63.193.995a.902.902 0 01-.834.56H.467A.467.467 0 000 6.067v1.866c0 .258.21.467.467.467h.961c.35 0 .683.202.834.57a.904.904 0 01-.197.984l-.675.676a.466.466 0 000 .66l1.32 1.32a.466.466 0 00.66 0l.68-.68a.894.894 0 01-.187-.994.897.897 0 01.829-.556h.961c.258 0 .467-.21.467-.467V6.067a.467.467 0 00-.467-.467zM7 9.333C5.713 9.333 4.667 8.287 4.667 7S5.713 4.667 7 4.667 9.333 5.713 9.333 7 8.287 9.333 7 9.333z"></path>
 								</svg>
 							</Button>
 						</DialogTrigger>
@@ -544,6 +563,18 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             <p className="text-sm text-gray-500">У вас нет подчиненных сотрудников</p>
           )}
         </div>
+      </div>
+      
+      {/* Logout button at the bottom */}
+      <div className="mt-auto p-4 border-t border-gray-200">
+        <Button 
+          onClick={handleLogout} 
+          variant="outline" 
+          className="w-full flex items-center justify-center gap-2 text-gray-600 hover:text-red-500 hover:bg-red-50"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Выйти</span>
+        </Button>
       </div>
     </div>
   );
