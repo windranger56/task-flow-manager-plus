@@ -524,7 +524,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           {departments.map((department) => (
             <Collapsible 
               key={department.id}
-              className="border border-transparent rounded-sm mr-2 mb-2"
+              className="border border-transparent rounded-sm mr-5 mb-2"
               open={expandedDepartments.includes(department.id)}
             >
               <CollapsibleTrigger asChild>
