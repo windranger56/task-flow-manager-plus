@@ -24,6 +24,8 @@ const App = () => {
       setLoading(false);
     });
 
+		document.getElementById('lovable-badge').style.display = "none";
+
     // Listen for auth changes
     const {
       data: { subscription },
