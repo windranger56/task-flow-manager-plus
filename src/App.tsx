@@ -24,7 +24,8 @@ const App = () => {
       setLoading(false);
     });
 
-		document.getElementById('lovable-badge').style.display = "none";
+		const badge = document.getElementById('lovable-badge')
+		if(badge) badge.style.display = "none";
 
     // Listen for auth changes
     const {

@@ -340,10 +340,7 @@ export default function TaskList() {
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
                 <div className="flex items-center">
-                  <div 
-                  className="w-[4px] h-[20px] rounded-sm absolute left-3"
-                  style={{ backgroundColor: department.color }}
-                />
+                  <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} />
                   <span className='font-semibold text-[16px]'>{department.name}</span>
                   {/* Показываем количество задач в этом департаменте */}
                   <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
