@@ -27,6 +27,8 @@ import TaskDetail from './TaskDetail';
 import { supabase } from '@/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { ProtocolStatus, TaskStatus } from '@/types';
+import { Avatar, AvatarImage } from '@radix-ui/react-avatar';
+import { getUserById } from '@/mockData';
 
 export default function TaskList() {
   const { 
@@ -48,6 +50,7 @@ export default function TaskList() {
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskProtocol, setTaskProtocol] = useState<ProtocolStatus>('inactive');
   const [taskDeadline, setTaskDeadline] = useState<Date>(new Date());
+	const [tasksByDepartment, setTasksByDepartment] = useState<any>([]);
   
   // Состояние для хранения списка пользователей из БД
   const [dbUsers, setDbUsers] = useState<{id: string, fullname: string}[]>([]);
@@ -69,6 +72,19 @@ export default function TaskList() {
       setTaskAssignee("");
     }
   }, [showNewTask, departments.length]);
+
+	useEffect(() => {
+		(async () => {
+			const n = await Promise.all(tasks.map(async t => ({...t, assignee: await getUserById(t.assignedTo)})))
+			console.log(n)
+			setTasksByDepartment(departments.map(department => {
+				return {
+					department,
+					tasks: n.filter(task => task.departmentId === department.id)
+				};
+			}))
+		})()
+	}, [tasks])
   
   // Загрузка руководителя при выборе подразделения
   useEffect(() => {
@@ -305,14 +321,6 @@ export default function TaskList() {
     }
   };
   
-  // Группируем задачи по подразделениям
-  const tasksByDepartment = departments.map(department => {
-    return {
-      department,
-      tasks: tasks.filter(task => task.departmentId === department.id)
-    };
-  });
-  
   // Форматируем дату для отображения
   const formatTaskDate = (date: Date) => {
     try {
@@ -371,7 +379,9 @@ export default function TaskList() {
                               <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>
                             </div>
                           </div>
-                          <div className='bg-gray-200 rounded-full w-[32px] h-[32px]' />
+													<Avatar className="h-[32px] w-[32px] mr-3">
+														<AvatarImage src={task?.assignee?.image} alt={task?.assignee?.name} />
+													</Avatar>
                         </div>
                       </li>
                     ))}
