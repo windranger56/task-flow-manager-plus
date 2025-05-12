@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Settings, Mail, Bell, ChevronDown, ChevronUp, Send, LogOut } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { supabase } from '@/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -116,6 +116,28 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       fetchUsersForExistingDepartment();
     }
   }, [showAddUsersToDepartment]);
+
+  // Функция для выхода пользователя
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+      toast({
+        title: "Успешный выход",
+        description: "Вы вышли из системы",
+      });
+    } catch (error) {
+      console.error("Ошибка при выходе:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось выйти из системы",
+        variant: "destructive"
+      });
+    }
+  };
+
+
+
 
   // Функция для загрузки пользователей из базы данных
   const fetchUsers = async () => {
@@ -543,6 +565,17 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           ) : (
             <p className="text-sm text-gray-500">У вас нет подчиненных сотрудников</p>
           )}
+        </div>
+          {/* Logout button at the bottom */}
+        <div className="mt-auto p-4 border-t border-gray-200 fixed bottom-0">
+          <Button 
+            onClick={handleLogout} 
+            variant="outline" 
+            className="w-full flex items-center justify-center gap-2 text-gray-600 hover:text-red-500 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Выйти</span>
+          </Button>
         </div>
       </div>
     </div>
