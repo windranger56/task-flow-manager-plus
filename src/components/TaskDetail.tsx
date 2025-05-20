@@ -40,6 +40,7 @@ export default function TaskDetail() {
   const [newDeadline, setNewDeadline] = useState<Date | undefined>(undefined);
 	const [creator, setCreator] = useState<any>(null)
 	const [assignee, setAssignee] = useState<any>(null)
+  const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
   
   // Состояние для чата
   const [chatMessage, setChatMessage] = useState('');
@@ -265,14 +266,41 @@ export default function TaskDetail() {
 						</svg>
           </Button>
           
-          <Button 
-            onClick={() => completeTask(selectedTask)}
-            className={`rounded-full h-[36px] px-4 ${
-              selectedTask?.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'
-            }`}
-          >
-            {selectedTask?.status === 'completed' ? 'Завершена' : 'В работе'}
-          </Button>
+          <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className={`rounded-full h-[36px] px-4 ${
+                  selectedTask?.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'
+                }`}
+              >
+                {selectedTask?.status === 'completed' ? 'Завершена' : 'В работе'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Подтверждение</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <p>Вы действительно хотите изменить статус задачи?</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsStatusConfirmOpen(false)}
+                >
+                  Отмена
+                </Button>
+                <Button 
+                  onClick={() => {
+                    completeTask(selectedTask);
+                    setIsStatusConfirmOpen(false);
+                  }}
+                >
+                  Подтвердить
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       

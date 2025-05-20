@@ -361,7 +361,7 @@ export default function TaskList() {
                         <div className="flex justify-between">
                           <div className="flex items-center gap-[10px]">
                           <div 
-                            onClick={e => handleTaskStatusToggle(e, task.id)} 
+                            // onClick={e => handleTaskStatusToggle(e, task.id)} 
                             className={`
                               flex justify-center items-center 
                               ${task.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'} 
