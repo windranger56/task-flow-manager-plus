@@ -373,7 +373,7 @@ export default function TaskDetail() {
                   {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
-              {selectedTask.status && (
+              {selectedTask.status === 'completed' && (
                 <div className="flex items-center">
                   <span className="text-sm text-green-500">Задача завершена</span>
                   <span className="text-xs text-gray-500 ml-4">
@@ -386,18 +386,23 @@ export default function TaskDetail() {
         </div>
         
         {/* Чат интерфейс */}
-        <div className="flex-1 mt-8 pt-4 pb-16  ml-[65px]">
+        <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
           <div className="h-full overflow-y-auto mb-4 rounded-md">
             {chatMessages.map(msg => (
               <div 
                 key={msg.id} 
-                className={`mb-2 p-2 rounded-md ${
+                className={`mb-2 p-2 rounded-md relative pr-12 ${
                   msg.sent_by === user.id 
                     ? 'ml-auto bg-blue-100 max-w-[80%]' 
                     : 'bg-gray-100 max-w-[80%]'
                 }`}
               >
                 {msg.content}
+                <span className={`text-xs text-gray-500 absolute bottom-1 right-2 ${
+                  msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
+                }`}>
+                  {format(new Date(msg.created_at), 'dd.MM HH:mm')}
+                </span>
               </div>
             ))}
           </div>
