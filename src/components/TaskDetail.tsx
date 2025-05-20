@@ -316,16 +316,24 @@ export default function TaskDetail() {
           </div>
           <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
         </div>
+
+        {/* Divider */}
+        <hr className="border-t border-gray-500 mb-8 ml-[65px]" />
         
         {/* Date */}
-        <p className="text-sm text-gray-500 mb-6 ml-[65px]">
-          {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
-        </p>
+        <div className="mb-6 ml-[65px]">
+          <span className="inline-block px-3 py-1 text-sm text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-full shadow-sm">
+            {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
+          </span>
+        </div>
+        
         
         {/* Task Description */}
         <div className="mb-8  ml-[65px]">
           <p className="text-gray-700">{selectedTask.description}</p>
         </div>
+        {/* Divider */}
+        <hr className="border-t border-gray-500 mb-8 ml-[65px]" />
         
         {/* Task Messages */}
         <div className="space-y-4  ml-[65px]">
@@ -380,10 +388,14 @@ export default function TaskDetail() {
                     {format(new Date(), 'dd MMM, yyyy', { locale: ru })}
                   </span>
                 </div>
+                
               )}
             </div>
+            
           )}
         </div>
+        {/* Divider */}
+        <hr className="border-t border-gray-500 mb-8 ml-[65px] mt-8" />
         
         {/* Чат интерфейс */}
         <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
