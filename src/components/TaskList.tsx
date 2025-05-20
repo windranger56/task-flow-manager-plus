@@ -360,16 +360,16 @@ export default function TaskList() {
                       >
                         <div className="flex justify-between">
                           <div className="flex items-center gap-[10px]">
-                            {task.status === 'completed' ? (
-                              <div onClick={e => handleTaskStatusToggle(e, task.id)} className="flex justify-center items-center bg-taskBlue text-white rounded-full h-[24px] w-[24px]">
-                                <Check className="h-3 w-3" />
-                              </div>
-                            ) : (
-                              <div 
-                                className="rounded-full h-[24px] w-[24px] border-[#7a7e9d] border-[2px] cursor-pointer hover:bg-gray-100"
-                                onClick={(e) => handleTaskStatusToggle(e, task.id)}
-                              />
-                            )}
+                          <div 
+                            onClick={e => handleTaskStatusToggle(e, task.id)} 
+                            className={`
+                              flex justify-center items-center 
+                              ${task.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'} 
+                              rounded-full h-[24px] w-[24px] cursor-pointer
+                            `}
+                          >
+                            <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-white'}`} />
+                          </div>
                             <div>
                               <h3 className="text-sm font-medium mb-1">{task.title}</h3>
                               <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>

@@ -267,12 +267,11 @@ export default function TaskDetail() {
           
           <Button 
             onClick={() => completeTask(selectedTask)}
-						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+            className={`rounded-full h-[36px] px-4 ${
+              selectedTask?.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'
+            }`}
           >
-						<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-       				<path d="M9 11l3 3L22 4"></path>
-       				<path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
-						</svg>
+            {selectedTask?.status === 'completed' ? 'Завершена' : 'В работе'}
           </Button>
         </div>
       </div>
@@ -283,7 +282,7 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask.status == 'completed' ? "bg-taskBlue" : "bg-gray-200"
+            selectedTask.status == 'completed' ? "bg-green-500" : "bg-yellow-400"
           )}>
             {selectedTask.status && <Check className="h-6 w-6 text-white" />}
           </div>
