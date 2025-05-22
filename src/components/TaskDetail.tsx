@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -177,14 +176,16 @@ export default function TaskDetail() {
 					)}
         </div>
         <div className="flex items-center space-x-2">
-          <Button 
-						className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-            onClick={() => deleteTask(selectedTask.id)}
-          >
-						<svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-   				    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
-			 			</svg>
-          </Button>
+          {selectedTask.createdBy === user.id && selectedTask.status == 'completed' && (
+            <Button 
+              className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+              onClick={() => deleteTask(selectedTask.id)}
+            >
+              <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+              </svg>
+            </Button>
+          )}
           
           <Dialog open={showReassign} onOpenChange={setShowReassign}>
             <DialogTrigger asChild>
@@ -409,7 +410,9 @@ export default function TaskDetail() {
                     : 'bg-gray-100 max-w-[80%]'
                 }`}
               >
-                {msg.content}
+                <div className="break-all whitespace-pre-wrap">
+                  {msg.content}
+                </div>
                 <span className={`text-xs text-gray-500 absolute bottom-1 right-2 ${
                   msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
                 }`}>

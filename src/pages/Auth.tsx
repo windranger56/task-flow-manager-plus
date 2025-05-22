@@ -42,6 +42,11 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Add debug logging for isSignUp state changes
+  useEffect(() => {
+    console.log("isSignUp state changed:", isSignUp);
+  }, [isSignUp]);
+
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -56,6 +61,30 @@ const Auth = () => {
     reader.readAsDataURL(file);
   };
 
+  const validatePassword = (password: string): { isValid: boolean; message: string } => {
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const isLongEnough = password.length >= 8;
+
+    const requirements = [];
+    if (!isLongEnough) requirements.push("не менее 8 символов");
+    if (!hasUpperCase) requirements.push("заглавную букву");
+    if (!hasLowerCase) requirements.push("строчную букву");
+    if (!hasNumbers) requirements.push("цифру");
+    if (!hasSpecialChar) requirements.push("специальный символ");
+
+    if (requirements.length > 0) {
+      return { 
+        isValid: false, 
+        message: `Пароль не соответствует требованиям безопасности. Необходимо добавить: ${requirements.join(", ")}` 
+      };
+    }
+
+    return { isValid: true, message: "" };
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -63,6 +92,14 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
+        // Validate password before registration
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
+          setError(passwordValidation.message);
+          setIsLoading(false);
+          return;
+        }
+
         // Registration flow
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -220,7 +257,7 @@ const Auth = () => {
             </Alert>
           )}
           <form onSubmit={handleAuth} className="space-y-4">
-            {isSignUp ? (
+            {isSignUp && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="fullname">Фамилия Имя</Label>
@@ -260,7 +297,7 @@ const Auth = () => {
                   </div>
                 </div>
               </>
-            ) : null}
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Эл.почта</Label>
               <Input
@@ -280,7 +317,22 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                placeholder={isSignUp ? "Введите пароль" : "Введите пароль"}
               />
+              {isSignUp && (
+                <div className="space-y-1 mt-2 bg-muted/50 p-3 rounded-md">
+                  <p className="text-sm font-medium">
+                    Требования к паролю:
+                  </p>
+                  <ul className="text-xs list-disc pl-4 space-y-1 mt-1">
+                    <li>Минимум 8 символов</li>
+                    <li>Хотя бы одна заглавная буква (A-Z)</li>
+                    <li>Хотя бы одна строчная буква (a-z)</li>
+                    <li>Хотя бы одна цифра (0-9)</li>
+                    <li>Хотя бы один специальный символ (!@#$%^&*(),.?":{}|&lt;&gt;)</li>
+                  </ul>
+                </div>
+              )}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
@@ -289,7 +341,10 @@ const Auth = () => {
           <div className="mt-4 text-center">
             <Button
               variant="link"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                console.log("Switching auth mode, current isSignUp:", isSignUp);
+                setIsSignUp(!isSignUp);
+              }}
               className="text-sm"
             >
               {isSignUp
