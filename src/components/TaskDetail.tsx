@@ -95,7 +95,7 @@ export default function TaskDetail() {
   if (!selectedTask) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-gray-500">
-        <p>Выберите задачу для просмотра деталей</p>
+        <p>Выберите поручение для просмотра деталей</p>
       </div>
     );
   }
@@ -144,6 +144,35 @@ export default function TaskDetail() {
     
     return result.trim();
   };
+
+  
+  function calculateDeadlineDays(deadlineDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(deadlineDate);
+    deadline.setHours(0, 0, 0, 0);
+    
+    const diffTime = deadline - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return "Срок истекает сегодня!";
+    } else if (diffDays < 0) {
+      return `Срок истек ${Math.abs(diffDays)} ${getDayWord(Math.abs(diffDays))} назад!`;
+    } else {
+      return `Срок истекает через ${diffDays} ${getDayWord(diffDays)}!`;
+    }
+  }
+  
+  function getDayWord(days) {
+    if (days % 10 === 1 && days % 100 !== 11) {
+      return 'день';
+    } else if ([2, 3, 4].includes(days % 10) && ![12, 13, 14].includes(days % 100)) {
+      return 'дня';
+    } else {
+      return 'дней';
+    }
+  }
 
   // Функция отправки сообщения в чат
   const handleSendChatMessage = async () => {
@@ -198,7 +227,7 @@ export default function TaskDetail() {
                 <DialogTitle>Подтверждение</DialogTitle>
               </DialogHeader>
               <div className="py-4">
-                <p>Вы действительно хотите изменить статус задачи?</p>
+                <p>Вы действительно хотите изменить статус поручения?</p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button 
@@ -231,7 +260,7 @@ export default function TaskDetail() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Переназначить задачу</DialogTitle>
+                <DialogTitle>Переназначить поручение</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -285,7 +314,7 @@ export default function TaskDetail() {
                 </div>
                 
                 <Button onClick={handleReassign} className="w-full">
-                  Переназначить задачу
+                  Переназначить поручение
                 </Button>
               </div>
             </DialogContent>
@@ -336,10 +365,28 @@ export default function TaskDetail() {
         <hr className="border-t border-gray-500 mb-8 ml-[65px]" />
         
         {/* Date */}
-        <div className="mb-6 ml-[65px]">
+        <div className="mb-6 ml-[65px] flex items-center gap-4">
           <span className="inline-block px-3 py-1 text-sm text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-full shadow-sm">
             {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
           </span>
+          
+          {/* Приоритет */}
+          <span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm ${
+            selectedTask.priority === 'high' 
+              ? 'text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200' 
+              : selectedTask.priority === 'medium' 
+                ? 'text-yellow-800 bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200'
+                : 'text-green-800 bg-gradient-to-r from-green-50 to-green-100 border border-green-200'
+          }`}>
+            Приоритет: {selectedTask.priority === 'high' ? 'высокий' : selectedTask.priority === 'medium' ? 'средний' : 'низкий'}
+          </span>
+          
+          {/* Дедлайн */}
+          {selectedTask.deadline && (
+            <span className="inline-block px-3 py-1 text-sm text-purple-800 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-full shadow-sm">
+              {calculateDeadlineDays(selectedTask.deadline)}
+            </span>
+          )}
         </div>
         
         
@@ -379,7 +426,7 @@ export default function TaskDetail() {
           {selectedTask.assignedTo === assignee?.id && (
             <div className="mt-4">
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Задача назначена {assignee.name}</span>
+                <span className="text-sm text-gray-500">поручение назначена {assignee.name}</span>
                 <span className="text-xs text-gray-500 ml-4">
                   {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
@@ -391,14 +438,14 @@ export default function TaskDetail() {
                 </span>
               </div>
               <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Задача создана</span>
+                <span className="text-sm text-gray-500">Поручение создана</span>
                 <span className="text-xs text-gray-500 ml-4">
                   {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
                 </span>
               </div>
               {selectedTask.status === 'completed' && (
                 <div className="flex items-center">
-                  <span className="text-sm text-green-500">Задача завершена</span>
+                  <span className="text-sm text-green-500">Поручение завершено</span>
                   <span className="text-xs text-gray-500 ml-4">
                     {format(new Date(), 'dd MMM, yyyy', { locale: ru })}
                   </span>
