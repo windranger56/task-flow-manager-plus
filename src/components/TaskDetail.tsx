@@ -349,14 +349,18 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask?.status === 'completed' ? 'bg-green-500' : 
+                selectedTask?.status === 'completed' ? 'bg-green-500' : 
                 selectedTask?.status === 'new' ? 'bg-gray-400' :
                 selectedTask?.status === 'in_progress' ? 'bg-blue-400' :
                 selectedTask?.status === 'on_verification' ? 'bg-yellow-400':
                 'bg-red-400'
 
           )}>
-            {selectedTask.status && <Check className="h-6 w-6 text-white" />}
+            {selectedTask.status === "completed" ? (
+              <Check className="h-6 w-6 text-white" />
+            ) : (
+              <Check className="h-6 w-6 text-transparent" />
+            )}
           </div>
           <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
         </div>
@@ -394,68 +398,7 @@ export default function TaskDetail() {
         <div className="mb-8  ml-[65px]">
           <p className="text-gray-700">{selectedTask.description}</p>
         </div>
-        {/* Divider */}
-        <hr className="border-t border-gray-500 mb-8 ml-[65px]" />
         
-        {/* Task Messages */}
-        <div className="space-y-4  ml-[65px]">
-          {taskMessages.map((message) => {
-            const messageUser = getUserById(message.userId);
-            return (
-              <div key={message.id} className="flex">
-                {message.sent_by == user.id && (
-                  <Avatar className="h-8 w-8 mr-3 mt-1">
-                    <AvatarImage src={messageUser.avatar} alt={messageUser.name} />
-                    <AvatarFallback>{messageUser.name.slice(0, 2)}</AvatarFallback>
-                  </Avatar>
-                )}
-                <div>
-                  <div className="flex items-center">
-                    <span className="font-medium">{messageUser?.name}</span>
-                    <span className="text-xs text-gray-500 ml-2">
-                      {format(message.timestamp, 'dd MMM, yyyy', { locale: ru })}
-                    </span>
-                  </div>
-                  <p className="text-gray-700">{message.content}</p>
-                </div>
-              </div>
-            );
-          })}
-          
-          {/* Task Actions */}
-          {selectedTask.assignedTo === assignee?.id && (
-            <div className="mt-4">
-              <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">поручение назначена {assignee.name}</span>
-                <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
-                </span>
-              </div>
-              <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Добавлено в подразделение</span>
-                <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
-                </span>
-              </div>
-              <div className="flex items-center mb-2">
-                <span className="text-sm text-gray-500">Поручение создана</span>
-                <span className="text-xs text-gray-500 ml-4">
-                  {format(selectedTask.createdAt, 'dd MMM, yyyy', { locale: ru })}
-                </span>
-              </div>
-              {selectedTask.status === 'completed' && (
-                <div className="flex items-center">
-                  <span className="text-sm text-green-500">Поручение завершено</span>
-                  <span className="text-xs text-gray-500 ml-4">
-                    {format(new Date(), 'dd MMM, yyyy', { locale: ru })}
-                  </span>
-                </div>
-                
-              )}
-            </div>
-            
-          )}
-        </div>
         {/* Divider */}
         <hr className="border-t border-gray-500 mb-8 ml-[65px] mt-8" />
         
