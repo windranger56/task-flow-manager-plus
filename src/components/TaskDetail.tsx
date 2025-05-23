@@ -176,16 +176,49 @@ export default function TaskDetail() {
 					)}
         </div>
         <div className="flex items-center space-x-2">
-          {selectedTask.createdBy === user.id && selectedTask.status == 'completed' && (
+        <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
+            <DialogTrigger asChild>
             <Button 
-              className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-              onClick={() => deleteTask(selectedTask.id)}
+              className={`rounded-full h-[36px] px-4 ${
+                selectedTask?.status === 'completed' ? 'bg-green-500' : 
+                selectedTask?.status === 'new' ? 'bg-gray-400' :
+                selectedTask?.status === 'in_progress' ? 'bg-blue-400' :
+                selectedTask?.status === 'on_verification' ? 'bg-yellow-400':
+              'bg-red-400'}`}
             >
-              <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
-              </svg>
+              {selectedTask?.status === 'completed' ? 'Завершена' : 
+              selectedTask?.status === 'new' ? 'Новое' :
+              selectedTask?.status === 'on_verification' ? 'На проверке' :
+              selectedTask?.status === 'in_progress' ? 'В работе' :
+              'Просрочена'}
             </Button>
-          )}
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Подтверждение</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <p>Вы действительно хотите изменить статус задачи?</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsStatusConfirmOpen(false)}
+                >
+                  Отмена
+                </Button>
+                <Button 
+                  onClick={() => {
+                    completeTask(selectedTask);
+                    setIsStatusConfirmOpen(false);
+                  }}
+                >
+                  Подтвердить
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
           
           <Dialog open={showReassign} onOpenChange={setShowReassign}>
             <DialogTrigger asChild>
@@ -267,41 +300,17 @@ export default function TaskDetail() {
 						</svg>
           </Button>
           
-          <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className={`rounded-full h-[36px] px-4 ${
-                  selectedTask?.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'
-                }`}
-              >
-                {selectedTask?.status === 'completed' ? 'Завершена' : 'В работе'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Подтверждение</DialogTitle>
-              </DialogHeader>
-              <div className="py-4">
-                <p>Вы действительно хотите изменить статус задачи?</p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsStatusConfirmOpen(false)}
-                >
-                  Отмена
-                </Button>
-                <Button 
-                  onClick={() => {
-                    completeTask(selectedTask);
-                    setIsStatusConfirmOpen(false);
-                  }}
-                >
-                  Подтвердить
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {selectedTask.createdBy === user.id && selectedTask.status == 'completed' && (
+            <Button 
+              className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+              onClick={() => deleteTask(selectedTask.id)}
+            >
+              <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+              </svg>
+            </Button>
+          )}
+          
         </div>
       </div>
       
@@ -311,7 +320,12 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask.status == 'completed' ? "bg-green-500" : "bg-yellow-400"
+            selectedTask?.status === 'completed' ? 'bg-green-500' : 
+                selectedTask?.status === 'new' ? 'bg-gray-400' :
+                selectedTask?.status === 'in_progress' ? 'bg-blue-400' :
+                selectedTask?.status === 'on_verification' ? 'bg-yellow-400':
+                'bg-red-400'
+
           )}>
             {selectedTask.status && <Check className="h-6 w-6 text-white" />}
           </div>

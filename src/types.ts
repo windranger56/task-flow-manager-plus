@@ -19,7 +19,7 @@ export type Priority = 'high' | 'medium' | 'low';
 export type ProtocolStatus = 'active' | 'inactive' | 'pending';
 
 // Кастомный тип для статуса задачи
-export type TaskStatus = 'completed' | 'in_progress' | 'overdue';
+export type TaskStatus = 'completed' | 'in_progress' | 'overdue' | 'new'| 'on_verification';
 
 export interface Task {
   id: string;

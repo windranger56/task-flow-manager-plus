@@ -43,7 +43,7 @@ interface TaskContextType {
     isProtocol: ProtocolStatus,
     deadline: Date,
     selectedDepartmentId?: string,
-    assigneeId?: string
+    assigneeId?: string,
   ) => Promise<void>;
   completeTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
@@ -394,7 +394,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     isProtocol: ProtocolStatus,
     deadline: Date,
     selectedDepartmentId?: string,
-    assigneeId?: string
+    assigneeId?: string,
+    status: TaskStatus = 'new' // Добавляем параметр статуса с дефолтным значением
   ) => {
     // Проверка наличия сессии
     const { data: { session } } = await supabase.auth.getSession();
@@ -446,7 +447,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         is_protocol: isProtocol,
         created_at: new Date().toISOString(),
         deadline: deadline.toISOString(),
-        status: 'in_progress' as TaskStatus
+        status: 'new' as TaskStatus
       };
 
       // Сохраняем задачу в базу данных
@@ -496,10 +497,20 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const completeTask = async (task: Task) => {
     try {
+      // Authorize
+      if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
+
       // Update task status in Supabase
       const { error } = await supabase
         .from('tasks')
-        .update({ status: task.status != 'completed' ? 'completed' : 'in_progress' })
+        .update({
+          status: task.status === 'new'
+            ? 'in_progress'
+            : (
+              task.status  === 'in_progress'
+                ? 'on_verification'
+                : 'completed'
+            ) })
         .eq('id', task.id);
         
       if (error) {
@@ -515,7 +526,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       // Update local state only after successful DB update
       setTasks(tasks => {
 				const n = tasks.map(t => 
-          task.id === t.id ? ({ ...task, status: task.status != 'completed' ? 'completed' : 'in_progress' as TaskStatus }) : t
+          task.id === t.id ? ({ ...task, status: (task.status === 'new'
+            ? 'in_progress'
+            : task.status === 'in_progress'
+              ? 'on_verification'
+              : 'completed') as TaskStatus
+          }) : t
         )
 				if(selectedTask) setSelectedTask(p => n.find(c => c.id == p.id))
 				return n
@@ -527,7 +543,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.error("Ошибка при выполнении задачи:", error);
       toast({ 
         title: "Ошибка", 
-        description: "Произошла ошибка при обновлении статуса задачи",
+        description: error.message,
         variant: "destructive"
       });
     }

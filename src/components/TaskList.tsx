@@ -38,7 +38,6 @@ export default function TaskList() {
     users,
     selectedTask,
     addTask,
-    completeTask,
 		getUserById
   } = useTaskContext();
   
@@ -281,7 +280,6 @@ export default function TaskList() {
     e.stopPropagation(); // Prevent task selection
     const task = tasks.find(t => t.id === taskId);
 		console.log(task)
-    completeTask(task);
   };
   
   // Обработчик изменения даты с использованием нативного датапикера
@@ -299,7 +297,8 @@ export default function TaskList() {
         taskProtocol, 
         taskDeadline,
         taskDepartment,
-        taskAssignee
+        taskAssignee,
+        'new'
       );
       
       // Reset form
@@ -364,11 +363,17 @@ export default function TaskList() {
                             // onClick={e => handleTaskStatusToggle(e, task.id)} 
                             className={`
                               flex justify-center items-center 
-                              ${task.status === 'completed' ? 'bg-green-500' : 'bg-yellow-400'} 
+                              ${
+                                task.status === 'completed' ? 'bg-green-500' : 
+                                task.status === 'new' ? 'bg-gray-400' :
+                                task.status === 'in_progress' ? 'bg-blue-400' :
+                                task.status === 'on_verification' ? 'bg-yellow-400':
+                                'bg-red-400'
+                              } 
                               rounded-full h-[24px] w-[24px] cursor-pointer
                             `}
                           >
-                            <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-white'}`} />
+                            <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
                           </div>
                             <div>
                               <h3 className="text-sm font-medium mb-1">{task.title}</h3>
