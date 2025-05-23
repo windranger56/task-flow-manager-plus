@@ -538,9 +538,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 			}
       );
       
-      toast({ title: "Задача выполнена", description: "Задача отмечена как выполненная." });
+      toast({ title: "Статус задачи ", description: "Статус задачи успешно изменен." });
     } catch (error) {
-      console.error("Ошибка при выполнении задачи:", error);
+      console.error("Ошибка при изменении статуса задачи:", error);
       toast({ 
         title: "Ошибка", 
         description: error.message,
