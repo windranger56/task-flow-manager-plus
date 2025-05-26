@@ -598,9 +598,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleProtocol = async (taskId: string) => {
+    try{
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      if (user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
     setTasks(
+      
       tasks.map(task => 
-        task.id === taskId 
+        task.id === taskId
           ? { 
               ...task, 
               isProtocol: task.isProtocol === 'active' ? 'inactive' : 'active' 
@@ -609,7 +614,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       )
     );
     
-    const task = tasks.find(t => t.id === taskId);
+    // const task = tasks.find(t => t.id === taskId);
 		await supabase
 			.from('tasks')
 			.update({ is_protocol: task.isProtocol })
@@ -617,6 +622,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (task) {
       toast({ title: `Протокол задачи ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
     }
+  } catch (error) {
+    console.error("Ошибка при изменении статуса задачи:", error);
+    toast({ 
+      title: "Ошибка", 
+      description: error.message,
+      variant: "destructive"
+    });
+  }
   };
 
   const addMessage = (taskId: string, content: string) => {
