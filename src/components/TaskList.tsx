@@ -297,8 +297,7 @@ export default function TaskList() {
         taskProtocol, 
         taskDeadline,
         taskDepartment,
-        taskAssignee,
-        'new'
+        taskAssignee
       );
       
       // Reset form

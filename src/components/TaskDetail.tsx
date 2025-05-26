@@ -146,13 +146,13 @@ export default function TaskDetail() {
   };
 
   
-  function calculateDeadlineDays(deadlineDate) {
+  function calculateDeadlineDays(deadlineDate: Date | string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const deadline = new Date(deadlineDate);
     deadline.setHours(0, 0, 0, 0);
     
-    const diffTime = deadline - today;
+    const diffTime = deadline.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
