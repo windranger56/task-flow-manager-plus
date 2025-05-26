@@ -1,8 +1,10 @@
+
 export interface User {
   id: string;
   name: string;
   email: string;
   image: string;
+  role?: string;
 }
 
 export interface Department {
@@ -48,4 +50,10 @@ export interface TaskAction {
   action: 'assigned' | 'added' | 'created' | 'status';
   target?: string;
   timestamp: Date;
+}
+
+export interface ExportFilters {
+  startDate?: Date;
+  endDate?: Date;
+  assigneeId?: string;
 }

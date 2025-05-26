@@ -4,6 +4,7 @@ import LeftSidebar from '@/components/LeftSidebar';
 import TaskList from '@/components/TaskList';
 import TaskDetail from '@/components/TaskDetail';
 import SearchBar from '@/components/SearchBar';
+import ExportButton from '@/components/ExportButton';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -51,8 +52,11 @@ export default function Index() {
 									</svg>
 								</button>
 							)}
-							<div className="flex-1">
-								<SearchBar />
+							<div className="flex-1 flex items-center gap-3">
+								<div className="flex-1">
+									<SearchBar />
+								</div>
+								<ExportButton />
 							</div>
 						</div>
 						

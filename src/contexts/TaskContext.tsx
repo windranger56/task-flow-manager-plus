@@ -395,7 +395,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     deadline: Date,
     selectedDepartmentId?: string,
     assigneeId?: string,
-    status: TaskStatus = 'new' // Добавляем параметр статуса с дефолтным значением
+    status: TaskStatus = 'new' // Изменено с 'in_progress' на 'new'
   ) => {
     // Проверка наличия сессии
     const { data: { session } } = await supabase.auth.getSession();
@@ -447,7 +447,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         is_protocol: isProtocol,
         created_at: new Date().toISOString(),
         deadline: deadline.toISOString(),
-        status: 'new' as TaskStatus
+        status: 'new' as TaskStatus // Изменено на 'new'
       };
 
       // Сохраняем задачу в базу данных
@@ -570,7 +570,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (!task) return;
     
     // Create a new task based on the original one
-    const newTask: Task = {
+    const newTask = {
       title: newTitle || task.title,
       description: newDescription || task.description,
       assigned_to: newAssigneeId,
@@ -589,9 +589,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 			.select()
 
     setTasks([...tasks, data[0]]);
+    
+    const assignee = await getUserById(newAssigneeId);
     toast({ 
       title: "Задача переназначена", 
-      description: `Задача переназначена на ${getUserById(newAssigneeId)?.name}.` 
+      description: `Задача переназначена на ${assignee?.name}.` 
     });
   };
 
@@ -819,7 +821,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         id: user.id,
         name: user.fullname || '',
         email: user.email || '',
-        avatar: user.image || '',
+        image: user.image || '',
         role: 'employee' // Устанавливаем роль по умолчанию
       }));
     } catch (error) {
@@ -832,6 +834,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     <TaskContext.Provider value={{
 			user,
 			setUser,
+      currentUser: user, // Добавляем currentUser
       users,
       departments,
       tasks,
