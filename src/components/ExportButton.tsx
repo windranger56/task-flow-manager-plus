@@ -65,7 +65,7 @@ export default function ExportButton() {
         );
       }
 
-      if (filters.assigneeId) {
+      if (filters.assigneeId && filters.assigneeId !== 'all') {
         filteredTasks = filteredTasks.filter(task => 
           task.assignedTo === filters.assigneeId
         );
@@ -181,17 +181,17 @@ export default function ExportButton() {
           <div className="space-y-2">
             <Label>Исполнитель</Label>
             <Select 
-              value={filters.assigneeId || ''} 
+              value={filters.assigneeId || 'all'} 
               onValueChange={(value) => setFilters(prev => ({ 
                 ...prev, 
-                assigneeId: value || undefined 
+                assigneeId: value === 'all' ? undefined : value 
               }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Все исполнители" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Все исполнители</SelectItem>
+                <SelectItem value="all">Все исполнители</SelectItem>
                 {subordinates.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
                     {user.name}
