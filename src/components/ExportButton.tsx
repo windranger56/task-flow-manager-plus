@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -20,10 +19,22 @@ import {
 import { FileDown } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { toast } from '@/components/ui/use-toast';
-import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ExportFilters } from '@/types';
+import { Packer } from 'docx';
+import { saveAs } from 'file-saver';
+import {
+  Document,
+  Paragraph,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  AlignmentType,
+  HeadingLevel,
+} from 'docx';
 
 export default function ExportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -44,6 +55,140 @@ export default function ExportButton() {
     };
     loadSubordinates();
   }, []);
+
+  const generateWordDocument = async (filteredTasks) => {
+    // Подготовка данных для таблицы
+    const tableRows = await Promise.all(
+      filteredTasks.map(async (task) => {
+        const assignee = await getUserById(task.assignedTo);
+        const creator = await getUserById(task.createdBy);
+        
+        return new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph(task.title)],
+            }),
+            new TableCell({
+              children: [new Paragraph(task.description)],
+            }),
+            new TableCell({
+              children: [new Paragraph(assignee?.name || 'Неизвестно')],
+            }),
+            new TableCell({
+              children: [new Paragraph(
+                task.priority === 'high' ? 'Высокий' : 
+                task.priority === 'medium' ? 'Средний' : 'Низкий'
+              )],
+            }),
+            new TableCell({
+              children: [new Paragraph(
+                format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: ru })
+              )],
+            }),
+            new TableCell({
+              children: [new Paragraph(
+                task.status === 'new' ? 'Новое' :
+                task.status === 'in_progress' ? 'В работе' :
+                task.status === 'on_verification' ? 'На проверке' :
+                task.status === 'completed' ? 'Завершено' : 'Просрочено'
+              )],
+            }),
+          ],
+        });
+      })
+    );
+
+    // Заголовки таблицы
+    const headerRow = new TableRow({
+      children: [
+        new TableCell({
+          children: [new Paragraph('Название')],
+        }),
+        new TableCell({
+          children: [new Paragraph('Описание')],
+        }),
+        new TableCell({
+          children: [new Paragraph('Исполнитель')],
+        }),
+        new TableCell({
+          children: [new Paragraph('Приоритет')],
+        }),
+        new TableCell({
+          children: [new Paragraph('Дедлайн')],
+        }),
+        new TableCell({
+          children: [new Paragraph('Статус')],
+        }),
+      ],
+    });
+
+    // Создаем документ Word
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            // Заголовок документа
+            new Paragraph({
+              text: "Протокольные поручения",
+              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+            }),
+            
+            // Вводный текст
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Данный документ содержит список протокольных поручений, сформированный ",
+                  bold: true,
+                }),
+                new TextRun({
+                  text: format(new Date(), 'dd.MM.yyyy', { locale: ru }),
+                  bold: true,
+                  underline: {},
+                }),
+                new TextRun({
+                  text: ".",
+                  bold: true,
+                }),
+              ],
+              spacing: { after: 200 },
+            }),
+            
+            // Дополнительная информация
+            new Paragraph({
+              text: "Ниже представлена таблица с текущими поручениями:",
+              spacing: { after: 200 },
+            }),
+            
+            // Таблица с данными
+            new Table({
+              rows: [headerRow, ...tableRows],
+              width: {
+                size: 100,
+                type: WidthType.PERCENTAGE,
+              },
+              columnWidths: [2000, 3000, 2000, 1500, 2000, 1500],
+            }),
+            
+            // Заключительный текст
+            new Paragraph({
+              text: "Данные актуальны на момент формирования отчета.",
+              spacing: { before: 400 },
+              italics: true,
+            }),
+            
+            new Paragraph({
+              text: `Всего поручений: ${filteredTasks.length}`,
+              bold: true,
+            }),
+          ],
+        },
+      ],
+    });
+
+    return doc;
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -80,45 +225,14 @@ export default function ExportButton() {
         return;
       }
 
-      // Подготавливаем данные для Excel
-      const exportData = await Promise.all(
-        filteredTasks.map(async (task) => {
-          const assignee = await getUserById(task.assignedTo);
-          const creator = await getUserById(task.createdBy);
-          
-          return {
-            'Название': task.title,
-            'Описание': task.description,
-            'Исполнитель': assignee?.name || 'Неизвестно',
-            'Создатель': creator?.name || 'Неизвестно',
-            'Приоритет': task.priority === 'high' ? 'Высокий' : 
-                        task.priority === 'medium' ? 'Средний' : 'Низкий',
-            'Дедлайн': format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: ru }),
-            'Статус': task.status === 'new' ? 'Новое' :
-                     task.status === 'in_progress' ? 'В работе' :
-                     task.status === 'on_verification' ? 'На проверке' :
-                     task.status === 'completed' ? 'Завершено' : 'Просрочено',
-            'Дата создания': format(new Date(task.createdAt), 'dd.MM.yyyy HH:mm', { locale: ru })
-          };
-        })
-      );
-
-      // Создаем Excel файл
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Протокольные поручения');
-
-      // Автоширина колонок
-      const columnWidths = Object.keys(exportData[0] || {}).map(key => ({
-        wch: Math.max(key.length, ...exportData.map(row => String(row[key]).length)) + 2
-      }));
-      worksheet['!cols'] = columnWidths;
-
-      // Генерируем имя файла с текущей датой
-      const fileName = `Протокольные_поручения_${format(new Date(), 'dd.MM.yyyy', { locale: ru })}.xlsx`;
-
-      // Скачиваем файл
-      XLSX.writeFile(workbook, fileName);
+      // Генерируем Word документ
+      const doc = await generateWordDocument(filteredTasks);
+      
+      // Конвертируем в Blob и сохраняем
+      Packer.toBlob(doc).then((blob) => {
+        const fileName = `Протокольные_поручения_${format(new Date(), 'dd.MM.yyyy', { locale: ru })}.docx`;
+        saveAs(blob, fileName);
+      });
 
       toast({
         title: "Экспорт завершен",
@@ -213,7 +327,7 @@ export default function ExportButton() {
               onClick={handleExport}
               disabled={isExporting}
             >
-              {isExporting ? 'Экспортируется...' : 'Экспорт'}
+              {isExporting ? 'Экспортируется...' : 'Экспорт в Word'}
             </Button>
           </div>
         </div>
