@@ -56,131 +56,213 @@ export default function ExportButton() {
     loadSubordinates();
   }, []);
 
-  const generateWordDocument = async (filteredTasks) => {
-    // Подготовка данных для таблицы
-    const tableRows = await Promise.all(
-      filteredTasks.map(async (task) => {
-        const assignee = await getUserById(task.assignedTo);
-        const creator = await getUserById(task.createdBy);
-        
-        return new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph(task.title)],
-            }),
-            new TableCell({
-              children: [new Paragraph(task.description)],
-            }),
-            new TableCell({
-              children: [new Paragraph(assignee?.name || 'Неизвестно')],
-            }),
-            new TableCell({
-              children: [new Paragraph(
-                task.priority === 'high' ? 'Высокий' : 
-                task.priority === 'medium' ? 'Средний' : 'Низкий'
-              )],
-            }),
-            new TableCell({
-              children: [new Paragraph(
-                format(new Date(task.deadline), 'dd.MM.yyyy HH:mm', { locale: ru })
-              )],
-            }),
-            new TableCell({
-              children: [new Paragraph(
-                task.status === 'new' ? 'Новое' :
-                task.status === 'in_progress' ? 'В работе' :
-                task.status === 'on_verification' ? 'На проверке' :
-                task.status === 'completed' ? 'Завершено' : 'Просрочено'
-              )],
-            }),
-          ],
-        });
-      })
+  const generateProtocolDocument = async (filteredTasks) => {
+    // Собираем уникальных пользователей (ответственные и создатели)
+    const uniqueUserIds = new Set();
+    filteredTasks.forEach(task => {
+      if (task.assignedTo) uniqueUserIds.add(task.assignedTo);
+      if (task.createdBy) uniqueUserIds.add(task.createdBy);
+    });
+
+    // Получаем данные пользователей
+    const users = await Promise.all(
+      Array.from(uniqueUserIds).map(async userId => await getUserById(userId))
     );
 
-    // Заголовки таблицы
+    // Формируем строку присутствующих
+    const attendeesString = users.map(user => user?.fullname || `Пользователь ${user?.id}`).join(', ');
+
+    const tableRows = filteredTasks.map((task, index) => {
+      return new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({
+              text: `${index + 1}`,
+              alignment: AlignmentType.CENTER,
+            })],
+          }),
+          new TableCell({
+            children: [new Paragraph(task.title)],
+          }),
+          new TableCell({
+            children: [new Paragraph(task.assignedToName || '')],
+          }),
+          new TableCell({
+            children: [new Paragraph(
+              format(new Date(task.deadline), 'dd.MM.yyyy', { locale: ru })
+            )],
+          }),
+        ],
+      });
+    });
+
     const headerRow = new TableRow({
       children: [
         new TableCell({
-          children: [new Paragraph('Название')],
+          children: [new Paragraph({
+            text: "№",
+            bold: true,
+            alignment: AlignmentType.CENTER,
+          })],
         }),
         new TableCell({
-          children: [new Paragraph('Описание')],
+          children: [new Paragraph({
+            text: "Поручение",
+            bold: true,
+          })],
         }),
         new TableCell({
-          children: [new Paragraph('Исполнитель')],
+          children: [new Paragraph({
+            text: "Ответственный (Ф.И.О.)",
+            bold: true,
+          })],
         }),
         new TableCell({
-          children: [new Paragraph('Приоритет')],
-        }),
-        new TableCell({
-          children: [new Paragraph('Дедлайн')],
-        }),
-        new TableCell({
-          children: [new Paragraph('Статус')],
+          children: [new Paragraph({
+            text: "Срок исполнения",
+            bold: true,
+          })],
         }),
       ],
     });
 
-    // Создаем документ Word
     const doc = new Document({
       sections: [
         {
+          properties: {
+            page: {
+              margin: {
+                top: 1000,
+                right: 1000,
+                bottom: 1000,
+                left: 1000,
+              },
+            },
+          },
           children: [
-            // Заголовок документа
             new Paragraph({
-              text: "Протокольные поручения",
+              text: "Акционерное общество",
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 0 },
+            }),
+            
+            new Paragraph({
+              text: '(АО"Мосинжпроект")',
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+            }),
+
+            new Paragraph({
+              text: "УТВЕРЖДАЮ",
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 400 },
+            }),
+            
+            new Paragraph({
+              text: "___________________________",
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 400 },
+            }),
+            
+            new Paragraph({
+              text: "___________________________",
+              alignment: AlignmentType.RIGHT,
+              spacing: { after: 400 },
+            }),
+
+            new Paragraph({
+              text: "ПРОТОКОЛ",
               heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+            }),
+            
+            new Paragraph({
+              text: "оперативного совещания у исполнительного директора",
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+            }),
+            
+            new Paragraph({
+              text: "дивизиона по _______________________________",
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+            }),
+            
+            new Paragraph({
+              text: `от ${format(new Date(), 'dd.MM.yyyy', { locale: ru })} г. Москва`,
               alignment: AlignmentType.CENTER,
               spacing: { after: 400 },
             }),
             
-            // Вводный текст
+            // Строка с присутствующими
             new Paragraph({
               children: [
                 new TextRun({
-                  text: "Данный документ содержит список протокольных поручений, сформированный ",
+                  text: "Присутствовали: ",
                   bold: true,
                 }),
                 new TextRun({
-                  text: format(new Date(), 'dd.MM.yyyy', { locale: ru }),
-                  bold: true,
-                  underline: {},
-                }),
-                new TextRun({
-                  text: ".",
-                  bold: true,
+                  text: attendeesString,
                 }),
               ],
-              spacing: { after: 200 },
+              spacing: { after: 400 },
             }),
             
-            // Дополнительная информация
-            new Paragraph({
-              text: "Ниже представлена таблица с текущими поручениями:",
-              spacing: { after: 200 },
-            }),
-            
-            // Таблица с данными
             new Table({
               rows: [headerRow, ...tableRows],
               width: {
                 size: 100,
                 type: WidthType.PERCENTAGE,
               },
-              columnWidths: [2000, 3000, 2000, 1500, 2000, 1500],
+              columnWidths: [500, 3000, 1500, 1000],
+              margins: {
+                top: 200,
+                bottom: 200,
+              },
             }),
             
-            // Заключительный текст
             new Paragraph({
-              text: "Данные актуальны на момент формирования отчета.",
+              text: " ",
+              spacing: { before: 800 },
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Протокол вел:",
+                  bold: true,
+                }),
+              ],
+              indent: { left: 0 },
               spacing: { before: 400 },
-              italics: true,
             }),
             
             new Paragraph({
-              text: `Всего поручений: ${filteredTasks.length}`,
-              bold: true,
+              children: [
+                new TextRun({
+                  text: "___________________________",
+                }),
+              ],
+              indent: { left: 0 },
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "___________________________",
+                }),
+              ],
+              indent: { left: 0 },
+            }),
+            
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "___________________________",
+                }),
+              ],
+              indent: { left: 0 },
             }),
           ],
         },
@@ -194,10 +276,8 @@ export default function ExportButton() {
     setIsExporting(true);
     
     try {
-      // Фильтруем только протокольные поручения
       let filteredTasks = tasks.filter(task => task.isProtocol === 'active');
 
-      // Применяем фильтры
       if (filters.startDate) {
         filteredTasks = filteredTasks.filter(task => 
           new Date(task.deadline) >= filters.startDate!
@@ -216,6 +296,14 @@ export default function ExportButton() {
         );
       }
 
+      filteredTasks = await Promise.all(filteredTasks.map(async task => {
+        const assignee = await getUserById(task.assignedTo);
+        return {
+          ...task,
+          assignedToName: assignee?.fullname || 'Не указан'
+        };
+      }));
+
       if (filteredTasks.length === 0) {
         toast({
           title: "Нет данных для экспорта",
@@ -225,18 +313,16 @@ export default function ExportButton() {
         return;
       }
 
-      // Генерируем Word документ
-      const doc = await generateWordDocument(filteredTasks);
+      const doc = await generateProtocolDocument(filteredTasks);
       
-      // Конвертируем в Blob и сохраняем
       Packer.toBlob(doc).then((blob) => {
-        const fileName = `Протокольные_поручения_${format(new Date(), 'dd.MM.yyyy', { locale: ru })}.docx`;
+        const fileName = `Протокол_совещания_${format(new Date(), 'dd.MM.yyyy', { locale: ru })}.docx`;
         saveAs(blob, fileName);
       });
 
       toast({
         title: "Экспорт завершен",
-        description: `Экспортировано ${filteredTasks.length} протокольных поручений`
+        description: `Сформирован протокол с ${filteredTasks.length} поручениями`
       });
 
       setIsOpen(false);
@@ -245,7 +331,7 @@ export default function ExportButton() {
       console.error('Ошибка экспорта:', error);
       toast({
         title: "Ошибка экспорта",
-        description: "Не удалось экспортировать данные",
+        description: "Не удалось сформировать протокол",
         variant: "destructive"
       });
     } finally {
@@ -258,12 +344,12 @@ export default function ExportButton() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="flex items-center gap-2">
           <FileDown className="h-4 w-4" />
-          <span className="hidden sm:inline">Экспорт</span>
+          <span className="hidden sm:inline">Экспорт протокола</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Экспорт протокольных поручений</DialogTitle>
+          <DialogTitle>Экспорт протокола совещания</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -308,7 +394,7 @@ export default function ExportButton() {
                 <SelectItem value="all">Все исполнители</SelectItem>
                 {subordinates.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
-                    {user.name}
+                    {user.fullname}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -327,7 +413,7 @@ export default function ExportButton() {
               onClick={handleExport}
               disabled={isExporting}
             >
-              {isExporting ? 'Экспортируется...' : 'Экспорт в Word'}
+              {isExporting ? 'Формируется...' : 'Сформировать протокол'}
             </Button>
           </div>
         </div>
