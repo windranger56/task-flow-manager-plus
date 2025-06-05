@@ -320,29 +320,34 @@ export default function TaskDetail() {
             </DialogContent>
           </Dialog>
           
-          <Button 
-            onClick={() => toggleProtocol(selectedTask.id)}
-						className={`rounded-full h-[36px] w-[36px] ${
-              selectedTask?.isProtocol === 'active' ? 'bg-blue-500' : 'bg-[#f1f4fd]'
-            }`}
-          >
-						<svg 
-              className={`h-[36px] w-[36px] font-bold ${
-                selectedTask?.isProtocol === 'active' ? 'text-white' : 'text-[#7a7e9d]'
-              }`} 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
+          <div className="relative group">
+            <Button 
+              onClick={() => toggleProtocol(selectedTask.id)}
+              className={`rounded-full h-[36px] w-[36px] ${
+                selectedTask?.isProtocol === 'active' ? 'bg-blue-500' : 'bg-[#f1f4fd]'
+              }`}
             >
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path>
-            </svg>
-          </Button>
+              <svg 
+                className={`h-[36px] w-[36px] font-bold ${
+                  selectedTask?.isProtocol === 'active' ? 'text-white' : 'text-[#7a7e9d]'
+                }`} 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path>
+              </svg>
+            </Button>
+            <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+              {selectedTask?.isProtocol === 'active' ? 'Протокол активен' : 'Протокол неактивен'}
+            </div>
+          </div>
           
           {selectedTask.createdBy === user.id && selectedTask.status == 'completed' && (
             <Button 
