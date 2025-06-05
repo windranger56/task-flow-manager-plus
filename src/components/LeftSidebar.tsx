@@ -81,6 +81,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  // const [showNewDepartment, setShowNewDepartment] = useState(false);
+  // const [showAddUsersToDepartment, setShowAddUsersToDepartment] = useState(false);
   
   const [subordinates, setSubordinates] = useState<User[]>([]);
   
@@ -272,90 +275,158 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 				
 				{/* Action Buttons */}
 				<div className="flex justify-center mt-[25px] gap-[25px]">
-					<Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
-						<DialogTrigger asChild>
-							<Button className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor">
-									<path d="M13.533 5.6h-.961a.894.894 0 01-.834-.57.906.906 0 01.197-.985l.675-.675a.466.466 0 000-.66l-1.32-1.32a.466.466 0 00-.66 0l-.676.677a.9.9 0 01-.994.191.906.906 0 01-.56-.837V.467A.467.467 0 007.933 0H6.067A.467.467 0 005.6.467v.961c0 .35-.199.68-.57.834a.902.902 0 01-.983-.195L3.37 1.39a.466.466 0 00-.66 0L1.39 2.71a.466.466 0 000 .66l.675.675c.25.25.343.63.193.995a.902.902 0 01-.834.56H.467A.467.467 0 000 6.067v1.866c0 .258.21.467.467.467h.961c.35 0 .683.202.834.57a.904.904 0 01-.197.984l-.675.676a.466.466 0 000 .66l1.32 1.32a.466.466 0 00.66 0l.68-.68a.894.894 0 01-.187-.994.897.897 0 01.829-.556h.961c.258 0 .467-.21.467-.467V6.067a.467.467 0 00-.467-.467zM7 9.333C5.713 9.333 4.667 8.287 4.667 7S5.713 4.667 7 4.667 9.333 5.713 9.333 7 8.287 9.333 7 9.333z"></path>
-								</svg>
-							</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Создать новое подразделение</DialogTitle>
-							</DialogHeader>
-							<div className="space-y-4 py-4">
-								<div className="space-y-2">
-									<Label htmlFor="department-name">Название подразделения</Label>
-									<Input 
-										id="department-name" 
-										value={newDeptName}
-										onChange={(e) => setNewDeptName(e.target.value)}
-										placeholder="Введите название подразделения"
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="department-manager">Руководитель подразделения</Label>
-									<Select value={newDeptManager} onValueChange={setNewDeptManager}>
-										<SelectTrigger>
-											<SelectValue placeholder="Выберите руководителя" />
-										</SelectTrigger>
-										<SelectContent>
-											{availableUsers.length > 0 ? (
-												availableUsers.map((user) => (
-													<SelectItem key={user.id} value={user.id}>
-														{user.fullname}
-													</SelectItem>
-												))
-											) : (
-												<div className="p-2 text-center text-gray-500">
-													Нет доступных пользователей без руководителя
-												</div>
-											)}
-										</SelectContent>
-									</Select>
-									<p className="text-xs text-gray-500 mt-1">
-										Отображаются только пользователи без руководителя
-									</p>
-								</div>
-								{/* <div className="space-y-2">
-									<Label>Сотрудники подразделения</Label>
-									<div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-										{users
-											.filter(user => user.id !== currentUser.id && user.id !== newDeptManager)
-											.map((user) => {
-												const userDepartment = getDepartmentByUserId(user.id);
-												return (
-													<div key={user.id} className="flex items-center space-x-2">
-														<Checkbox 
-															id={`user-${user.id}`} 
-															checked={selectedUsers.includes(user.id)}
-															onCheckedChange={() => handleUserSelection(user.id)}
-														/>
-														<Label htmlFor={`user-${user.id}`} className="flex items-center">
-															<Avatar className="h-6 w-6 mr-2">
-																<AvatarImage src={user.avatar} alt={user.name} />
-																<AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-															</Avatar>
-															<span>{user.name}</span>
-															{userDepartment && (
-																<span className="text-xs text-gray-500 ml-1">
-																	({userDepartment.name})
-																</span>
-															)}
-														</Label>
-													</div>
-												);
-											})
-										}
-									</div>
-								</div> */}
-								<Button onClick={handleCreateDepartment} className="w-full">
-									Создать подразделение
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
+        <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+          <DialogTrigger asChild>
+            <Button className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="currentColor">
+                <path d="M13.533 5.6h-.961a.894.894 0 01-.834-.57.906.906 0 01.197-.985l.675-.675a.466.466 0 000-.66l-1.32-1.32a.466.466 0 00-.66 0l-.676.677a.9.9 0 01-.994.191.906.906 0 01-.56-.837V.467A.467.467 0 007.933 0H6.067A.467.467 0 005.6.467v.961c0 .35-.199.68-.57.834a.902.902 0 01-.983-.195L3.37 1.39a.466.466 0 00-.66 0L1.39 2.71a.466.466 0 000 .66l.675.675c.25.25.343.63.193.995a.902.902 0 01-.834.56H.467A.467.467 0 000 6.067v1.866c0 .258.21.467.467.467h.961c.35 0 .683.202.834.57a.904.904 0 01-.197.984l-.675.676a.466.466 0 000 .66l1.32 1.32a.466.466 0 00.66 0l.68-.68a.894.894 0 01-.187-.994.897.897 0 01.829-.556h.961c.258 0 .467-.21.467-.467V6.067a.467.467 0 00-.467-.467zM7 9.333C5.713 9.333 4.667 8.287 4.667 7S5.713 4.667 7 4.667 9.333 5.713 9.333 7 8.287 9.333 7 9.333z"></path>
+              </svg>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Что вы хотите сделать?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowActionDialog(false);
+                    setShowNewDepartment(true);
+                  }}
+                >
+                  Создать новое подразделение
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowActionDialog(false);
+                    setShowAddUsersToDepartment(true);
+                  }}
+                >
+                  Добавить пользователей
+                </Button>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowActionDialog(false)}
+                className="w-full"
+              >
+                Отмена
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Диалог создания нового подразделения (остаётся без изменений) */}
+        <Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Создать новое подразделение</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="department-name">Название подразделения</Label>
+                <Input 
+                  id="department-name" 
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  placeholder="Введите название подразделения"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department-manager">Руководитель подразделения</Label>
+                <Select value={newDeptManager} onValueChange={setNewDeptManager}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите руководителя" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUsers.length > 0 ? (
+                      availableUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.fullname}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-gray-500">
+                        Нет доступных пользователей без руководителя
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Отображаются только пользователи без руководителя
+                </p>
+              </div>
+              <Button onClick={handleCreateDepartment} className="w-full">
+                Создать подразделение
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Диалог добавления пользователей (остаётся без изменений) */}
+        <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="department-select">Выберите подразделение</Label>
+                <Select 
+                  value={selectedDeptForUsers} 
+                  onValueChange={setSelectedDeptForUsers}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите подразделение" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Выберите пользователей</Label>
+                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                  {availableUsers.length > 0 ? (
+                    availableUsers.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`user-${user.id}`} 
+                          checked={selectedUsersToAdd.includes(user.id)}
+                          onCheckedChange={() => handleUserSelection(user.id)}
+                        />
+                        <Label htmlFor={`user-${user.id}`} className="flex items-center">
+                          <span>{user.fullname}</span>
+                        </Label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-2">
+                      Нет доступных пользователей без руководителя
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Отображаются только пользователи без руководителя
+                </p>
+              </div>
+              <Button 
+                onClick={handleAddUsersToDepartment} 
+                disabled={!selectedDeptForUsers || selectedUsersToAdd.length === 0} 
+                className="w-full"
+              >
+                Добавить пользователей
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
 					<Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
 						<DialogTrigger asChild>
@@ -446,78 +517,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center">
         ПОДРАЗДЕЛЕНИЯ
         <div className="flex space-x-2">
-            <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
-              <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] mr-5" >
-                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="rgb(77, 118, 253)" stroke="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
-                  <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
-                  <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z"  />
-                </svg>
-              </Button> 
-                {/* <Button size="sm" variant="outline" className="text-xs h-8">
-                  Добавить пользователя
-                </Button> */}
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="department-select">Выберите подразделение</Label>
-                    <Select 
-                      value={selectedDeptForUsers} 
-                      onValueChange={setSelectedDeptForUsers}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите подразделение" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Выберите пользователей</Label>
-                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                      {availableUsers.length > 0 ? (
-                        availableUsers.map((user) => (
-                          <div key={user.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`user-${user.id}`} 
-                              checked={selectedUsersToAdd.includes(user.id)}
-                              onCheckedChange={() => handleUserSelection(user.id)}
-                            />
-                            <Label htmlFor={`user-${user.id}`} className="flex items-center">
-                              <span>{user.fullname}</span>
-                            </Label>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-gray-500 py-2">
-                          Нет доступных пользователей без руководителя
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Отображаются только пользователи без руководителя
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={handleAddUsersToDepartment} 
-                    disabled={!selectedDeptForUsers || selectedUsersToAdd.length === 0} 
-                    className="w-full"
-                  >
-                    Добавить пользователей
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            
           </div>       
         </h4>
         <ul className="space-y-2">

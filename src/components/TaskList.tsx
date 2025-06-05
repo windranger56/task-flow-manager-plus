@@ -367,6 +367,7 @@ export default function TaskList() {
                                 task.status === 'new' ? 'bg-gray-400' :
                                 task.status === 'in_progress' ? 'bg-blue-400' :
                                 task.status === 'on_verification' ? 'bg-yellow-400':
+                                task.status === 'canceled' ? 'bg-red-700':
                                 'bg-red-400'
                               } 
                               rounded-full h-[24px] w-[24px] cursor-pointer
