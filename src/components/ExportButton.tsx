@@ -63,15 +63,24 @@ export default function ExportButton() {
       if (task.assignedTo) uniqueUserIds.add(task.assignedTo);
       if (task.createdBy) uniqueUserIds.add(task.createdBy);
     });
-
+  
     // Получаем данные пользователей
     const users = await Promise.all(
       Array.from(uniqueUserIds).map(async userId => await getUserById(userId))
     );
-
-    // Формируем строку присутствующих
-    const attendeesString = users.map(user => user?.fullname || `Пользователь ${user?.id}`).join(', ');
-
+  
+    // Формируем массив ФИО присутствующих
+    const attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
+  
+    // Добавляем ФИО из полей попапа, если они заполнены
+    if (filters.approvedBy) attendees.push(filters.approvedBy);
+    if (filters.protocolAuthor) attendees.push(filters.protocolAuthor);
+  
+    // Удаляем дубликаты и преобразуем в строку
+    const uniqueAttendees = [...new Set(attendees)];
+    const attendeesString = uniqueAttendees.join(', ');
+  
+    // Остальной код остается без изменений
     const tableRows = filteredTasks.map((task, index) => {
       return new TableRow({
         children: [
@@ -95,7 +104,7 @@ export default function ExportButton() {
         ],
       });
     });
-
+  
     const headerRow = new TableRow({
       children: [
         new TableCell({
@@ -125,7 +134,7 @@ export default function ExportButton() {
         }),
       ],
     });
-
+  
     const doc = new Document({
       sections: [
         {
@@ -151,15 +160,16 @@ export default function ExportButton() {
               alignment: AlignmentType.CENTER,
               spacing: { after: 400 },
             }),
-
+  
             new Paragraph({
               text: "УТВЕРЖДАЮ",
               alignment: AlignmentType.RIGHT,
               spacing: { after: 400 },
             }),
             
+            // Заменяем подчеркивание на значение из filters.approvedBy
             new Paragraph({
-              text: "___________________________",
+              text: filters.approvedBy || "___________________________",
               alignment: AlignmentType.RIGHT,
               spacing: { after: 400 },
             }),
@@ -169,7 +179,7 @@ export default function ExportButton() {
               alignment: AlignmentType.RIGHT,
               spacing: { after: 400 },
             }),
-
+  
             new Paragraph({
               text: "ПРОТОКОЛ",
               heading: HeadingLevel.HEADING_1,
@@ -183,8 +193,9 @@ export default function ExportButton() {
               spacing: { after: 200 },
             }),
             
+            // Заменяем подчеркивание на значение из filters.division
             new Paragraph({
-              text: "дивизиона по _______________________________",
+              text: `дивизиона по ${filters.division || "_______________________________"}`,
               alignment: AlignmentType.CENTER,
               spacing: { after: 200 },
             }),
@@ -238,37 +249,26 @@ export default function ExportButton() {
               spacing: { before: 400 },
             }),
             
+            // Заменяем подчеркивание на значение из filters.protocolAuthor
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: "___________________________",
-                }),
-              ],
+              text: filters.protocolAuthor || "___________________________",
               indent: { left: 0 },
             }),
             
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: "___________________________",
-                }),
-              ],
+              text: "___________________________",
               indent: { left: 0 },
             }),
             
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: "___________________________",
-                }),
-              ],
+              text: "___________________________",
               indent: { left: 0 },
             }),
           ],
         },
       ],
     });
-
+  
     return doc;
   };
 
@@ -340,84 +340,123 @@ export default function ExportButton() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <FileDown className="h-4 w-4" />
-          <span className="hidden sm:inline">Экспорт протокола</span>
+<Dialog open={isOpen} onOpenChange={setIsOpen}>
+  <DialogTrigger asChild>
+    <Button variant="outline" size="sm" className="flex items-center gap-2">
+      <FileDown className="h-4 w-4" />
+      <span className="hidden sm:inline">Экспорт протокола</span>
+    </Button>
+  </DialogTrigger>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Экспорт протокола совещания</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="approvedBy">Утвержден (кем)</Label>
+        <Input
+          id="approvedBy"
+          value={filters.approvedBy || ''}
+          onChange={(e) => setFilters(prev => ({
+            ...prev,
+            approvedBy: e.target.value
+          }))}
+          placeholder="Введите ФИО утверждающего"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="division">Дивизион (в дательном падеже)</Label>
+        <Input
+          id="division"
+          value={filters.division || ''}
+          onChange={(e) => setFilters(prev => ({
+            ...prev,
+            division: e.target.value
+          }))}
+          placeholder="Например: строительству"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="protocolAuthor">Ведет протокол</Label>
+        <Input
+          id="protocolAuthor"
+          value={filters.protocolAuthor || ''}
+          onChange={(e) => setFilters(prev => ({
+            ...prev,
+            protocolAuthor: e.target.value
+          }))}
+          placeholder="Введите ФИО ведущего протокол"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="startDate">Дедлайн от</Label>
+        <Input
+          id="startDate"
+          type="date"
+          value={filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : ''}
+          onChange={(e) => setFilters(prev => ({ 
+            ...prev, 
+            startDate: e.target.value ? new Date(e.target.value) : undefined 
+          }))}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="endDate">Дедлайн до</Label>
+        <Input
+          id="endDate"
+          type="date"
+          value={filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : ''}
+          onChange={(e) => setFilters(prev => ({ 
+            ...prev, 
+            endDate: e.target.value ? new Date(e.target.value) : undefined 
+          }))}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Исполнитель</Label>
+        <Select 
+          value={filters.assigneeId || 'all'} 
+          onValueChange={(value) => setFilters(prev => ({ 
+            ...prev, 
+            assigneeId: value === 'all' ? undefined : value 
+          }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Все исполнители" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все исполнители</SelectItem>
+            {subordinates.map((user) => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.fullname}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex justify-end space-x-2 pt-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setIsOpen(false)}
+          disabled={isExporting}
+        >
+          Отмена
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Экспорт протокола совещания</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Дедлайн от</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : ''}
-              onChange={(e) => setFilters(prev => ({ 
-                ...prev, 
-                startDate: e.target.value ? new Date(e.target.value) : undefined 
-              }))}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="endDate">Дедлайн до</Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : ''}
-              onChange={(e) => setFilters(prev => ({ 
-                ...prev, 
-                endDate: e.target.value ? new Date(e.target.value) : undefined 
-              }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Исполнитель</Label>
-            <Select 
-              value={filters.assigneeId || 'all'} 
-              onValueChange={(value) => setFilters(prev => ({ 
-                ...prev, 
-                assigneeId: value === 'all' ? undefined : value 
-              }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Все исполнители" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все исполнители</SelectItem>
-                {subordinates.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.fullname}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsOpen(false)}
-              disabled={isExporting}
-            >
-              Отмена
-            </Button>
-            <Button 
-              onClick={handleExport}
-              disabled={isExporting}
-            >
-              {isExporting ? 'Формируется...' : 'Сформировать протокол'}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        <Button 
+          onClick={handleExport}
+          disabled={isExporting}
+        >
+          {isExporting ? 'Формируется...' : 'Сформировать протокол'}
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
   );
 }
