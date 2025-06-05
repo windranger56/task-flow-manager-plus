@@ -9,7 +9,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
 import { useState } from "react";
-import NotFound from "./pages/NotFound";
+import AdminPanel from "./pages/AdminPanel";
+import UserForm from "./pages/UserForm";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,14 @@ return (
               )
             }
           />
+					<Route
+						path="/admin"
+						element={<AdminPanel />}
+					/>
+					<Route
+						path="/admin/users/:id"
+						element={<UserForm />}
+					/>
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
