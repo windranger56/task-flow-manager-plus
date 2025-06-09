@@ -139,7 +139,7 @@ export default function TaskDetail() {
         await supabase
           .from('messages')
           .insert([{
-            content: `Задача отклонена. Причина: ${reason}`,
+            content: `Поручение отклонена. Причина: ${reason}`,
             task_id: taskId,
             sent_by: user.id,
             is_system: true
@@ -169,7 +169,7 @@ export default function TaskDetail() {
       // Добавляем сообщение в локальное состояние
       const newSystemMessage = {
         id: Date.now().toString(), // временный ID
-        content: `Задача отклонена. Причина: ${rejectReason}`,
+        content: `Поручение отклонено. Причина: ${rejectReason}`,
         task_id: selectedTask.id,
         sent_by: user.id,
         is_system: true,
