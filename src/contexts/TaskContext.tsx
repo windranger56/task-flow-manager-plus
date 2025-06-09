@@ -499,18 +499,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     try {
       // Authorize
       if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
+      if(task.status === 'canceled' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
+      if(task.status === 'completed') throw new Error("Невозможно изменить статус задачи так как она уже завершена")
+      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
+      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только сполнитель может отправить поручение на проверку")  
 
       // Update task status in Supabase
       const { error } = await supabase
         .from('tasks')
         .update({
           status: task.status === 'new'
-            ? 'in_progress'
-            : (
-              task.status  === 'in_progress'
-                ? 'on_verification'
-                : 'completed'
-            ) })
+          ? 'in_progress'
+          : (
+            task.status === 'in_progress'
+              ? 'on_verification'
+              : (
+                task.status === 'canceled'
+                  ? 'in_progress'
+                  : 'completed'
+              )
+          ) })
         .eq('id', task.id);
         
       if (error) {
@@ -525,18 +533,38 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       
       // Update local state only after successful DB update
       setTasks(tasks => {
-				const n = tasks.map(t => 
-          task.id === t.id ? ({ ...task, status: (task.status === 'new'
-            ? 'in_progress'
-            : task.status === 'in_progress'
-              ? 'on_verification'
-              : 'completed') as TaskStatus
-          }) : t
-        )
-				if(selectedTask) setSelectedTask(p => n.find(c => c.id == p.id))
-				return n
-			}
-      );
+        const updatedTasks = tasks.map(t => {
+          if (task.id !== t.id) return t;
+      
+          // Проверка прав для canceled задач
+          if (t.status === 'canceled' && user?.id !== t.assigned_to) {
+            throw new Error("Только исполнитель может взять поручение в работу");
+          }
+      
+          // Определяем новый статус
+          const newStatus: TaskStatus = 
+            t.status === 'new' ? 'in_progress' :
+            t.status === 'in_progress' ? 'on_verification' :
+            t.status === 'canceled' ? 'in_progress' :
+            'completed';
+      
+          return {
+            ...t,
+            status: newStatus,
+            updated_at: new Date().toISOString() // синхронизация с Supabase
+          };
+        });
+      
+        // Обновляем selectedTask если он есть
+        if (selectedTask) {
+          const updatedTask = updatedTasks.find(t => t.id === selectedTask.id);
+          if (updatedTask) {
+            setSelectedTask(updatedTask);
+          }
+        }
+      
+        return updatedTasks;
+      });
       
       toast({ title: "Статус задачи ", description: "Статус задачи успешно изменен." });
     } catch (error) {
