@@ -37,6 +37,7 @@ export default function TaskDetail() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -484,14 +485,32 @@ export default function TaskDetail() {
           
           {/* Кнопка удаления (только для создателя и завершенных задач) */}
           {selectedTask.createdBy === user.id && selectedTask.status === 'completed' && (
-            <Button 
-              className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-              onClick={() => deleteTask(selectedTask.id)}
-            >
-              <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
-              </svg>
-            </Button>
+            <>
+              <Button 
+                className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+                </svg>
+              </Button>
+              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Удалить задачу?</DialogTitle>
+                    <DialogDescription>Вы уверены, что хотите удалить эту задачу? Это действие необратимо.</DialogDescription>
+                  </DialogHeader>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                      Отмена
+                    </Button>
+                    <Button variant="destructive" onClick={() => { deleteTask(selectedTask.id); setShowDeleteDialog(false); }}>
+                      Удалить
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
         </div>
       </div>
