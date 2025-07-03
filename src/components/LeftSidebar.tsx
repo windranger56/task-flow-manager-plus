@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/collapsible';
 import { User } from '@/types';
 import { toast } from "@/components/ui/use-toast";
+import { Tooltip } from 'react-tooltip';
 
 // Add the props interface for LeftSidebar
 interface LeftSidebarProps {
@@ -78,6 +79,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [selectedDeptForUsers, setSelectedDeptForUsers] = useState("");
   const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<string[]>([]);
   const [doneTasks, setDoneTasks] = useState([])
+  const [overdueTasks, setOverdueTasks] = useState([])
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
@@ -104,6 +106,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
 	useEffect(() => {
 		setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
+	}, [tasks])
+
+  useEffect(() => {
+		setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []))
 	}, [tasks])
 
   // Загрузка пользователей при открытии диалога создания департамента
@@ -277,13 +283,17 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 				<div className="flex justify-center mt-[25px] gap-[25px]">
         <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
           <DialogTrigger asChild>
-          <Button className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
-              <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
-              <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z" stroke="rgb(77, 118, 253)" />
-            </svg>
-          </Button>
+                      <Button 
+              data-tooltip-id="tooltip" 
+              data-tooltip-content="Действия с подразделениями"
+              className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
+                <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
+                <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z" stroke="rgb(77, 118, 253)" />
+              </svg>
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -449,18 +459,22 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
 					<Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
 						<DialogTrigger asChild>
-							<Button className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-									<path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
-									<path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
-								</svg>
-								{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-								</span> */}
-							</Button>
+															<Button 
+									data-tooltip-id="tooltip" 
+									data-tooltip-content="Новые поручения"
+									className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+										<path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
+										<path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
+									</svg>
+									{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+									</span> */}
+								</Button>
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Новые задачи</DialogTitle>
+								                <DialogTitle>Новые поручения</DialogTitle>
 							</DialogHeader>
 							{/* <div className="space-y-2">
 								<div className="p-3 border rounded-md">
@@ -477,7 +491,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
 					<Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
 						<DialogTrigger asChild>
-							<Button className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]">
+							<Button 
+								data-tooltip-id="tooltip" 
+								data-tooltip-content="Просроченные поручения"
+								className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
+							>
 								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
 									<path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
 								</svg>
@@ -488,7 +506,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 						</DialogTrigger>
 						<DialogContent>
 							<DialogHeader>
-								<DialogTitle>Просроченные задачи</DialogTitle>
+								                <DialogTitle>Просроченные поручения</DialogTitle>
 							</DialogHeader>
 							{/* <div className="space-y-2">
 								<div className="p-3 border rounded-md">
@@ -517,12 +535,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 				</div>
 				<div className="flex justify-between p-4 border-b border-gray-200">
 					<div className="text-center">
-						<p className="text-2xl font-bold">{doneTasks.length}</p>
-						<p className="text-xs text-gray-500">Завершено</p>
+						<p className="text-2xl font-bold">{tasks.length - doneTasks.length}</p>
+						<p className="text-xs text-gray-500">В работе</p>
 					</div>
 					<div className="text-center">
-						<p className="text-2xl font-bold">{tasks.length - doneTasks.length}</p>
-						<p className="text-xs text-gray-500">Нужно сделать</p>
+						<p className="text-2xl font-bold">{overdueTasks.length}</p>
+						<p className="text-xs text-gray-500">Срок истек</p>
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">{doneTasks.length}</p>
@@ -563,7 +581,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </CollapsibleTrigger>
               <CollapsibleContent className="p-2 bg-gray-50 text-sm">
                 <p>Руководитель: {department.managerName || getUserById(department.managerId)?.name || 'Не назначен'}</p>
-                {/* <p>Задачи: активные/завершенные</p> */}
+                {/* <p>Поручения: активные/завершенные</p> */}
               </CollapsibleContent>
             </Collapsible>
           ))}
@@ -597,6 +615,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </Button>
         </div>
       </div>
+      <Tooltip id="tooltip" />
     </div>
   );
 }

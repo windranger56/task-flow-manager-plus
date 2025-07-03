@@ -35,7 +35,7 @@ export default function SearchBar() {
     <div className="relative">
       <Input
         type="search"
-        placeholder="Поиск задач..."
+        placeholder="Поиск поручений..."
         className="w-full bg-[#f0f0f7] border-0"
         value={searchQuery}
         onChange={handleSearch}

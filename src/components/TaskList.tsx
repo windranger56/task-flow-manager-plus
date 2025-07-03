@@ -92,7 +92,7 @@ export default function TaskList() {
     }
   }, [selectedDepartment]);
   
-  // Загрузка пользователей при выборе подразделения для задачи
+          // Загрузка пользователей при выборе подразделения для поручения
   useEffect(() => {
     if (taskDepartment) {
       fetchDepartmentUsers(taskDepartment);
@@ -275,7 +275,7 @@ export default function TaskList() {
     }
   };
   
-  // Обработчик нажатия на чекбокс задачи
+          // Обработчик нажатия на чекбокс поручения
   const handleTaskStatusToggle = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation(); // Prevent task selection
     const task = tasks.find(t => t.id === taskId);
@@ -289,7 +289,15 @@ export default function TaskList() {
   };
   
   const handleCreateTask = () => {
-    if (taskTitle && taskDescription && taskDepartment && taskDeadline && taskAssignee) {
+    // Проверяем каждое обязательное поле отдельно
+    const errors = [];
+    if (!taskTitle) errors.push("Заголовок");
+    if (!taskDescription) errors.push("Описание");
+    if (!taskDepartment) errors.push("Подразделение");
+    if (!taskAssignee) errors.push("Исполнитель");
+    if (!taskDeadline) errors.push("Дедлайн");
+
+    if (errors.length === 0) {
       addTask(
         taskTitle, 
         taskDescription, 
@@ -312,7 +320,7 @@ export default function TaskList() {
     } else {
       toast({ 
         title: "Ошибка", 
-        description: "Заполните все обязательные поля",
+        description: `Заполните обязательные поля: ${errors.join(", ")}`,
         variant: "destructive" 
       });
     }
@@ -428,27 +436,37 @@ export default function TaskList() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="task-title">Заголовок</Label>
+              <Label htmlFor="task-title">Заголовок <span className="text-red-500">*</span></Label>
               <Input 
                 id="task-title" 
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
+                className={!taskTitle && "border-red-500"}
+                placeholder="Введите заголовок поручения"
               />
+              {!taskTitle && (
+                <p className="text-xs text-red-500">Заголовок обязателен для заполнения</p>
+              )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="task-description">Описание</Label>
+              <Label htmlFor="task-description">Описание <span className="text-red-500">*</span></Label>
               <Textarea 
                 id="task-description" 
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
+                className={!taskDescription && "border-red-500"}
+                placeholder="Введите описание поручения"
               />
+              {!taskDescription && (
+                <p className="text-xs text-red-500">Описание обязательно для заполнения</p>
+              )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="task-department">Подразделение</Label>
+              <Label htmlFor="task-department">Подразделение <span className="text-red-500">*</span></Label>
               <Select value={taskDepartment} onValueChange={setTaskDepartment}>
-                <SelectTrigger>
+                <SelectTrigger className={!taskDepartment && "border-red-500"}>
                   <SelectValue placeholder="Выберите подразделение" />
                 </SelectTrigger>
                 <SelectContent>
@@ -468,13 +486,13 @@ export default function TaskList() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="task-assignee">Исполнитель</Label>
+              <Label htmlFor="task-assignee">Исполнитель <span className="text-red-500">*</span></Label>
               <Select 
                 value={taskAssignee} 
                 onValueChange={setTaskAssignee}
                 disabled={!taskDepartment || isLoadingUsers}
               >
-                <SelectTrigger>
+                <SelectTrigger className={!taskAssignee && "border-red-500"}>
                   {isLoadingUsers ? (
                     <span className="text-gray-500">Загрузка пользователей...</span>
                   ) : (
@@ -549,12 +567,12 @@ export default function TaskList() {
             </div>
             
             <div className="space-y-2">
-              <Label>Дедлайн</Label>
+              <Label>Дедлайн <span className="text-red-500">*</span></Label>
               <Input 
                 type="date"
                 value={taskDeadline ? format(taskDeadline, 'yyyy-MM-dd') : ''}
                 onChange={handleDateChange}
-                className="w-full"
+                className={`w-full ${!taskDeadline && "border-red-500"}`}
               />
             </div>
             

@@ -127,7 +127,7 @@ export default function TaskDetail() {
 
   const updateTaskStatus = async (taskId: string, newStatus: string, reason?: string) => {
     try {
-      // Обновляем статус задачи
+      // Обновляем статус поручения
       const { error: taskError } = await supabase
         .from('tasks')
         .update({ status: newStatus })
@@ -183,7 +183,7 @@ export default function TaskDetail() {
       setShowRejectDialog(false);
       setIsStatusConfirmOpen(false);
     } catch (error) {
-      alert('Не удалось отклонить задачу');
+      alert('Не удалось отклонить поручение');
     }
   };
 
@@ -336,7 +336,7 @@ export default function TaskDetail() {
                           await updateTaskStatus(selectedTask.id, 'completed');
                           setIsStatusConfirmOpen(false);
                         } catch (error) {
-                          alert('Не удалось завершить задачу');
+                          alert('Не удалось завершить поручение');
                         }
                       }}
                     >
@@ -354,7 +354,7 @@ export default function TaskDetail() {
               <DialogHeader>
                 <DialogTitle>Причина отклонения</DialogTitle>
                 <DialogDescription>
-                  Пожалуйста, укажите причину отклонения этой задачи
+                  Пожалуйста, укажите причину отклонения этого поручения
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -497,8 +497,8 @@ export default function TaskDetail() {
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Удалить задачу?</DialogTitle>
-                    <DialogDescription>Вы уверены, что хотите удалить эту задачу? Это действие необратимо.</DialogDescription>
+                    <DialogTitle>Удалить поручение?</DialogTitle>
+                    <DialogDescription>Вы уверены, что хотите удалить это поручение? Это действие необратимо.</DialogDescription>
                   </DialogHeader>
                   <div className="flex justify-end gap-2 mt-4">
                     <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
@@ -515,7 +515,7 @@ export default function TaskDetail() {
         </div>
       </div>
       
-      {/* Основное содержимое задачи */}
+              {/* Основное содержимое поручения */}
       <div className="flex flex-col flex-1 overflow-auto p-[30px]">
         {/* Заголовок и статус */}
         <div className="flex items-center gap-[15px] mb-6">
@@ -562,7 +562,7 @@ export default function TaskDetail() {
           )}
         </div>
         
-        {/* Описание задачи */}
+        {/* Описание поручения */}
         <div className="mb-8 ml-[65px]">
           <p className="text-gray-700">{selectedTask.description}</p>
         </div>
@@ -570,7 +570,7 @@ export default function TaskDetail() {
         {/* Разделитель */}
         <hr className="border-t border-gray-500 mb-8 ml-[65px] mt-8" />
         
-        {/* Чат задачи */}
+        {/* Чат поручения */}
         <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
           <div className="h-full overflow-y-auto mb-4 rounded-md">
             {chatMessages.map(msg => (

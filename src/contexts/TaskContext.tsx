@@ -16,6 +16,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 interface TaskContextType {
   // Data
@@ -180,6 +181,40 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     loadUserDepartments();
   }, []);
 
+  // Функция для проверки и обновления просроченных задач
+  const checkAndUpdateOverdueTasks = async (tasksToCheck: Task[]) => {
+    const now = new Date();
+    const tasksToUpdate = tasksToCheck.filter(task => {
+      const deadline = new Date(task.deadline);
+      return deadline < now && task.status !== 'completed' && task.status !== 'overdue';
+    });
+    
+    if (tasksToUpdate.length > 0) {
+      const updatePromises = tasksToUpdate.map(async (task) => {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status: 'overdue' })
+          .eq('id', task.id);
+        
+        if (error) {
+          console.error(`Ошибка при обновлении статуса задачи ${task.id}:`, error);
+        }
+        
+        return { ...task, status: 'overdue' as TaskStatus };
+      });
+      
+      const updatedTasks = await Promise.all(updatePromises);
+      
+      // Обновляем локальное состояние
+      setTasks(prevTasks => 
+        prevTasks.map(task => {
+          const updatedTask = updatedTasks.find(ut => ut.id === task.id);
+          return updatedTask || task;
+        })
+      );
+    }
+  };
+
   // Fetch tasks from Supabase on component mount
   useEffect(() => {
     const fetchTasks = async () => {
@@ -200,10 +235,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           .order('created_at', { ascending: false });
           
         if (error) {
-          console.error("Ошибка при загрузке задач:", error);
+          console.error("Ошибка при загрузке поручений:", error);
           toast({ 
             title: "Ошибка загрузки", 
-            description: "Не удалось загрузить задачи", 
+            description: "Не удалось загрузить поручения", 
             variant: "destructive" 
           });
           return;
@@ -226,24 +261,38 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           }));
           
           setTasks(formattedTasks);
+          
+          // Проверяем и обновляем просроченные задачи
+          await checkAndUpdateOverdueTasks(formattedTasks);
         }
       } catch (error) {
-        console.error("Ошибка при загрузке задач:", error);
+        console.error("Ошибка при загрузке поручений:", error);
         toast({ 
           title: "Ошибка загрузки", 
-          description: "Не удалось загрузить задачи", 
+          description: "Не удалось загрузить поручения", 
           variant: "destructive" 
         });
       }
     };
     
-    // Загружаем задачи после того, как загружены департаменты
+    // Загружаем поручения после того, как загружены департаменты
     if (departments.length > 0) {
       fetchTasks();
     } else {
       setTasks([]);
     }
   }, [departments]);
+
+  // Периодическая проверка просроченных задач (каждые 5 минут)
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    
+    const interval = setInterval(() => {
+      checkAndUpdateOverdueTasks(tasks);
+    }, 5 * 60 * 1000); // 5 минут
+    
+    return () => clearInterval(interval);
+  }, [tasks]);
 
   const selectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
@@ -450,7 +499,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         status: 'new' as TaskStatus // Изменено на 'new'
       };
 
-      // Сохраняем задачу в базу данных
+      // Сохраняем поручение в базу данных
       const { data, error } = await supabase
         .from('tasks')
         .insert(taskData)
@@ -458,10 +507,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         .single();
       
       if (error) {
-        console.error("Ошибка при добавлении задачи:", error);
+        console.error("Ошибка при добавлении поручения:", error);
         toast({ 
           title: "Ошибка", 
-          description: "Не удалось добавить задачу",
+          description: "Не удалось добавить поручение",
           variant: "destructive" 
         });
         return;
@@ -497,10 +546,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const completeTask = async (task: Task) => {
     try {
-      // Authorize
       if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
       if(task.status === 'canceled' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
-      if(task.status === 'completed') throw new Error("Невозможно изменить статус задачи так как она уже завершена")
+              if(task.status === 'completed') throw new Error("Невозможно изменить статус поручения так как оно уже завершено")
       if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
       if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только сполнитель может отправить поручение на проверку")  
 
@@ -520,18 +568,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
               )
           ) })
         .eq('id', task.id);
-        
       if (error) {
-        console.error("Ошибка при обновлении статуса задачи:", error);
+        console.error("Ошибка при обновлении статуса поручения:", error);
         toast({ 
           title: "Ошибка", 
-          description: "Не удалось обновить статус задачи",
+          description: "Не удалось обновить статус поручения",
           variant: "destructive" 
         });
         return;
       }
-      
-      // Update local state only after successful DB update
       setTasks(tasks => {
         const updatedTasks = tasks.map(t => {
           if (task.id !== t.id) return t;
@@ -566,9 +611,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         return updatedTasks;
       });
       
-      toast({ title: "Статус задачи ", description: "Статус задачи успешно изменен." });
+              toast({ title: "Статус поручения ", description: "Статус поручения успешно изменен." });
     } catch (error) {
-      console.error("Ошибка при изменении статуса задачи:", error);
+      console.error("Ошибка при изменении статуса поручения:", error);
       toast({ 
         title: "Ошибка", 
         description: error.message,
@@ -593,35 +638,31 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const reassignTask = async (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => {
-    // Find the task to reassign
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    
-    // Create a new task based on the original one
+    const assignee = await getUserById(newAssigneeId);
+    const now = new Date();
+    const info = `---\n${format(now, 'dd.MM.yyyy HH:mm')}: ${user.fullname} переназначил(а) поручение на ${assignee?.fullname}`;
+    const descriptionWithInfo = (newDescription || task.description || '') + '\n' + info;
     const newTask = {
       title: newTitle || task.title,
-      description: newDescription || task.description,
+      description: descriptionWithInfo,
       assigned_to: newAssigneeId,
       created_by: user.id,
       departmentId: task.departmentId,
       priority: task.priority,
       is_protocol: task.isProtocol,
       deadline: newDeadline || task.deadline,
-			parent_id: task.id
+      parent_id: task.id
     };
-		console.log(newTask)
-
-		const { data } = await supabase
-			.from('tasks')
-			.insert(newTask)
-			.select()
-
+    const { data } = await supabase
+      .from('tasks')
+      .insert(newTask)
+      .select()
     setTasks([...tasks, data[0]]);
-    
-    const assignee = await getUserById(newAssigneeId);
     toast({ 
-      title: "Задача переназначена", 
-      description: `Задача переназначена на ${assignee?.name}.` 
+      title: "Поручение переназначено", 
+      description: `Поручение переназначено на ${assignee?.fullname}.` 
     });
   };
 
@@ -648,10 +689,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 			.update({ is_protocol: task.isProtocol })
 			.eq('id', task.id)
     if (task) {
-      toast({ title: `Протокол задачи ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
+              toast({ title: `Протокол поручения ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
     }
   } catch (error) {
-    console.error("Ошибка при изменении статуса задачи:", error);
+    console.error("Ошибка при изменении статуса поручения:", error);
     toast({ 
       title: "Ошибка", 
       description: error.message,
