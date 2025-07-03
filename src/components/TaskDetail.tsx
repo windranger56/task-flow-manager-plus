@@ -158,10 +158,14 @@ export default function TaskDetail() {
         'completed': 'Завершено',
         'overdue': 'Просрочено',
       };
+      let statusMessage = `Статус изменён на: ${statusLabels[newStatus] || newStatus}`;
+      if (newStatus === 'in_progress' && reason) {
+        statusMessage += `. Комментарий: ${reason}`;
+      }
       await supabase
         .from('messages')
         .insert([{
-          content: `Статус изменён на: ${statusLabels[newStatus] || newStatus}`,
+          content: statusMessage,
           task_id: taskId,
           sent_by: user.id,
         }]);
