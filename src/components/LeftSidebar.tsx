@@ -611,7 +611,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">{doneTasks.length}</p>
-						<p className="text-xs text-gray-500">Всего завершено</p>
+						<p className="text-xs text-gray-500">Завершено</p>
 					</div>
 				</div>
 			</div>
