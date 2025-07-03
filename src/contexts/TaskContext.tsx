@@ -671,7 +671,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
       
-      if (user.id === task.assignedTo) {
+      if (user.id === 1) {
         throw new Error("Недостаточно привилегий");
       }
   
