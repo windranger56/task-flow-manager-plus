@@ -16,7 +16,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 
 interface TaskContextType {
   // Data
@@ -186,7 +186,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const tasksToUpdate = tasksToCheck.filter(task => {
       const deadline = new Date(task.deadline);
-      return deadline < now && task.status !== 'completed' && task.status !== 'overdue';
+      return startOfDay(now) > startOfDay(deadline) && task.status !== 'completed' && task.status !== 'overdue';
     });
     
     if (tasksToUpdate.length > 0) {
