@@ -22,7 +22,8 @@ export default function TaskDetail() {
     reassignTask, 
     toggleProtocol, 
     completeTask,
-    users
+    users,
+    selectTask
   } = useTaskContext();
   
   const [showReassign, setShowReassign] = useState(false);
@@ -38,6 +39,8 @@ export default function TaskDetail() {
   const [chatMessage, setChatMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [nextStatus, setNextStatus] = useState<string | null>(null);
+  const [statusComment, setStatusComment] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -140,11 +143,44 @@ export default function TaskDetail() {
         await supabase
           .from('messages')
           .insert([{
-            content: `Поручение отклонена. Причина: ${reason}`,
+            content: `Поручение отклонено. Причина: ${reason}`,
             task_id: taskId,
             sent_by: user.id,
             is_system: true
           }]);
+      }
+
+      // Добавляем системное сообщение о смене статуса
+      const statusLabels = {
+        'new': 'Новое',
+        'in_progress': 'В работе',
+        'on_verification': 'На проверке',
+        'completed': 'Завершено',
+        'overdue': 'Просрочено',
+      };
+      let statusMessage = `Статус изменён на: ${statusLabels[newStatus] || newStatus}`;
+      if (newStatus === 'in_progress' && reason) {
+        statusMessage += `. Комментарий: ${reason}`;
+      }
+      await supabase
+        .from('messages')
+        .insert([{
+          content: statusMessage,
+          task_id: taskId,
+          sent_by: user.id,
+        }]);
+
+      // Получаем обновлённую задачу и обновляем selectedTask
+      const { data: updatedTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId)
+        .single();
+      if (!fetchError && updatedTask) {
+        selectTask({
+          ...selectedTask,
+          ...updatedTask,
+        });
       }
 
       // Обновляем локальное состояние через контекст
@@ -198,6 +234,17 @@ export default function TaskDetail() {
         newDescription || undefined,
         newDeadline
       );
+      // Добавить системное сообщение о смене исполнителя
+      const newAssignee = users.find(u => u.id === reassignTo);
+      if (newAssignee) {
+        await supabase
+          .from('messages')
+          .insert([{
+            content: `Исполнитель изменён на: ${newAssignee.fullname}`,
+            task_id: selectedTask.id,
+            sent_by: user.id,
+          }]);
+      }
       setShowReassign(false);
     } catch (error) {
       console.error("Ошибка переназначения:", error);
@@ -232,6 +279,27 @@ export default function TaskDetail() {
     }
   };
 
+  // Функция для определения доступных статусов
+  function getAvailableStatuses() {
+    if (!selectedTask || !user) return [];
+    const isExecutor = user.id === selectedTask.assignedTo;
+    const isCreator = user.id === selectedTask.createdBy;
+    const status = selectedTask.status;
+    if (status === 'new' && isExecutor) {
+      return [{ value: 'in_progress', label: 'В работе' }];
+    }
+    if (status === 'in_progress' && isExecutor) {
+      return [{ value: 'on_verification', label: 'На проверке' }];
+    }
+    if (status === 'on_verification' && isCreator) {
+      return [
+        { value: 'completed', label: 'Завершено' },
+        { value: 'in_progress', label: 'В работе (вернуть на доработку)' },
+      ];
+    }
+    return [];
+  }
+
   if (!selectedTask) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-gray-500">
@@ -260,96 +328,94 @@ export default function TaskDetail() {
         
         {/* Кнопки управления задачей */}
         <div className="flex items-center space-x-2">
-          {/* Диалог изменения статуса */}
+          {/* Кнопка для открытия модального окна смены статуса */}
+          <Button
+            className={`rounded-full h-[36px] px-4 ${
+              selectedTask.status === 'completed' ? 'bg-green-500' :
+              selectedTask.status === 'new' ? 'bg-gray-400' :
+              selectedTask.status === 'in_progress' ? 'bg-blue-400' :
+              selectedTask.status === 'on_verification' ? 'bg-yellow-400' :
+              selectedTask.status === 'overdue' ? 'bg-red-700' :
+              'bg-red-400'
+            }`}
+            onClick={() => {
+              setIsStatusConfirmOpen(true);
+              setNextStatus(null);
+              setStatusComment('');
+            }}
+          >
+            {selectedTask.status === 'completed' ? 'Завершена' :
+              selectedTask.status === 'new' ? 'Новое' :
+              selectedTask.status === 'on_verification' ? 'На проверке' :
+              selectedTask.status === 'in_progress' ? 'В работе' :
+              selectedTask.status === 'overdue' ? 'Просрочена' :
+              selectedTask.status}
+          </Button>
           <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
-            <DialogTrigger asChild>
-              <div className="relative group">
-                <Button 
-                  className={`rounded-full h-[36px] px-4 ${
-                    selectedTask.status === 'completed' ? 'bg-green-500' : 
-                    selectedTask.status === 'new' ? 'bg-gray-400' :
-                    selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-                    selectedTask.status === 'on_verification' ? 'bg-yellow-400' :
-                    selectedTask.status === 'canceled' ? 'bg-red-700' :
-                    'bg-red-400'}`}
-                >
-                  {selectedTask.status === 'completed' ? 'Завершена' : 
-                  selectedTask.status === 'new' ? 'Новое' :
-                  selectedTask.status === 'on_verification' ? 'На проверке' :
-                  selectedTask.status === 'in_progress' ? 'В работе' :
-                  selectedTask.status === 'canceled' ? 'Отклонена' :
-                  'Просрочена'}
-                </Button>
-                <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                  Изменить статус поручения
-                </div>
-              </div>
-            </DialogTrigger>
-            
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Подтверждение</DialogTitle>
+                <DialogTitle>Смена статуса поручения</DialogTitle>
               </DialogHeader>
-              
-              {selectedTask.status === 'on_verification' ? (
-                <>
-                  <div className="py-4">
-                    <p>Выберите действие для поручения:</p>
+              <div className="py-4">
+                <div className="mb-4">
+                  <Label>Доступные статусы:</Label>
+                  <div className="flex flex-col gap-2 mt-2">
+                    {getAvailableStatuses().map(opt => (
+                      <label key={opt.value} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="status"
+                          value={opt.value}
+                          checked={nextStatus === opt.value}
+                          onChange={() => setNextStatus(opt.value)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                    {getAvailableStatuses().length === 0 && (
+                      <span className="text-gray-500 text-sm">Нет доступных статусов для смены</span>
+                    )}
                   </div>
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsStatusConfirmOpen(false)}
-                    >
-                      Отмена
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={() => setShowRejectDialog(true)}
-                    >
-                      Отклонить
-                    </Button>
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          await updateTaskStatus(selectedTask.id, 'completed');
-                          setIsStatusConfirmOpen(false);
-                        } catch (error) {
-                          alert('Не удалось завершить задачу');
-                        }
-                      }}
-                    >
-                      Подтвердить
-                    </Button>
+                </div>
+                {/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
+                {selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
+                  <div className="mb-2">
+                    <Label>Комментарий для исполнителя <span className="text-red-500">*</span></Label>
+                    <Textarea
+                      value={statusComment}
+                      onChange={e => setStatusComment(e.target.value)}
+                      placeholder="Опишите, что нужно доработать..."
+                      className="min-h-[80px]"
+                    />
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="py-4">
-                    <p>Вы действительно хотите изменить статус поручения?</p>
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsStatusConfirmOpen(false)}
-                    >
-                      Отмена
-                    </Button>
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          await updateTaskStatus(selectedTask.id, 'completed');
-                          setIsStatusConfirmOpen(false);
-                        } catch (error) {
-                          alert('Не удалось завершить поручение');
-                        }
-                      }}
-                    >
-                      Подтвердить
-                    </Button>
-                  </div>
-                </>
-              )}
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsStatusConfirmOpen(false)}>
+                  Отмена
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!nextStatus) return;
+                    if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim()) {
+                      return;
+                    }
+                    // Если возвращаем на доработку, добавить комментарий
+                    if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
+                      await updateTaskStatus(selectedTask.id, nextStatus, statusComment);
+                    } else {
+                      await updateTaskStatus(selectedTask.id, nextStatus);
+                    }
+                    setIsStatusConfirmOpen(false);
+                  }}
+                  disabled={
+                    !nextStatus ||
+                    (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim())
+                  }
+                >
+                  Подтвердить
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
 
@@ -541,7 +607,7 @@ export default function TaskDetail() {
             selectedTask.status === 'new' ? 'bg-gray-400' :
             selectedTask.status === 'in_progress' ? 'bg-blue-400' :
             selectedTask.status === 'on_verification' ? 'bg-yellow-400':
-            selectedTask.status === 'canceled' ? 'bg-red-700':
+            selectedTask.status === 'overdue' ? 'bg-red-700':
             'bg-red-400'
           )}>
             {selectedTask.status === "completed" ? (
@@ -550,7 +616,19 @@ export default function TaskDetail() {
               <Check className="h-6 w-6 text-transparent" />
             )}
           </div>
-          <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
+            {/* Исполнитель поручения */}
+            {assignee && (
+              <div className="flex items-center mt-1 text-sm text-gray-600">
+                <Avatar className="h-6 w-6 mr-2">
+                  <AvatarImage src={assignee.image} alt={assignee.fullname} />
+                  <AvatarFallback>{assignee.fullname?.slice(0,2)}</AvatarFallback>
+                </Avatar>
+                <span>Исполнитель: {assignee.fullname}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Разделитель */}
