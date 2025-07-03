@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     getSubordinates,
     getDepartmentByUserId,
     addUsersToDepartment,
+    selectTask,
 		tasks
   } = useTaskContext();
   const navigate = useNavigate();
@@ -45,6 +47,19 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     email: "",
     image: "",
   });
+
+  const isMobile = useIsMobile();
+  const [showTaskDetail, setShowTaskDetail] = useState(false);
+  
+  const handleTaskClick = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      selectTask(task);
+      if (isMobile) {
+        setShowTaskDetail(true);
+      }
+    }
+  };
 
   const getProfile = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -84,6 +99,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
   const [showActionDialog, setShowActionDialog] = useState(false);
+  const [newTasks, setNewTasks] = useState([]);
   // const [showNewDepartment, setShowNewDepartment] = useState(false);
   // const [showAddUsersToDepartment, setShowAddUsersToDepartment] = useState(false);
   
@@ -111,6 +127,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   useEffect(() => {
 		setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []))
 	}, [tasks])
+
+  useEffect(() => {
+    setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
+    setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
+    setNewTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), [])); // И здесь обновляем
+  }, [tasks]);
 
   // Загрузка пользователей при открытии диалога создания департамента
   useEffect(() => {
@@ -457,73 +479,108 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </DialogContent>
         </Dialog>
 
-					<Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
-						<DialogTrigger asChild>
-															<Button 
-									data-tooltip-id="tooltip" 
-									data-tooltip-content="Новые поручения"
-									className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
-								>
-									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-										<path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
-										<path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
-									</svg>
-									{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-									</span> */}
-								</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								                <DialogTitle>Новые поручения</DialogTitle>
-							</DialogHeader>
-							{/* <div className="space-y-2">
-								<div className="p-3 border rounded-md">
-									<p className="font-medium">Новая задача: Обзор дизайна</p>
-									<p className="text-sm text-gray-500">Назначил: Иванов Иван</p>
-								</div>
-								<div className="p-3 border rounded-md">
-									<p className="font-medium">Новая задача: Обновление сайта</p>
-									<p className="text-sm text-gray-500">Назначил: Петрова Мария</p>
-								</div>
-							</div> */}
-						</DialogContent>
-					</Dialog>
+        <Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
+          <DialogTrigger asChild>
+            <Button 
+              data-tooltip-id="tooltip" 
+              data-tooltip-content="Новые поручения"
+              className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+                <path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
+                <path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
+              </svg>
+              {newTasks.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {newTasks.length}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Новые поручения</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {newTasks.length > 0 ? (
+                newTasks.map(task => (
+                  <div 
+                    key={task.id} 
+                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      handleTaskClick(task.id);
+                      setShowNewNotifications(false);
+                    }}
+                  >
+                    <p className="font-medium">{task.title}</p>
+                    <p className="text-sm text-gray-500">{task.description}</p>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-xs text-gray-500">
+                        Срок: {new Date(task.deadline).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Приоритет: {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">Новых поручений нет</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
-					<Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
-						<DialogTrigger asChild>
-							<Button 
-								data-tooltip-id="tooltip" 
-								data-tooltip-content="Просроченные поручения"
-								className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
-							>
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-									<path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
-								</svg>
-								{/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-									3
-								</span> */}
-							</Button>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								                <DialogTitle>Просроченные поручения</DialogTitle>
-							</DialogHeader>
-							{/* <div className="space-y-2">
-								<div className="p-3 border rounded-md">
-									<p className="font-medium">Просрочено: Маркетинговый отчет</p>
-									<p className="text-sm text-red-500">Просрочено на 3 дня</p>
-								</div>
-								<div className="p-3 border rounded-md">
-									<p className="font-medium">Просрочено: Презентация для клиента</p>
-									<p className="text-sm text-red-500">Просрочено на 1 день</p>
-								</div>
-								<div className="p-3 border rounded-md">
-									<p className="font-medium">Просрочено: Планирование бюджета</p>
-									<p className="text-sm text-red-500">Просрочено на 5 дней</p>
-								</div>
-							</div> */}
-						</DialogContent>
-					</Dialog>
+        <Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
+          <DialogTrigger asChild>
+            <Button 
+              data-tooltip-id="tooltip" 
+              data-tooltip-content="Просроченные поручения"
+              className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
+                <path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
+              </svg>
+              {overdueTasks.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {overdueTasks.length}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Просроченные поручения</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {overdueTasks.length > 0 ? (
+                overdueTasks.map(task => (
+                  <div 
+                    key={task.id} 
+                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      handleTaskClick(task.id);
+                      setShowOverdueNotifications(false);
+                    }}
+                  >
+                    <p className="font-medium">{task.title}</p>
+                    <p className="text-sm text-gray-500">{task.description}</p>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-xs text-red-500">
+                        Просрочено: {new Date(task.deadline).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Приоритет: {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">Просроченных поручений нет</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 				</div>
 				
 				{/* Stats */}
