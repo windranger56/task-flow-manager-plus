@@ -94,7 +94,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [selectedDeptForUsers, setSelectedDeptForUsers] = useState("");
   const [selectedUsersToAdd, setSelectedUsersToAdd] = useState<string[]>([]);
   const [doneTasks, setDoneTasks] = useState([])
+  const [inworkTasks, setinworkTasks] = useState([])
   const [overdueTasks, setOverdueTasks] = useState([])
+  const [verifyTasks, setverifyTasks] = useState([])
   const [showNewNotifications, setShowNewNotifications] = useState(false);
   const [showOverdueNotifications, setShowOverdueNotifications] = useState(false);
   const [expandedDepartments, setExpandedDepartments] = useState<string[]>([]);
@@ -122,6 +124,14 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
 	useEffect(() => {
 		setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
+	}, [tasks])
+
+  useEffect(() => {
+		setinworkTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []))
+	}, [tasks])
+
+  useEffect(() => {
+		setverifyTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []))
 	}, [tasks])
 
   useEffect(() => {
@@ -592,12 +602,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 				</div>
 				<div className="flex justify-between p-4 border-b border-gray-200">
 					<div className="text-center">
-						<p className="text-2xl font-bold">{tasks.length - doneTasks.length}</p>
+						<p className="text-2xl font-bold">{inworkTasks.length}</p>
 						<p className="text-xs text-gray-500">В работе</p>
 					</div>
 					<div className="text-center">
-						<p className="text-2xl font-bold">{overdueTasks.length}</p>
-						<p className="text-xs text-gray-500">Срок истек</p>
+						<p className="text-2xl font-bold">{verifyTasks.length}</p>
+						<p className="text-xs text-gray-500">На проверке</p>а
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">{doneTasks.length}</p>

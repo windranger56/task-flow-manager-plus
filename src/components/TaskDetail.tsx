@@ -263,22 +263,27 @@ export default function TaskDetail() {
           {/* Диалог изменения статуса */}
           <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
             <DialogTrigger asChild>
-              <Button 
-                className={`rounded-full h-[36px] px-4 ${
-                  selectedTask.status === 'completed' ? 'bg-green-500' : 
-                  selectedTask.status === 'new' ? 'bg-gray-400' :
-                  selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-                  selectedTask.status === 'on_verification' ? 'bg-yellow-400' :
-                  selectedTask.status === 'canceled' ? 'bg-red-700' :
-                  'bg-red-400'}`}
-              >
-                {selectedTask.status === 'completed' ? 'Завершена' : 
-                 selectedTask.status === 'new' ? 'Новое' :
-                 selectedTask.status === 'on_verification' ? 'На проверке' :
-                 selectedTask.status === 'in_progress' ? 'В работе' :
-                 selectedTask.status === 'canceled' ? 'Отклонена' :
-                 'Просрочена'}
-              </Button>
+              <div className="relative group">
+                <Button 
+                  className={`rounded-full h-[36px] px-4 ${
+                    selectedTask.status === 'completed' ? 'bg-green-500' : 
+                    selectedTask.status === 'new' ? 'bg-gray-400' :
+                    selectedTask.status === 'in_progress' ? 'bg-blue-400' :
+                    selectedTask.status === 'on_verification' ? 'bg-yellow-400' :
+                    selectedTask.status === 'canceled' ? 'bg-red-700' :
+                    'bg-red-400'}`}
+                >
+                  {selectedTask.status === 'completed' ? 'Завершена' : 
+                  selectedTask.status === 'new' ? 'Новое' :
+                  selectedTask.status === 'on_verification' ? 'На проверке' :
+                  selectedTask.status === 'in_progress' ? 'В работе' :
+                  selectedTask.status === 'canceled' ? 'Отклонена' :
+                  'Просрочена'}
+                </Button>
+                <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  Изменить статус поручения
+                </div>
+              </div>
             </DialogTrigger>
             
             <DialogContent>
@@ -385,12 +390,17 @@ export default function TaskDetail() {
           {/* Кнопка переназначения */}
           <Dialog open={showReassign} onOpenChange={setShowReassign}>
             <DialogTrigger asChild>
-              <Button className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'>
-                <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </Button>
+              <div className="relative group">
+                <Button className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'>
+                  <svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </Button>
+                <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  Переназначить поручение
+                </div>
+              </div>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -443,6 +453,7 @@ export default function TaskDetail() {
                     value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
                     className="w-full"
+                    min={format(new Date(), 'yyyy-MM-dd')}
                   />
                 </div>
                 
@@ -486,14 +497,19 @@ export default function TaskDetail() {
           {/* Кнопка удаления (только для создателя и завершенных задач) */}
           {selectedTask.createdBy === user.id && selectedTask.status === 'completed' && (
             <>
-              <Button 
-                className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
-                </svg>
-              </Button>
+              <div className="relative group">
+                <Button 
+                  className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
+                  </svg>
+                </Button>
+                <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  Удалить
+                </div>
+              </div>
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogContent>
                   <DialogHeader>

@@ -573,6 +573,7 @@ export default function TaskList() {
                 value={taskDeadline ? format(taskDeadline, 'yyyy-MM-dd') : ''}
                 onChange={handleDateChange}
                 className={`w-full ${!taskDeadline && "border-red-500"}`}
+                min={format(new Date(), 'yyyy-MM-dd')} // Добавьте этот атрибут
               />
             </div>
             

@@ -547,10 +547,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const completeTask = async (task: Task) => {
     try {
       if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
-      if(task.status === 'canceled' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
+      if(task.status === 'canceled' && user.id !== task.assignedTo) throw new Error("Только исполнитель может взять поручение в работу")
               if(task.status === 'completed') throw new Error("Невозможно изменить статус поручения так как оно уже завершено")
-      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
-      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только сполнитель может отправить поручение на проверку")  
+      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только исполнитель может взять поручение в работу")
+      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только исполнитель может отправить поручение на проверку")  
 
       // Update task status in Supabase
       const { error } = await supabase
@@ -667,38 +667,47 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleProtocol = async (taskId: string) => {
-    try{
+    try {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-      if (user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
-    setTasks(
       
-      tasks.map(task => 
-        task.id === taskId
-          ? { 
-              ...task, 
-              isProtocol: task.isProtocol === 'active' ? 'inactive' : 'active' 
-            } 
-          : task
-      )
-    );
-    
-    // const task = tasks.find(t => t.id === taskId);
-		await supabase
-			.from('tasks')
-			.update({ is_protocol: task.isProtocol })
-			.eq('id', task.id)
-    if (task) {
-              toast({ title: `Протокол поручения ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
+      if (user.id === task.assignedTo) {
+        throw new Error("Недостаточно привилегий");
+      }
+  
+      // Мгновенное обновление
+      const newProtocolStatus = task.isProtocol === 'active' ? 'inactive' : 'active';
+      
+      // 1. Обновляем локальное состояние
+      const updatedTasks = tasks.map(t => 
+        t.id === taskId ? { ...t, isProtocol: newProtocolStatus } : t
+      );
+      setTasks(updatedTasks);
+      
+      // 2. Находим обновленный selectedTask
+      const updatedSelectedTask = updatedTasks.find(t => t.id === taskId);
+      if (updatedSelectedTask) {
+        setSelectedTask(updatedSelectedTask);
+      }
+  
+      // 3. Обновляем базу данных
+      await supabase
+        .from('tasks')
+        .update({ is_protocol: newProtocolStatus })
+        .eq('id', task.id);
+  
+      toast({ 
+        title: `Протокол поручения ${newProtocolStatus === 'inactive' ? "не" : ""} активен`
+      });
+    } catch (error) {
+      // Откат изменений
+      setTasks(tasks);
+      toast({ 
+        title: "Ошибка", 
+        description: error.message,
+        variant: "destructive"
+      });
     }
-  } catch (error) {
-    console.error("Ошибка при изменении статуса поручения:", error);
-    toast({ 
-      title: "Ошибка", 
-      description: error.message,
-      variant: "destructive"
-    });
-  }
   };
 
   const addMessage = (taskId: string, content: string) => {
