@@ -607,7 +607,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">{verifyTasks.length}</p>
-						<p className="text-xs text-gray-500">На проверке</p>а
+						<p className="text-xs text-gray-500">На проверке</p>
 					</div>
 					<div className="text-center">
 						<p className="text-2xl font-bold">{doneTasks.length}</p>

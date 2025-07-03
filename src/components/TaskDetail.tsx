@@ -636,9 +636,14 @@ export default function TaskDetail() {
         
         {/* Дата и метки */}
         <div className="mb-6 ml-[65px] flex items-center gap-4">
-          <span className="inline-block px-3 py-1 text-sm text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-full shadow-sm">
-            {format(new Date(selectedTask.createdAt), 'dd MMM, yyyy', { locale: ru })}
-          </span>
+        <span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm ${
+          selectedTask.status === 'overdue' 
+            ? 'text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200' 
+            : 'text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200'
+        }`}>
+          {format(new Date(selectedTask.createdAt), 'dd MMM, yyyy', { locale: ru })}
+        </span>
+
           
           {/* Приоритет */}
           {selectedTask.priority === 'high' && (
@@ -650,7 +655,11 @@ export default function TaskDetail() {
           
           {/* Дедлайн */}
           {selectedTask.deadline && (
-            <span className="inline-block px-3 py-1 text-sm text-purple-800 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-full shadow-sm">
+            <span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm ${
+              selectedTask.status === 'overdue'
+                ? 'text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200'
+                : 'text-purple-800 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200'
+            }`}>
               {calculateDeadlineDays(selectedTask.deadline)}
             </span>
           )}
