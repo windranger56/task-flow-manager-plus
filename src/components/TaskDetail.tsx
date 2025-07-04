@@ -312,16 +312,41 @@ export default function TaskDetail() {
     <div className="w-full h-full flex flex-col relative">
       {/* Шапка с информацией о задаче */}
       <div className="py-[16px] pl-[20px] pr-[30px] border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           {creator && assignee && (
             <>
-              <Avatar className="h-10 w-10 mr-3">
-                <AvatarImage src={creator.id === user.id ? assignee.image : creator.image} 
-                  alt={creator.id === user.id ? assignee.name : creator.name} />
-              </Avatar>
-              <span className="font-medium">
-                {creator.id === user.id ? assignee.fullname : creator.fullname}
-              </span>
+              <div className="flex flex-col items-center">
+                <span className="text-xs text-black-500 mb-1">Автор</span>
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={creator.image} alt={creator.fullname} />
+                  <AvatarFallback>{creator.fullname?.slice(0,2)}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs mt-1">{creator.fullname}</span>
+              </div>
+              
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                className="text-gray-400 mx-2"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7"></path>
+              </svg>
+              
+              <div className="flex flex-col items-center">
+                <span className="text-xs text-black-500 mb-1">Исполнитель</span>
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={assignee.image} alt={assignee.fullname} />
+                  <AvatarFallback>{assignee.fullname?.slice(0,2)}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs mt-1">{assignee.fullname}</span>
+              </div>
             </>
           )}
         </div>
@@ -618,16 +643,7 @@ export default function TaskDetail() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">{selectedTask.title}</h1>
-            {/* Исполнитель поручения */}
-            {assignee && (
-              <div className="flex items-center mt-1 text-sm text-gray-600">
-                <Avatar className="h-6 w-6 mr-2">
-                  <AvatarImage src={assignee.image} alt={assignee.fullname} />
-                  <AvatarFallback>{assignee.fullname?.slice(0,2)}</AvatarFallback>
-                </Avatar>
-                <span>Исполнитель: {assignee.fullname}</span>
-              </div>
-            )}
+           
           </div>
         </div>
 
@@ -667,7 +683,7 @@ export default function TaskDetail() {
         
         {/* Описание поручения */}
         <div className="mb-8 ml-[65px]">
-          <p className="text-gray-700">{selectedTask.description}</p>
+          <p className="text-gray-700 whitespace-pre-wrap">{selectedTask.description}</p>
         </div>
         
         {/* Разделитель */}

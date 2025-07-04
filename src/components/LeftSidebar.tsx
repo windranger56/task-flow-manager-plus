@@ -371,7 +371,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="department-name">Название подразделения</Label>
+                <Label htmlFor="department-name">Название подразделения <span className="text-red-500">*</span> </Label>
                 <Input 
                   id="department-name" 
                   value={newDeptName}
@@ -379,12 +379,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   placeholder="Введите название подразделения"
                   className={!newDeptName && "border-red-500"}
                 />
-                {!newDeptName && (
-                  <p className="text-xs text-red-500">Укажите название подразделения</p>
-                )}
+               
               </div>
               <div className="space-y-2">
-                <Label htmlFor="department-manager">Руководитель подразделения</Label>
+                <Label htmlFor="department-manager">Руководитель подразделения <span className="text-red-500">*</span> </Label>
                 <Select value={newDeptManager} onValueChange={setNewDeptManager}>
                   <SelectTrigger className={!newDeptManager && "border-red-500"}>
                     <SelectValue placeholder="Выберите руководителя" />
@@ -403,13 +401,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                     )}
                   </SelectContent>
                 </Select>
-                {!newDeptManager ? (
-                  <p className="text-xs text-red-500">Выберите руководителя</p>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Отображаются только пользователи без руководителя
-                  </p>
-                )}
+                
               </div>
               <Button 
                 onClick={() => {

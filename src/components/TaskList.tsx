@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Check, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, Plus, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useTaskContext } from '@/contexts/TaskContext';
@@ -27,7 +27,7 @@ import TaskDetail from './TaskDetail';
 import { supabase } from '@/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { ProtocolStatus, TaskStatus } from '@/types';
-import { Avatar, AvatarImage } from '@radix-ui/react-avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
 
 export default function TaskList() {
   const { 
@@ -392,7 +392,9 @@ export default function TaskList() {
                               </div>
                               <div>
                                 <h3 className="text-sm font-medium mb-1">{task.title}</h3>
-                                <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>
+                                <p className={task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}>
+                                  {formatTaskDate(task.deadline)}
+                                </p>
                                 {/* Добавляем информацию о роли */}
                                 <div className="flex gap-2 mt-1">
                                   {isAuthor && (
@@ -408,13 +410,37 @@ export default function TaskList() {
                                 </div>
                               </div>
                             </div>
-                            <Avatar className="mr-3">
-                              <AvatarImage 
-                                className='rounded-full h-[32px] w-[32px]' 
-                                src={task?.assignee?.image} 
-                                alt={task?.assignee?.name} 
-                              />
-                            </Avatar>
+                            <div className="flex items-center mr-3 ">
+                              {/* Аватар автора */}
+                              <div className="relative h-[32px] w-[32px]">
+                                <Avatar className="h-full w-full">
+                                  <AvatarImage 
+                                    className='rounded-full' 
+                                    src={task?.creator?.image} 
+                                    alt={task?.creator?.name} 
+                                  />
+                                  <AvatarFallback>
+                                    {task?.creator?.name?.charAt(0) || 'A'}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                              
+                              
+                              
+                              {/* Аватар исполнителя */}
+                              <div className="relative h-[32px] w-[32px]">
+                                <Avatar className="h-full w-full">
+                                  <AvatarImage 
+                                    className='rounded-full' 
+                                    src={task?.assignee?.image} 
+                                    alt={task?.assignee?.name} 
+                                  />
+                                  <AvatarFallback>
+                                    {task?.assignee?.name?.charAt(0) || 'I'}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
+                            </div>
                           </div>
                         </li>
                       );
@@ -480,7 +506,10 @@ export default function TaskList() {
                 id="task-description" 
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
-                className={!taskDescription && "border-red-500"}
+                className={cn(
+                  !taskDescription && "border-red-500",
+                  "whitespace-pre-wrap" // Это ключевое свойство
+                )}
                 placeholder="Введите описание поручения"
               />
               {!taskDescription && (
