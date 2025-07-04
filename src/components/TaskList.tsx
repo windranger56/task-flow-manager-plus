@@ -74,17 +74,21 @@ export default function TaskList() {
   }, [showNewTask, departments.length]);
 
 	useEffect(() => {
-		(async () => {
-			const n = await Promise.all(tasks.map(async t => ({...t, assignee: await getUserById(t.assignedTo)})))
-			console.log(n)
-			setTasksByDepartment(departments.map(department => {
-				return {
-					department,
-					tasks: n.filter(task => task.departmentId === department.id)
-				};
-			}))
-		})()
-	}, [tasks])
+    (async () => {
+      const tasksWithUsers = await Promise.all(tasks.map(async t => ({
+        ...t, 
+        assignee: await getUserById(t.assignedTo),
+        creator: await getUserById(t.createdBy) // Добавляем данные автора
+      })))
+      console.log(tasksWithUsers)
+      setTasksByDepartment(departments.map(department => {
+        return {
+          department,
+          tasks: tasksWithUsers.filter(task => task.departmentId === department.id)
+        };
+      }))
+    })()
+  }, [tasks])
   
   // Загрузка руководителя при выборе подразделения
   useEffect(() => {
@@ -440,7 +444,20 @@ export default function TaskList() {
                                 </Avatar>
                               </div>
                               
-                              
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                width="24" 
+                                height="24" 
+                                viewBox="0 0 24 24" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                strokeWidth="2" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                                className="text-gray-400 mx-2"
+                              >
+                                <path d="M5 12h14M12 5l7 7-7 7"></path>
+                              </svg>
                               
                               {/* Аватар исполнителя */}
                               <div className="relative h-[32px] w-[32px]">
