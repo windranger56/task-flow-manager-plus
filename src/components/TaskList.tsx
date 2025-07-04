@@ -10,7 +10,7 @@ import { Check, ChevronDown, ChevronRight, ChevronUp, Plus, X } from "lucide-rea
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { useTaskContext } from '@/contexts/TaskContext';
-import { cn } from '@/lib/utils';
+import { cn, getTaskStatusColor } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Drawer, 
@@ -337,6 +337,32 @@ export default function TaskList() {
     }
   };
   
+  // Добавить функцию для обновления задач из базы
+  async function refreshTasksFromDb(departments, setTasks) {
+    if (!departments || departments.length === 0) return;
+    const departmentIds = departments.map(dept => dept.id);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .in('departmentId', departmentIds)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setTasks(data.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        assignedTo: task.assigned_to,
+        createdBy: task.created_by,
+        departmentId: task.departmentId,
+        priority: task.priority,
+        isProtocol: task.is_protocol,
+        createdAt: new Date(task.created_at),
+        deadline: new Date(task.deadline),
+        status: task.status
+      })));
+    }
+  }
+  
   return (
     <div className="h-full flex flex-col relative">
       
@@ -375,18 +401,7 @@ export default function TaskList() {
                           <div className="flex justify-between">
                             <div className="flex items-center gap-[10px]">
                               <div 
-                                className={`
-                                  flex justify-center items-center 
-                                  ${
-                                    task.status === 'completed' ? 'bg-green-500' : 
-                                    task.status === 'new' ? 'bg-gray-400' :
-                                    task.status === 'in_progress' ? 'bg-blue-400' :
-                                    task.status === 'on_verification' ? 'bg-yellow-400':
-                                    task.status === 'canceled' ? 'bg-red-700':
-                                    'bg-red-400'
-                                  } 
-                                  rounded-full h-[24px] w-[24px] cursor-pointer
-                                `}
+                                className={`flex justify-center items-center ${getTaskStatusColor(task.status)} rounded-full h-[24px] w-[24px] cursor-pointer`}
                               >
                                 <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
                               </div>

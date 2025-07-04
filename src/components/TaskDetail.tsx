@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
-import { cn } from '@/lib/utils';
+import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
 import { supabase } from '@/supabase/client';
 
@@ -23,7 +23,8 @@ export default function TaskDetail() {
     toggleProtocol, 
     completeTask,
     users,
-    selectTask
+    selectTask,
+    fetchTasks
   } = useTaskContext();
   
   const [showReassign, setShowReassign] = useState(false);
@@ -117,7 +118,8 @@ export default function TaskDetail() {
         .insert([{
           content: chatMessage,
           task_id: selectedTask.id,
-          sent_by: user.id
+          sent_by: user.id,
+          is_system: 0,
         }]);
 
       if (error) throw error;
@@ -138,18 +140,6 @@ export default function TaskDetail() {
 
       if (taskError) throw taskError;
 
-      // Если задача отклонена, добавляем сообщение с причиной
-      if (newStatus === 'canceled' && reason) {
-        await supabase
-          .from('messages')
-          .insert([{
-            content: `Поручение отклонено. Причина: ${reason}`,
-            task_id: taskId,
-            sent_by: user.id,
-            is_system: true
-          }]);
-      }
-
       // Добавляем системное сообщение о смене статуса
       const statusLabels = {
         'new': 'Новое',
@@ -168,6 +158,7 @@ export default function TaskDetail() {
           content: statusMessage,
           task_id: taskId,
           sent_by: user.id,
+          is_system: 1,
         }]);
 
       // Получаем обновлённую задачу и обновляем selectedTask
@@ -181,15 +172,11 @@ export default function TaskDetail() {
           ...selectedTask,
           ...updatedTask,
         });
-      }
-
-      // Обновляем локальное состояние через контекст
-      if (newStatus === 'completed') {
-        completeTask(selectedTask);
+        await fetchTasks();
       }
 
     } catch (error) {
-      console.error('Ошибка при обновлении статуса:', error);
+      console.error(error);
       throw error;
     }
   };
@@ -209,7 +196,7 @@ export default function TaskDetail() {
         content: `Поручение отклонено. Причина: ${rejectReason}`,
         task_id: selectedTask.id,
         sent_by: user.id,
-        is_system: true,
+        is_system: 1,
         created_at: new Date().toISOString()
       };
       
@@ -243,6 +230,7 @@ export default function TaskDetail() {
             content: `Исполнитель изменён на: ${newAssignee.fullname}`,
             task_id: selectedTask.id,
             sent_by: user.id,
+            is_system: 1,
           }]);
       }
       setShowReassign(false);
@@ -628,12 +616,7 @@ export default function TaskDetail() {
         <div className="flex items-center gap-[15px] mb-6">
           <div className={cn(
             "h-[46px] w-[46px] rounded-full flex items-center justify-center",
-            selectedTask.status === 'completed' ? 'bg-green-500' : 
-            selectedTask.status === 'new' ? 'bg-gray-400' :
-            selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-            selectedTask.status === 'on_verification' ? 'bg-yellow-400':
-            selectedTask.status === 'overdue' ? 'bg-red-700':
-            'bg-red-400'
+            getTaskStatusColor(selectedTask.status)
           )}>
             {selectedTask.status === "completed" ? (
               <Check className="h-6 w-6 text-white" />
@@ -696,14 +679,14 @@ export default function TaskDetail() {
               <div 
                 key={msg.id} 
                 className={`mb-2 p-2 rounded-md relative pr-12 ${
-                  msg.is_system 
-                    ? 'bg-gray-100 mx-auto text-center italic max-w-[80%]' 
+                  msg.is_system
+                    ? 'bg-gray-100 mx-auto text-center italic max-w-[80%] flex justify-center' 
                     : msg.sent_by === user.id 
                       ? 'ml-auto bg-blue-100 max-w-[80%]' 
                       : 'bg-gray-100 max-w-[80%]'
                 }`}
               >
-                <div className="break-all whitespace-pre-wrap">
+                <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
                   {msg.content}
                 </div>
                 <span className={`text-xs absolute bottom-1 right-2 ${
