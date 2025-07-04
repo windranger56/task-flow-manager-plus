@@ -16,7 +16,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 
 interface TaskContextType {
   // Data
@@ -61,6 +61,7 @@ interface TaskContextType {
   getMessagesByTask: (taskId: string) => Message[];
   getSubordinates: () => Promise<User[]>;
   updateSelectedDepartmentId: (departmentId: string) => Promise<void>;
+  fetchTasks: () => Promise<void>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -186,7 +187,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const tasksToUpdate = tasksToCheck.filter(task => {
       const deadline = new Date(task.deadline);
-      return startOfDay(now) > startOfDay(deadline) && task.status !== 'completed' && task.status !== 'overdue';
+      return deadline < now && task.status !== 'completed' && task.status !== 'overdue';
     });
     
     if (tasksToUpdate.length > 0) {
@@ -547,10 +548,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const completeTask = async (task: Task) => {
     try {
       if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
-      if(task.status === 'canceled' && user.id !== task.assignedTo) throw new Error("Только исполнитель может взять поручение в работу")
-              if(task.status === 'completed') throw new Error("Невозможно изменить статус поручения так как оно уже завершено")
-      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только исполнитель может взять поручение в работу")
-      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только исполнитель может отправить поручение на проверку")  
+      if(task.status === 'completed') throw new Error("Невозможно изменить статус поручения так как оно уже завершено")
+      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
+      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только сполнитель может отправить поручение на проверку")  
 
       // Update task status in Supabase
       const { error } = await supabase
@@ -562,7 +562,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             task.status === 'in_progress'
               ? 'on_verification'
               : (
-                task.status === 'canceled'
+                task.status === 'overdue'
                   ? 'in_progress'
                   : 'completed'
               )
@@ -581,8 +581,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         const updatedTasks = tasks.map(t => {
           if (task.id !== t.id) return t;
       
-          // Проверка прав для canceled задач
-          if (t.status === 'canceled' && user?.id !== t.assigned_to) {
+          // Проверка прав для overdue задач
+          if (t.status === 'overdue' && user?.id !== t.assignedTo) {
             throw new Error("Только исполнитель может взять поручение в работу");
           }
       
@@ -590,7 +590,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           const newStatus: TaskStatus = 
             t.status === 'new' ? 'in_progress' :
             t.status === 'in_progress' ? 'on_verification' :
-            t.status === 'canceled' ? 'in_progress' :
+            t.status === 'overdue' ? 'in_progress' :
             'completed';
       
           return {
@@ -667,47 +667,38 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleProtocol = async (taskId: string) => {
-    try {
+    try{
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
+      if (user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
+    setTasks(
       
-      if (user.id === 1) {
-        throw new Error("Недостаточно привилегий");
-      }
-  
-      // Мгновенное обновление
-      const newProtocolStatus = task.isProtocol === 'active' ? 'inactive' : 'active';
-      
-      // 1. Обновляем локальное состояние
-      const updatedTasks = tasks.map(t => 
-        t.id === taskId ? { ...t, isProtocol: newProtocolStatus } : t
-      );
-      setTasks(updatedTasks);
-      
-      // 2. Находим обновленный selectedTask
-      const updatedSelectedTask = updatedTasks.find(t => t.id === taskId);
-      if (updatedSelectedTask) {
-        setSelectedTask(updatedSelectedTask);
-      }
-  
-      // 3. Обновляем базу данных
-      await supabase
-        .from('tasks')
-        .update({ is_protocol: newProtocolStatus })
-        .eq('id', task.id);
-  
-      toast({ 
-        title: `Протокол поручения ${newProtocolStatus === 'inactive' ? "не" : ""} активен`
-      });
-    } catch (error) {
-      // Откат изменений
-      setTasks(tasks);
-      toast({ 
-        title: "Ошибка", 
-        description: error.message,
-        variant: "destructive"
-      });
+      tasks.map(task => 
+        task.id === taskId
+          ? { 
+              ...task, 
+              isProtocol: task.isProtocol === 'active' ? 'inactive' : 'active' 
+            } 
+          : task
+      )
+    );
+    
+    // const task = tasks.find(t => t.id === taskId);
+		await supabase
+			.from('tasks')
+			.update({ is_protocol: task.isProtocol })
+			.eq('id', task.id)
+    if (task) {
+              toast({ title: `Протокол поручения ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
     }
+  } catch (error) {
+    console.error("Ошибка при изменении статуса поручения:", error);
+    toast({ 
+      title: "Ошибка", 
+      description: error.message,
+      variant: "destructive"
+    });
+  }
   };
 
   const addMessage = (taskId: string, content: string) => {
@@ -921,6 +912,64 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchTasks = async () => {
+    try {
+      // Получаем ID доступных подразделений
+      const departmentIds = departments.map(dept => dept.id);
+      
+      if (departmentIds.length === 0) {
+        // Если нет доступных подразделений, устанавливаем пустой массив задач
+        setTasks([]);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('departmentId', departmentIds)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error("Ошибка при загрузке поручений:", error);
+        toast({ 
+          title: "Ошибка загрузки", 
+          description: "Не удалось загрузить поручения", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      if (data) {
+        // Преобразуем данные из Supabase в формат Task
+        const formattedTasks: Task[] = data.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          assignedTo: task.assigned_to,
+          createdBy: task.created_by,
+          departmentId: task.departmentId,
+          priority: task.priority,
+          isProtocol: task.is_protocol as ProtocolStatus,
+          createdAt: new Date(task.created_at),
+          deadline: new Date(task.deadline),
+          status: task.status as TaskStatus
+        }));
+        
+        setTasks(formattedTasks);
+        
+        // Проверяем и обновляем просроченные задачи
+        await checkAndUpdateOverdueTasks(formattedTasks);
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке поручений:", error);
+      toast({ 
+        title: "Ошибка загрузки", 
+        description: "Не удалось загрузить поручения", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
     <TaskContext.Provider value={{
 			user,
@@ -949,7 +998,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getTasksByDepartment,
       getMessagesByTask,
       getSubordinates,
-      updateSelectedDepartmentId
+      updateSelectedDepartmentId,
+      fetchTasks
     }}>
       {children}
     </TaskContext.Provider>
