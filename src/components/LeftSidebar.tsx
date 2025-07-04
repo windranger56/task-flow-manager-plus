@@ -528,9 +528,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                       <span className="text-xs text-gray-500">
                         Срок: {new Date(task.deadline).toLocaleDateString()}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        Приоритет: {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
-                      </span>
+                      {task.priority === 'high' && (
+                        <span className="text-xs text-gray-500">
+                          Приоритет: Высокий
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))
@@ -579,9 +581,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                       <span className="text-xs text-red-500">
                         Просрочено: {new Date(task.deadline).toLocaleDateString()}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        Приоритет: {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
-                      </span>
+                      {task.priority === 'high' && (
+                        <span className="text-xs text-gray-500">
+                          Приоритет: Высокий
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))

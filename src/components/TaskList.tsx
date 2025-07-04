@@ -38,7 +38,8 @@ export default function TaskList() {
     users,
     selectedTask,
     addTask,
-		getUserById
+		getUserById,
+    user
   } = useTaskContext();
   
   const [showNewTask, setShowNewTask] = useState(false);
@@ -355,49 +356,73 @@ export default function TaskList() {
               <AccordionContent>
                 {tasks.length > 0 ? (
                   <ul className="divide-y divide-gray-200">
-                    {tasks.map((task) => (
-                      <li 
-                        key={task.id}
-                        className={cn(
-                          "p-[20px] cursor-pointer hover:bg-gray-50",
-                          selectedTask?.id === task.id && "bg-gray-50"
-                        )}
-                        onClick={() => handleTaskClick(task.id)}
-                      >
-                        <div className="flex justify-between">
-                          <div className="flex items-center gap-[10px]">
-                          <div 
-                            // onClick={e => handleTaskStatusToggle(e, task.id)} 
-                            className={`
-                              flex justify-center items-center 
-                              ${
-                                task.status === 'completed' ? 'bg-green-500' : 
-                                task.status === 'new' ? 'bg-gray-400' :
-                                task.status === 'in_progress' ? 'bg-blue-400' :
-                                task.status === 'on_verification' ? 'bg-yellow-400':
-                                task.status === 'canceled' ? 'bg-red-700':
-                                'bg-red-400'
-                              } 
-                              rounded-full h-[24px] w-[24px] cursor-pointer
-                            `}
-                          >
-                            <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
-                          </div>
-                            <div>
-                              <h3 className="text-sm font-medium mb-1">{task.title}</h3>
-                              <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>
+                    {tasks.map((task) => {
+                      // Проверяем, является ли текущий пользователь автором или исполнителем
+                      const isAuthor = user?.id === task.createdBy;
+                      const isAssignee = user?.id === task.assignedTo;
+                      
+                      return (
+                        <li 
+                          key={task.id}
+                          className={cn(
+                            "p-[20px] cursor-pointer hover:bg-gray-50",
+                            selectedTask?.id === task.id && "bg-gray-50",
+                            isAuthor && "border-l-4 border-l-blue-500", // Подсветка для автора
+                            isAssignee && "bg-blue-50" // Подсветка для исполнителя
+                          )}
+                          onClick={() => handleTaskClick(task.id)}
+                        >
+                          <div className="flex justify-between">
+                            <div className="flex items-center gap-[10px]">
+                              <div 
+                                className={`
+                                  flex justify-center items-center 
+                                  ${
+                                    task.status === 'completed' ? 'bg-green-500' : 
+                                    task.status === 'new' ? 'bg-gray-400' :
+                                    task.status === 'in_progress' ? 'bg-blue-400' :
+                                    task.status === 'on_verification' ? 'bg-yellow-400':
+                                    task.status === 'canceled' ? 'bg-red-700':
+                                    'bg-red-400'
+                                  } 
+                                  rounded-full h-[24px] w-[24px] cursor-pointer
+                                `}
+                              >
+                                <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-medium mb-1">{task.title}</h3>
+                                <p className='text-[#a1a4b9]'>{formatTaskDate(task.deadline)}</p>
+                                {/* Добавляем информацию о роли */}
+                                <div className="flex gap-2 mt-1">
+                                  {isAuthor && (
+                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                                      Автор
+                                    </span>
+                                  )}
+                                  {isAssignee && (
+                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                      Исполнитель
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
+                            <Avatar className="mr-3">
+                              <AvatarImage 
+                                className='rounded-full h-[32px] w-[32px]' 
+                                src={task?.assignee?.image} 
+                                alt={task?.assignee?.name} 
+                              />
+                            </Avatar>
                           </div>
-													<Avatar className="mr-3">
-														<AvatarImage className='rounded-full h-[32px] w-[32px]' src={task?.assignee?.image} alt={task?.assignee?.name} />
-													</Avatar>
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <div className="p-4 text-center text-gray-500">
-                    Нет задач в этом подразделении
+                    Нет поручений в этом подразделении
                   </div>
                 )}
               </AccordionContent>
@@ -573,7 +598,7 @@ export default function TaskList() {
                 value={taskDeadline ? format(taskDeadline, 'yyyy-MM-dd') : ''}
                 onChange={handleDateChange}
                 className={`w-full ${!taskDeadline && "border-red-500"}`}
-                min={format(new Date(), 'yyyy-MM-dd')} // Добавьте этот атрибут
+                min={format(new Date(), 'yyyy-MM-dd')}
               />
             </div>
             
