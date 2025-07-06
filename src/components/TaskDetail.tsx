@@ -761,18 +761,31 @@ export default function TaskDetail() {
                 {msg.content}
                 
                 {msg.files && msg.files.map((file, index) => (
-                  <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-white">
+                  <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <FileIcon size={16} className="mr-2" />
                         <span>{file.name}</span>
                       </div>
-                      <button 
-                        onClick={() => setViewerFile(file)}
-                        className="text-blue-500 hover:text-blue-700 text-sm"
-                      >
-                        Просмотреть
-                      </button>
+                      <div className="flex gap-2">
+                        {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+                          <button 
+                            onClick={() => setViewerFile(file)}
+                            className="text-blue-500 hover:text-blue-700 text-sm"
+                          >
+                            Просмотреть
+                          </button>
+                        )}
+                        <a 
+                          href={file.url} 
+                          download={file.name}
+                          className="text-blue-500 hover:text-blue-700 text-sm"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Скачать
+                        </a>
+                      </div>
                     </div>
                     
                     {/* Превью для изображений */}
