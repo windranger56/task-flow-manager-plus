@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { useTaskContext } from '@/contexts/TaskContext';
 import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
 import { supabase } from '@/supabase/client';
+import { Paperclip, X, FileIcon } from 'lucide-react';
+import { FileViewer } from './FileViewer'; // или путь к вашему компоненту
 
 export default function TaskDetail() {
   const { 
@@ -27,6 +29,8 @@ export default function TaskDetail() {
     fetchTasks
   } = useTaskContext();
   
+  const [viewerFile, setViewerFile] = useState<any | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReassign, setShowReassign] = useState(false);
   const [reassignTo, setReassignTo] = useState('');
   const [newTitle, setNewTitle] = useState('');
@@ -42,6 +46,8 @@ export default function TaskDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [nextStatus, setNextStatus] = useState<string | null>(null);
   const [statusComment, setStatusComment] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -110,9 +116,36 @@ export default function TaskDetail() {
   }, [selectedTask]);
 
   const handleSendChatMessage = async () => {
-    if (!chatMessage.trim() || !selectedTask) return;
-
+    if (!chatMessage.trim() && selectedFiles.length === 0) return;
+    if (!selectedTask) return;
+  
     try {
+      // Загрузка файлов, если они есть
+      const fileUrls = [];
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        const filePath = `chat/${selectedTask.id}/${fileName}`;
+        
+        const { error } = await supabase.storage
+          .from('chat-files')
+          .upload(filePath, file);
+        
+        if (error) throw error;
+        
+        // Получаем URL файла
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-files')
+          .getPublicUrl(filePath);
+        
+        fileUrls.push({
+          name: file.name,
+          url: publicUrl,
+          type: file.type
+        });
+      }
+  
+      // Отправка сообщения в базу данных
       const { error } = await supabase
         .from('messages')
         .insert([{
@@ -120,13 +153,17 @@ export default function TaskDetail() {
           task_id: selectedTask.id,
           sent_by: user.id,
           is_system: 0,
+          files: fileUrls.length > 0 ? fileUrls : null
         }]);
-
+  
       if (error) throw error;
-
+  
+      // Очистка полей после отправки
       setChatMessage('');
+      setSelectedFiles([]);
     } catch (error) {
       console.error("Ошибка отправки сообщения:", error);
+      alert('Произошла ошибка при отправке сообщения');
     }
   };
 
@@ -265,6 +302,40 @@ export default function TaskDetail() {
     } else {
       return 'дней';
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    // Проверка размера файлов и расширений
+    const validFiles = files.filter(file => {
+      if (file.size > 25 * 1024 * 1024) {
+        alert(`Файл ${file.name} превышает максимальный размер 25MB`);
+        return false;
+      }
+      if (file.name.endsWith('.exe')) {
+        alert('Файлы с расширением .exe запрещены');
+        return false;
+      }
+      return true;
+    });
+    
+    setSelectedFiles([...selectedFiles, ...validFiles]);
+    if (e.target) e.target.value = ''; // Сброс input
+  };
+  
+  const removeFile = (index: number) => {
+    const newFiles = [...selectedFiles];
+    newFiles.splice(index, 1);
+    setSelectedFiles(newFiles);
+  };
+  
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   // Функция для определения доступных статусов
@@ -675,54 +746,132 @@ export default function TaskDetail() {
         {/* Чат поручения */}
         <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
           <div className="h-full overflow-y-auto mb-4 rounded-md">
-            {chatMessages.map(msg => (
-              <div 
-                key={msg.id} 
-                className={`mb-2 p-2 rounded-md relative pr-12 ${
-                  msg.is_system
-                    ? 'bg-gray-100 mx-auto text-center italic max-w-[80%] flex justify-center' 
-                    : msg.sent_by === user.id 
-                      ? 'ml-auto bg-blue-100 max-w-[80%]' 
-                      : 'bg-gray-100 max-w-[80%]'
-                }`}
-              >
-                <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
-                  {msg.content}
-                </div>
-                <span className={`text-xs absolute bottom-1 right-2 ${
-                  msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
-                }`}>
-                  {format(new Date(msg.created_at), 'dd.MM HH:mm')}
-                </span>
+          {chatMessages.map(msg => (
+            <div 
+              key={msg.id} 
+              className={`mb-2 p-2 rounded-md relative pr-12 ${
+                msg.is_system
+                  ? 'bg-gray-100 mx-auto text-center italic max-w-[80%] flex justify-center' 
+                  : msg.sent_by === user.id 
+                    ? 'ml-auto bg-blue-100 max-w-[80%]' 
+                    : 'bg-gray-100 max-w-[80%]'
+              }`}
+            >
+              <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
+                {msg.content}
+                
+                {msg.files && msg.files.map((file, index) => (
+                  <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <FileIcon size={16} className="mr-2" />
+                        <span>{file.name}</span>
+                      </div>
+                      <button 
+                        onClick={() => setViewerFile(file)}
+                        className="text-blue-500 hover:text-blue-700 text-sm"
+                      >
+                        Просмотреть
+                      </button>
+                    </div>
+                    
+                    {/* Превью для изображений */}
+                    {file.type.startsWith('image/') && (
+                      <img 
+                        src={file.url} 
+                        alt={file.name}
+                        className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
+                        onClick={() => setViewerFile(file)}
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+              <span className={`text-xs absolute bottom-1 right-2 ${
+                msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
+              }`}>
+                {format(new Date(msg.created_at), 'dd.MM HH:mm')}
+              </span>
+            </div>
+          ))}
+
+          {/* Модальное окно для просмотра изображений */}
+          <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+            <DialogContent className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+              <img 
+                src={selectedImage || ''} 
+                alt="Увеличенное изображение"
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </DialogContent>
+          </Dialog>
           </div>
         </div>
       </div>
       
       {/* Поле ввода сообщения */}
-      <div className="absolute bottom-0 left-0 right-0 flex">
-        <div className="w-full h-[57px] border-t border-gray-200 bg-white flex">
-          <Input 
-            value={chatMessage}
-            onChange={(e) => setChatMessage(e.target.value)}
-            placeholder="Напишите сообщение..."
-            className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb]"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSendChatMessage();
-              }
-            }}
-          />
-          <Button 
-            onClick={handleSendChatMessage} 
-            className='w-[55px] h-full bg-[#4d76fd] rounded-none'
-            disabled={!chatMessage.trim()}
-          >
-            <Send size={30} />
-          </Button>
+        <div className="absolute bottom-0 left-0 right-0 flex">
+          <div className="w-full h-[57px] border-t border-gray-200 bg-white flex">
+            {/* Кнопка загрузки файла */}
+            <label className="flex items-center justify-center px-3 cursor-pointer text-gray-500 hover:text-gray-700">
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="hidden" 
+                onChange={handleFileSelect}
+                multiple
+                accept="*/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+              />
+              <Paperclip size={20} />
+            </label>
+            
+            <Input 
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              placeholder="Напишите сообщение..."
+              className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSendChatMessage();
+                }
+              }}
+            />
+            <Button 
+              onClick={handleSendChatMessage} 
+              className='w-[55px] h-full bg-[#4d76fd] rounded-none'
+              disabled={!chatMessage.trim() && !selectedFiles.length}
+            >
+              <Send size={30} />
+            </Button>
+          </div>
         </div>
-      </div>
+
+        {/* Отображение выбранных файлов */}
+        {selectedFiles.length > 0 && (
+          <div className="absolute bottom-[57px] left-0 right-0 bg-white border-t border-gray-200 p-2 max-h-[200px] overflow-y-auto">
+            {selectedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-1">
+                <div className="flex items-center truncate">
+                  <FileIcon size={16} className="mr-2 text-gray-500" />
+                  <span className="truncate text-sm">{file.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+                </div>
+                <button 
+                  onClick={() => removeFile(index)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+    {viewerFile && (
+      <FileViewer 
+        file={viewerFile} 
+        onClose={() => setViewerFile(null)} 
+      />
+    )}
     </div>
   );
 }
