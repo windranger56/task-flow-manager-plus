@@ -550,8 +550,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     try {
       if(task.status === 'on_verification' && user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
       if(task.status === 'completed') throw new Error("Невозможно изменить статус поручения так как оно уже завершено")
-      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только сполнитель может взять поручение в работу")
-      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только сполнитель может отправить поручение на проверку")  
+      if(task.status === 'new' && user.id !== task.assignedTo) throw new Error("Только исполнитель может взять поручение в работу")
+      if(task.status === 'in_progress' && user.id !== task.assignedTo) throw new Error("Только исполнитель может отправить поручение на проверку")  
 
       // Update task status in Supabase
       const { error } = await supabase
@@ -583,8 +583,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           if (task.id !== t.id) return t;
       
           // Проверка прав для overdue задач
-          if (t.status === 'overdue' && user?.id !== t.assignedTo) {
-            throw new Error("Только исполнитель может взять поручение в работу");
+          if (t.status === 'overdue' && user?.id !== t.createdBy) {
+            throw new Error("Только создатель может перевести просроченное поручение в работу или на проверку");
           }
       
           // Определяем новый статус
