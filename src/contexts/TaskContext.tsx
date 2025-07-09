@@ -254,6 +254,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             assignedTo: task.assigned_to,
             createdBy: task.created_by,
             departmentId: task.departmentId,
+            parentId: task.parent_id,
             priority: task.priority,
             isProtocol: task.is_protocol as ProtocolStatus,
             createdAt: new Date(task.created_at),

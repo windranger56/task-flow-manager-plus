@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Send } from "lucide-react";
+import { Check, Loader2, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
@@ -48,6 +48,10 @@ export default function TaskDetail() {
   const [statusComment, setStatusComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [taskHistory, setTaskHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -358,6 +362,73 @@ export default function TaskDetail() {
     }
   };
 
+  const fetchTaskHistory = async (taskId: string) => {
+    setIsLoadingHistory(true);
+    try {
+      const history = [];
+      let currentTaskId = taskId;
+      
+      while (currentTaskId) {
+        const { data: task, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', currentTaskId)
+          .single();
+        
+        if (error) throw error;
+        if (!task) break;
+        
+        // Добавляем проверку на валидность даты
+        const createdAt = task.createdAt ? new Date(task.createdAt) : null;
+        const deadline = task.deadline ? new Date(task.deadline) : null;
+        
+        history.push({
+          ...task,
+          createdAt: createdAt && !isNaN(createdAt.getTime()) ? createdAt : null,
+          deadline: deadline && !isNaN(deadline.getTime()) ? deadline : null
+        });
+        
+        currentTaskId = task.parentId;
+      }
+      
+      setTaskHistory(history);
+    } catch (error) {
+      console.error('Ошибка загрузки истории:', error);
+      alert('Не удалось загрузить историю поручения');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'new': return 'Новое';
+      case 'in_progress': return 'В работе';
+      case 'on_verification': return 'На проверке';
+      case 'completed': return 'Завершено';
+      case 'overdue': return 'Просрочено';
+      default: return status;
+    }
+  };
+
+  const formatDateSafe = (date: Date | string | null | undefined, formatStr: string): string => {
+    if (!date) return 'Дата не указана';
+    
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return isNaN(dateObj.getTime()) ? 'Некорректная дата' : format(dateObj, formatStr, { locale: ru });
+    } catch {
+      return 'Ошибка даты';
+    }
+  };
+
+  const handleOpenHistory = () => {
+    setHistoryOpen(true);
+    if (selectedTask?.parentId) {
+      fetchTaskHistory(selectedTask.id);
+    }
+  };
+
   // Функция для определения доступных статусов
   function getAvailableStatuses() {
     if (!selectedTask || !user) return [];
@@ -432,6 +503,26 @@ export default function TaskDetail() {
         
         {/* Кнопки управления задачей */}
         <div className="flex items-center space-x-2">
+
+          {/* Кнопка истории поручения */}
+          {selectedTask.parentId && (
+            <div className="relative group">
+              <Button 
+                className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+                onClick={handleOpenHistory}
+              >
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </Button>
+              <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                История поручения
+              </div>
+            </div>
+            )}
+
           {/* Кнопка для открытия модального окна смены статуса */}
           <Button
             className={`rounded-full h-[36px] px-4 ${
@@ -897,6 +988,89 @@ export default function TaskDetail() {
             </Button>
           </div>
         </div>
+            
+        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+          <DialogContent 
+            className="max-w-[40%] h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r"
+            style={{ margin: 0 }}
+          >
+            <DialogHeader>
+              <DialogTitle className="text-xl">История поручения</DialogTitle>
+            </DialogHeader>
+            
+            <div className="overflow-y-auto h-[calc(100vh-100px)]">
+              {isLoadingHistory ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : taskHistory.length > 0 ? (
+                <div className="space-y-4 pr-4">
+                  {taskHistory.map((task, index) => (
+                    <div 
+                      key={task.id} 
+                      className={`p-4 rounded-lg border ${
+                        index === 0 
+                          ? 'bg-blue-50 border-blue-200' 
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                          index === 0 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-300 text-gray-600'
+                        }`}>
+                          {taskHistory.length - index}
+                        </div>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`font-medium ${
+                              index === 0 ? 'text-blue-600' : 'text-gray-700'
+                            }`}>
+                              {task.title}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+                            </span>
+                          </div>
+                          
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {task.description}
+                            </p>
+                          )}
+                          
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                              {getStatusLabel(task.status)}
+                            </span>
+                            
+                            {task.deadline && (
+                              <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+                              </span>
+                            )}
+                            
+                            {task.assignedTo && (
+                              <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                Исполнитель: {getUserById(task.assignedTo)?.fullname || task.assignedTo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Нет истории изменений
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Отображение выбранных файлов */}
         {selectedFiles.length > 0 && (
