@@ -5,6 +5,7 @@ import TaskList from '@/components/TaskList';
 import TaskDetail from '@/components/TaskDetail';
 import SearchBar from '@/components/SearchBar';
 import ExportButton from '@/components/ExportButton';
+import ArchiveButton from '@/components/ArchiveButton';
 import { TaskProvider } from '@/contexts/TaskContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
@@ -17,6 +18,7 @@ import { X } from 'lucide-react';
 export default function Index() {
   const isMobile = useIsMobile();
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
   
   return (
     <TaskProvider>
@@ -56,6 +58,10 @@ export default function Index() {
 								<div className="flex-1">
 									<SearchBar />
 								</div>
+								<ArchiveButton 
+									showArchive={showArchive}
+									onToggle={() => setShowArchive(!showArchive)}
+								/>
 								<ExportButton />
 							</div>
 						</div>
@@ -64,13 +70,13 @@ export default function Index() {
 						{isMobile ? (
 							/* Mobile layout */
 							<div className="flex-1 overflow-auto">
-								<TaskList />
+								<TaskList showArchive={showArchive} />
 							</div>
 						) : (
 							/* Desktop layout */
 							<div className="flex flex-1 overflow-hidden">
 								<div className="w-1/3 min-w-0 border-r border-gray-200 overflow-auto">
-									<TaskList />
+									<TaskList showArchive={showArchive} />
 								</div>
 								<div className="flex-1 overflow-auto">
 									<TaskDetail />

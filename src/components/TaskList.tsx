@@ -29,7 +29,11 @@ import { toast } from '@/components/ui/use-toast';
 import { ProtocolStatus, TaskStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
 
-export default function TaskList() {
+interface TaskListProps {
+  showArchive?: boolean;
+}
+
+export default function TaskList({ showArchive = false }: TaskListProps) {
   const { 
     tasks, 
     departments, 
@@ -81,14 +85,20 @@ export default function TaskList() {
         creator: await getUserById(t.createdBy) // Добавляем данные автора
       })))
       console.log(tasksWithUsers)
+      
+      // Фильтруем задачи в зависимости от состояния архива
+      const filteredTasks = showArchive 
+        ? tasksWithUsers.filter(task => task.status === 'completed')
+        : tasksWithUsers.filter(task => task.status !== 'completed');
+      
       setTasksByDepartment(departments.map(department => {
         return {
           department,
-          tasks: tasksWithUsers.filter(task => task.departmentId === department.id)
+          tasks: filteredTasks.filter(task => task.departmentId === department.id)
         };
       }))
     })()
-  }, [tasks])
+  }, [tasks, showArchive])
   
   // Загрузка руководителя при выборе подразделения
   useEffect(() => {
@@ -480,7 +490,10 @@ export default function TaskList() {
                   </ul>
                 ) : (
                   <div className="p-4 text-center text-gray-500">
-                    Нет поручений в этом подразделении
+                    {showArchive 
+                      ? 'Нет завершенных поручений в этом подразделении'
+                      : 'Нет активных поручений в этом подразделении'
+                    }
                   </div>
                 )}
               </AccordionContent>

@@ -299,7 +299,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   return (
     <div className="w-[360px] flex flex-col h-screen bg-white border-r border-gray-200">
 			{/* Application title */}
-			<div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ</div>
+      {isMobile ?
+			<div className='h-[20px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b {isMobile}'>УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ</div> :
+      <div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b {isMobile}'>УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ</div>}
 			<div className='px-[40px] py-[25px]'>
 				{/* User Info */}
 				<div className="flex flex-col items-center">
