@@ -12,7 +12,7 @@ import { useTaskContext } from '@/contexts/TaskContext';
 import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
 import { supabase } from '@/supabase/client';
-import { Paperclip, X, FileIcon } from 'lucide-react';
+import { Paperclip, X, FileIcon, Trash2 } from 'lucide-react';
 import { FileViewer } from './FileViewer'; // или путь к вашему компоненту
 
 export default function TaskDetail() {
@@ -52,6 +52,7 @@ export default function TaskDetail() {
   useEffect(() => {
     const fetchData = async () => {
       if(!selectedTask) return;
+
       
       // Подписка на изменения сообщений
       const channel = supabase
@@ -69,10 +70,8 @@ export default function TaskDetail() {
               setChatMessages(prev => [...prev, payload.new]);
             } else if (payload.eventType === 'UPDATE') {
               setChatMessages(prev => prev.map(m => 
-                m.id === payload.old.id ? payload.new : m
+                m.id === payload.old.id ? { ...payload.new, is_deleted: payload.new.is_deleted || false } : m
               ));
-            } else if (payload.eventType === 'DELETE') {
-              setChatMessages(prev => prev.filter(m => m.id !== payload.old.id));
             }
           }
         )
@@ -336,6 +335,27 @@ export default function TaskDetail() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      // Обновляем сообщение в Supabase, устанавливая is_deleted = true
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_deleted: true })
+        .eq('id', messageId);
+      
+      if (error) throw error;
+      
+      // Обновляем локальное состояние
+      setChatMessages(chatMessages.map(msg => 
+        msg.id === messageId ? { ...msg, is_deleted: true } : msg
+      ));
+      
+    } catch (error) {
+      console.error('Ошибка при удалении сообщения:', error);
+      alert('Не удалось удалить сообщение');
+    }
   };
 
   // Функция для определения доступных статусов
@@ -755,51 +775,70 @@ export default function TaskDetail() {
                   : msg.sent_by === user.id 
                     ? 'ml-auto bg-blue-100 max-w-[80%]' 
                     : 'bg-gray-100 max-w-[80%]'
+              } ${
+                msg.is_deleted ? 'opacity-50' : ''
               }`}
             >
-              <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
-                {msg.content}
-                
-                {msg.files && msg.files.map((file, index) => (
-                  <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <FileIcon size={16} className="mr-2" />
-                        <span>{file.name}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
-                          <button 
-                            onClick={() => setViewerFile(file)}
-                            className="text-blue-500 hover:text-blue-700 text-sm"
-                          >
-                            Просмотреть
-                          </button>
-                        )}
-                        <a 
-                          href={file.url} 
-                          download={file.name}
-                          className="text-blue-500 hover:text-blue-700 text-sm"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Скачать
-                        </a>
-                      </div>
-                    </div>
+              {msg.is_deleted ? (
+                <div className="text-gray-500 italic">Сообщение удалено</div>
+              ) : (
+                <>
+                  <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
+                    {msg.content}
                     
-                    {/* Превью для изображений */}
-                    {file.type.startsWith('image/') && (
-                      <img 
-                        src={file.url} 
-                        alt={file.name}
-                        className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
-                        onClick={() => setViewerFile(file)}
-                      />
-                    )}
+                    {msg.files && msg.files.map((file, index) => (
+                      <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <FileIcon size={16} className="mr-2" />
+                            <span>{file.name}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+                              <button 
+                                onClick={() => setViewerFile(file)}
+                                className="text-blue-500 hover:text-blue-700 text-sm"
+                              >
+                                Просмотреть
+                              </button>
+                            )}
+                            <a 
+                              href={file.url} 
+                              download={file.name}
+                              className="text-blue-500 hover:text-blue-700 text-sm"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Скачать
+                            </a>
+                          </div>
+                        </div>
+                        
+                        {file.type.startsWith('image/') && (
+                          <img 
+                            src={file.url} 
+                            alt={file.name}
+                            className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
+                            onClick={() => setViewerFile(file)}
+                          />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  
+                  {/* Кнопка удаления (только для своих сообщений) */}
+                  {msg.sent_by === user.id && !msg.is_system && !msg.is_deleted && (
+                    <button 
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      className="absolute top-1 right-2 text-gray-500 hover:text-red-500"
+                      title="Удалить сообщение"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </>
+              )}
+              
               <span className={`text-xs absolute bottom-1 right-2 ${
                 msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
               }`}>
