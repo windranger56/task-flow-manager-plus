@@ -643,8 +643,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (!task) return;
     const assignee = await getUserById(newAssigneeId);
     const now = new Date();
-    const info = `---\n${format(now, 'dd.MM.yyyy HH:mm')}: ${user.fullname} переназначил(а) поручение на ${assignee?.fullname}`;
-    const descriptionWithInfo = (newDescription || task.description || '') + '\n' + info;
+    // const info = `---\n${format(now, 'dd.MM.yyyy HH:mm')}: ${user.fullname} переназначил(а) поручение на ${assignee?.fullname}`;
+    const descriptionWithInfo = (newDescription || task.description || '') + '\n';
     const newTask = {
       title: newTitle || task.title,
       description: descriptionWithInfo,

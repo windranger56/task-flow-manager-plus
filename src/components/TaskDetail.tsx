@@ -262,17 +262,17 @@ export default function TaskDetail() {
         newDeadline
       );
       // Добавить системное сообщение о смене исполнителя
-      const newAssignee = users.find(u => u.id === reassignTo);
-      if (newAssignee) {
-        await supabase
-          .from('messages')
-          .insert([{
-            content: `Исполнитель изменён на: ${newAssignee.fullname}`,
-            task_id: selectedTask.id,
-            sent_by: user.id,
-            is_system: 1,
-          }]);
-      }
+      // const newAssignee = users.find(u => u.id === reassignTo);
+      // if (newAssignee) {
+      //   await supabase
+      //     .from('messages')
+      //     .insert([{
+      //       content: `Исполнитель изменён на: ${newAssignee.fullname}`,
+      //       task_id: selectedTask.id,
+      //       sent_by: user.id,
+      //       is_system: 1,
+      //     }]);
+      // }
       setShowReassign(false);
     } catch (error) {
       console.error("Ошибка переназначения:", error);
@@ -365,41 +365,71 @@ export default function TaskDetail() {
   const fetchTaskHistory = async (taskId: string) => {
     setIsLoadingHistory(true);
     try {
-      const history = [];
-      let currentTaskId = taskId;
+      // Сначала получаем всех родителей (как раньше)
+      const parentChain = [];
+      let currentId = taskId;
       
-      while (currentTaskId) {
+      while (currentId) {
         const { data: task, error } = await supabase
           .from('tasks')
           .select('*')
-          .eq('id', currentTaskId)
+          .eq('id', currentId)
           .single();
-        
+  
         if (error) throw error;
         if (!task) break;
-        
-        // Добавляем проверку на валидность даты
-        const createdAt = task.createdAt ? new Date(task.createdAt) : null;
-        const deadline = task.deadline ? new Date(task.deadline) : null;
-        
-        history.push({
+  
+        parentChain.push({
           ...task,
-          createdAt: createdAt && !isNaN(createdAt.getTime()) ? createdAt : null,
-          deadline: deadline && !isNaN(deadline.getTime()) ? deadline : null
+          createdAt: task.createdAt ? new Date(task.createdAt) : null,
+          deadline: task.deadline ? new Date(task.deadline) : null
         });
-        
-        currentTaskId = task.parentId;
+  
+        currentId = task.parent_id?.toString();
       }
-      
-      setTaskHistory(history);
+  
+      // Теперь получаем всех детей (если они есть)
+      const childChain = [];
+      let childId = taskId;
+      let hasChildren = true;
+  
+      while (hasChildren) {
+        const { data: children, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('parent_id', childId);
+  
+        if (error) throw error;
+        
+        if (children && children.length > 0) {
+          // Берем первого ребенка (можно модифицировать логику если нужно учитывать всех)
+          const child = children[0];
+          childChain.push({
+            ...child,
+            createdAt: child.createdAt ? new Date(child.createdAt) : null,
+            deadline: child.deadline ? new Date(child.deadline) : null
+          });
+          childId = child.id;
+        } else {
+          hasChildren = false;
+        }
+      }
+  
+      // Объединяем цепочки: родители в обратном порядке + текущая задача + дети
+      const fullHistory = [
+        ...parentChain.reverse(), // родители от корня к текущему
+        ...childChain            // дети от текущего к последнему
+      ];
+  
+      setTaskHistory(fullHistory);
+  
     } catch (error) {
-      console.error('Ошибка загрузки истории:', error);
-      alert('Не удалось загрузить историю поручения');
+      console.error('Error loading history:', error);
     } finally {
       setIsLoadingHistory(false);
     }
   };
-
+  
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'new': return 'Новое';
@@ -990,10 +1020,7 @@ export default function TaskDetail() {
         </div>
             
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-          <DialogContent 
-            className="max-w-[40%] h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r"
-            style={{ margin: 0 }}
-          >
+          <DialogContent className="max-w-[40%] h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r" style={{ margin: 0 }}>
             <DialogHeader>
               <DialogTitle className="text-xl">История поручения</DialogTitle>
             </DialogHeader>
@@ -1005,63 +1032,62 @@ export default function TaskDetail() {
                 </div>
               ) : taskHistory.length > 0 ? (
                 <div className="space-y-4 pr-4">
-                  {taskHistory.map((task, index) => (
-                    <div 
-                      key={task.id} 
-                      className={`p-4 rounded-lg border ${
-                        index === 0 
-                          ? 'bg-blue-50 border-blue-200' 
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                          index === 0 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-300 text-gray-600'
-                        }`}>
-                          {taskHistory.length - index}
-                        </div>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className={`font-medium ${
-                              index === 0 ? 'text-blue-600' : 'text-gray-700'
-                            }`}>
-                              {task.title}
-                            </h4>
-                            <span className="text-xs text-gray-500">
-                              {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
-                            </span>
+                  {taskHistory.map((task, index) => {
+                    const isCurrentTask = task.id === selectedTask.id;
+                    return (
+                      <div key={task.id} className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                            {index + 1}
                           </div>
-                          
-                          {task.description && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              {task.description}
-                            </p>
-                          )}
-                          
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                              {getStatusLabel(task.status)}
-                            </span>
-                            
-                            {task.deadline && (
-                              <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
+                                {task.title}
+                              </h4>
+                              {/* <h4 className={`font-medium ${
+                                isCurrentTask ? 'text-blue-600' : 'text-gray-700'
+                              }`}>
+                                {task.title}
+                              </h4> */}
+                              <span className="text-xs text-gray-500">
+                                {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
                               </span>
+                            </div>
+                            
+                            {task.description && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {task.description}
+                              </p>
                             )}
                             
-                            {task.assignedTo && (
+                            <div className="mt-2 flex flex-wrap gap-2">
                               <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                Исполнитель: {getUserById(task.assignedTo)?.fullname || task.assignedTo}
+                                {getStatusLabel(task.status)}
                               </span>
-                            )}
+                              
+                              {task.deadline && (
+                                <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                  Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+                                </span>
+                              )}
+                              
+                              {task.assigned_to && (
+                                <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                  Исполнитель: {assignee.fullname || 'Неизвестно'}
+                                </span>
+                              )}
+                              {task.created_by && (
+                                <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                  Автор: {creator.fullname || 'Неизвестно'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
