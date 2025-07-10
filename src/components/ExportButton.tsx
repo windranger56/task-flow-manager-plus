@@ -37,6 +37,10 @@ import {
   AlignmentType,
   HeadingLevel,
 } from 'docx';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
 
 export default function ExportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -329,7 +333,7 @@ export default function ExportButton() {
       content += `${filters.protocolAuthorPosition}\n`;
     }
     content += `${filters.protocolAuthor || "___________________________"}\n`;
-    content += "___________________________\n";
+    // content += "___________________________\n";
     // content += "___________________________\n";
     
     return content;
@@ -363,13 +367,16 @@ export default function ExportButton() {
   const filterTasks = async () => {
     let filteredTasks = tasks.filter(task => task.isProtocol === 'active');
   
-    if (filters.startDate) {
+    if (filters.startDate && filters.endDate) {
+      filteredTasks = filteredTasks.filter(task => {
+        const taskDate = new Date(task.deadline);
+        return taskDate >= filters.startDate! && taskDate <= filters.endDate!;
+      });
+    } else if (filters.startDate) {
       filteredTasks = filteredTasks.filter(task => 
         new Date(task.deadline) >= filters.startDate!
       );
-    }
-  
-    if (filters.endDate) {
+    } else if (filters.endDate) {
       filteredTasks = filteredTasks.filter(task => 
         new Date(task.deadline) <= filters.endDate!
       );
@@ -513,29 +520,44 @@ export default function ExportButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="startDate">Дедлайн от</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setFilters(prev => ({ 
-                  ...prev, 
-                  startDate: e.target.value ? new Date(e.target.value) : undefined 
-                }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Дедлайн до</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setFilters(prev => ({ 
-                  ...prev, 
-                  endDate: e.target.value ? new Date(e.target.value) : undefined 
-                }))}
-              />
+              <Label>Диапазон дедлайнов</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !filters.startDate && !filters.endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {filters.startDate && filters.endDate ? (
+                      `${format(filters.startDate, "dd.MM.yyyy")} - ${format(filters.endDate, "dd.MM.yyyy")}`
+                    ) : filters.startDate ? (
+                      `${format(filters.startDate, "dd.MM.yyyy")} - `
+                    ) : (
+                      <span>Выберите диапазон дат</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="range"
+                    selected={{
+                      from: filters.startDate,
+                      to: filters.endDate,
+                    }}
+                    onSelect={(range) => {
+                      setFilters((prev) => ({
+                        ...prev,
+                        startDate: range?.from,
+                        endDate: range?.to,
+                      }));
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">

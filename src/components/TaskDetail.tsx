@@ -594,7 +594,7 @@ export default function TaskDetail() {
               setStatusComment('');
             }}
           >
-            {selectedTask.status === 'completed' ? 'Завершена' :
+            {selectedTask.status === 'completed' ? 'Завершено' :
               selectedTask.status === 'new' ? 'Новое' :
               selectedTask.status === 'on_verification' ? 'На проверке' :
               selectedTask.status === 'in_progress' ? 'В работе' :
