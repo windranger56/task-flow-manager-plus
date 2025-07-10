@@ -24,9 +24,10 @@ export default function TaskDetail() {
     reassignTask, 
     toggleProtocol, 
     completeTask,
-    users,
+    users, // оставляем для других нужд
     selectTask,
-    fetchTasks
+    fetchTasks,
+    getSubordinates // добавляем функцию получения сотрудников
   } = useTaskContext();
   
   const [viewerFile, setViewerFile] = useState<any | null>(null);
@@ -52,6 +53,7 @@ export default function TaskDetail() {
   const [taskHistory, setTaskHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [subordinates, setSubordinates] = useState<any[]>([]);
   const [showOnlySystemMessages, setShowOnlySystemMessages] = useState(false);
 
   useEffect(() => {
@@ -110,6 +112,13 @@ export default function TaskDetail() {
       };
 
       await loadData();
+
+      // Загружаем сотрудников для селектора переназначения
+      const loadSubordinates = async () => {
+        const subs = await getSubordinates();
+        setSubordinates(subs);
+      };
+      loadSubordinates();
 
       return () => {
         supabase.removeChannel(channel);
@@ -171,12 +180,16 @@ export default function TaskDetail() {
     }
   };
 
-  const updateTaskStatus = async (taskId: string, newStatus: string, reason?: string) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string, reason?: string, newDeadline?: Date) => {
     try {
-      // Обновляем статус поручения
+      // Если меняем статус с 'overdue' на 'in_progress' или 'on_verification' и передан новый дедлайн, обновляем оба поля
+      let updateFields: any = { status: newStatus };
+      if (newDeadline && (newStatus === 'in_progress' || newStatus === 'on_verification')) {
+        updateFields.deadline = newDeadline.toISOString();
+      }
       const { error: taskError } = await supabase
         .from('tasks')
-        .update({ status: newStatus })
+        .update(updateFields)
         .eq('id', taskId);
 
       if (taskError) throw taskError;
@@ -483,6 +496,12 @@ export default function TaskDetail() {
         { value: 'in_progress', label: 'В работе (вернуть на доработку)' },
       ];
     }
+    if (status === 'overdue' && isCreator) {
+      return [
+        { value: 'in_progress', label: 'В работе' },
+        { value: 'on_verification', label: 'На проверке' },
+      ];
+    }
     return [];
   }
 
@@ -608,6 +627,18 @@ export default function TaskDetail() {
                     )}
                   </div>
                 </div>
+                {/* Изменение дедлайна — только для создателя */}
+                {user.id === selectedTask.createdBy && (
+                  <div className="mb-4">
+                    <Label>Новый дедлайн (опционально)</Label>
+                    <Input
+                      type="date"
+                      value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+                      onChange={e => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
+                      min={format(new Date(), 'yyyy-MM-dd')}
+                    />
+                  </div>
+                )}
                 {/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
                 {selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
                   <div className="mb-2">
@@ -633,9 +664,9 @@ export default function TaskDetail() {
                     }
                     // Если возвращаем на доработку, добавить комментарий
                     if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
-                      await updateTaskStatus(selectedTask.id, nextStatus, statusComment);
+                      await updateTaskStatus(selectedTask.id, nextStatus, statusComment, newDeadline);
                     } else {
-                      await updateTaskStatus(selectedTask.id, nextStatus);
+                      await updateTaskStatus(selectedTask.id, nextStatus, undefined, newDeadline);
                     }
                     setIsStatusConfirmOpen(false);
                   }}
@@ -711,11 +742,11 @@ export default function TaskDetail() {
                       <SelectValue placeholder="Выберите сотрудника" />
                     </SelectTrigger>
                     <SelectContent>
-                      {users
+                      {subordinates
                         .filter(user => user.id !== selectedTask.assignedTo)
                         .map((user) => (
                           <SelectItem key={user.id} value={user.id}>
-                            {user.fullname}
+                            {user.name || user.fullname}
                           </SelectItem>
                         ))
                       }
