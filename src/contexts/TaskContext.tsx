@@ -192,6 +192,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     
     if (tasksToUpdate.length > 0) {
       const updatePromises = tasksToUpdate.map(async (task) => {
+        // Обновляем статус задачи
         const { error } = await supabase
           .from('tasks')
           .update({ status: 'overdue' })
@@ -199,6 +200,21 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         
         if (error) {
           console.error(`Ошибка при обновлении статуса задачи ${task.id}:`, error);
+          return { ...task, status: 'overdue' as TaskStatus };
+        }
+        
+        // Добавляем системное сообщение о просрочке
+        try {
+          await supabase
+            .from('messages')
+            .insert([{
+              content: 'Поручение просрочено',
+              task_id: task.id,
+              sent_by: task.createdBy, // Используем ID создателя задачи
+              is_system: 1,
+            }]);
+        } catch (messageError) {
+          console.error(`Ошибка при добавлении системного сообщения для задачи ${task.id}:`, messageError);
         }
         
         return { ...task, status: 'overdue' as TaskStatus };
@@ -709,9 +725,31 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (!query) return [];
     
     const searchTerm = query.toLowerCase();
-    return tasks.filter(task => 
+    
+    // Функция для получения читаемого статуса
+    const getStatusLabel = (status: string): string => {
+      switch (status) {
+        case 'new': return 'Новое';
+        case 'in_progress': return 'В работе';
+        case 'on_verification': return 'На проверке';
+        case 'completed': return 'Завершено';
+        case 'overdue': return 'Просрочено';
+        default: return status;
+      }
+    };
+    
+    // Фильтруем задачи, доступные текущему пользователю
+    const accessibleTasks = tasks.filter(task => {
+      // Пользователь может видеть задачи, где он:
+      // 1. Создатель задачи
+      // 2. Исполнитель задачи
+      return task.createdBy === user?.id || task.assignedTo === user?.id;
+    });
+    
+    return accessibleTasks.filter(task => 
       task.title.toLowerCase().includes(searchTerm) ||
-      task.description.toLowerCase().includes(searchTerm)
+      task.description.toLowerCase().includes(searchTerm) ||
+      getStatusLabel(task.status).toLowerCase().includes(searchTerm)
     );
   };
 

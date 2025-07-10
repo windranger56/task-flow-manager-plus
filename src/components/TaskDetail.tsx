@@ -203,6 +203,13 @@ export default function TaskDetail() {
         'overdue': 'Просрочено',
       };
       let statusMessage = `Статус изменён на: ${statusLabels[newStatus] || newStatus}`;
+      
+      // Добавляем информацию о новом дедлайне, если статус меняется с 'overdue' на 'in_progress' или 'on_verification'
+      if ((newStatus === 'in_progress' || newStatus === 'on_verification') && newDeadline) {
+        const formattedDeadline = formatDateSafe(newDeadline, 'dd.MM.yyyy');
+        statusMessage += `. Новый дедлайн: ${formattedDeadline}`;
+      }
+      
       if (newStatus === 'in_progress' && reason) {
         statusMessage += `. Комментарий: ${reason}`;
       }
