@@ -647,9 +647,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                 className={!taskTitle && "border-red-500"}
                 placeholder="Введите заголовок поручения"
               />
-              {!taskTitle && (
-                <p className="text-xs text-red-500">Заголовок обязателен для заполнения</p>
-              )}
             </div>
             
             <div className="space-y-2">
@@ -664,9 +661,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                 )}
                 placeholder="Введите описание поручения"
               />
-              {!taskDescription && (
-                <p className="text-xs text-red-500">Описание обязательно для заполнения</p>
-              )}
             </div>
             
             <div className="space-y-2">
