@@ -795,9 +795,27 @@ export default function TaskDetail() {
           {/* Кнопка протокола */}
           <div className="relative group">
             <Button 
-              onClick={() => toggleProtocol(selectedTask.id)}
+              onClick={() => {
+                // Определяем новое состояние ДО вызова API
+                const newProtocolState = selectedTask.isProtocol === 'active' ? 'inactive' : 'active';
+                
+                // Сразу применяем локальные изменения (оптимистичное обновление)
+                selectTask({
+                  ...selectedTask,
+                  isProtocol: newProtocolState
+                });
+                
+                // Затем вызываем API
+                toggleProtocol(selectedTask.id, newProtocolState).catch(() => {
+                  // В случае ошибки - возвращаем предыдущее состояние
+                  selectTask({
+                    ...selectedTask,
+                    isProtocol: selectedTask.isProtocol // исходное значение
+                  });
+                });
+              }}
               className={`rounded-full h-[36px] w-[36px] ${
-                selectedTask.isProtocol === 'active' ? 'bg-blue-500' : 'bg-[#f1f4fd]'
+                selectedTask.isProtocol === 'active' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-[#f1f4fd] hover:bg-gray-200'
               }`}
             >
               <svg 

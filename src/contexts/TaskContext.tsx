@@ -667,39 +667,30 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const toggleProtocol = async (taskId: string) => {
-    try{
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-      if (user.id === task.assignedTo) throw new Error("Недостаточно привилегий")
-    setTasks(
-      
-      tasks.map(task => 
-        task.id === taskId
-          ? { 
-              ...task, 
-              isProtocol: task.isProtocol === 'active' ? 'inactive' : 'active' 
-            } 
-          : task
-      )
-    );
-    
-    // const task = tasks.find(t => t.id === taskId);
-		await supabase
-			.from('tasks')
-			.update({ is_protocol: task.isProtocol })
-			.eq('id', task.id)
-    if (task) {
-              toast({ title: `Протокол поручения ${task.isProtocol == 'inactive' ? "не" : ""} активен`});
+  const toggleProtocol = async (taskId: string, newProtocolState: 'active' | 'inactive') => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ is_protocol: newProtocolState })
+        .eq('id', taskId);
+  
+      if (error) throw error;
+  
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, isProtocol: newProtocolState } 
+            : task
+        )
+      );
+  
+      toast({ 
+        title: `Поручение ${newProtocolState === 'active' ? "добавлено в протокол" : "исключено из протокола"}`,
+      });
+    } catch (error) {
+      console.error("Ошибка:", error);
+      toast({ variant: "destructive", title: "Ошибка", description: error.message });
     }
-  } catch (error) {
-    console.error("Ошибка при изменении статуса поручения:", error);
-    toast({ 
-      title: "Ошибка", 
-      description: error.message,
-      variant: "destructive"
-    });
-  }
   };
 
   const addMessage = (taskId: string, content: string) => {
