@@ -59,6 +59,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   // Состояние для хранения списка пользователей из БД
   const [dbUsers, setDbUsers] = useState<{id: string, fullname: string}[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  // В начале компонента TaskList, после других состояний
+  const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
   
   // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
   useEffect(() => {
@@ -100,6 +102,34 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     })()
   }, [tasks, showArchive])
   
+  
+  useEffect(() => {
+    fetchTasksWithNewMessages();
+  
+    const channel = supabase
+      .channel('new-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `sent_by=neq.${user?.id}`
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          if (!newMessage.is_system) {
+            setTasksWithNewMessages(prev => new Set(prev).add(newMessage.task_id));
+          }
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   // Загрузка руководителя при выборе подразделения
   useEffect(() => {
     if (selectedDepartment) {
@@ -144,6 +174,27 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     }
   };
   
+  // Внутри компонента TaskList
+  const checkForNewMessages = async (taskId: string) => {
+    if (!user?.id) return false;
+  
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('id, created_at')
+      .eq('task_id', taskId)
+      .neq('sent_by', user.id) // Только сообщения от других
+      .order('created_at', { ascending: false })
+      .limit(1);
+  
+    if (error || !messages || messages.length === 0) return false;
+  
+    const lastMessage = messages[0];
+    const lastChecked = lastMessageCheck[taskId];
+  
+    // Если нет записи о проверке или есть новое сообщение
+    return !lastChecked || new Date(lastMessage.created_at) > new Date(lastChecked);
+  };
+
   // Функция для загрузки пользователей выбранного подразделения
   const fetchDepartmentUsers = async (departmentId: string) => {
     try {
@@ -280,9 +331,51 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const isMobile = useIsMobile();
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   
-  const handleTaskClick = (taskId: string) => {
+  const fetchTasksWithNewMessages = async () => {
+    if (!user?.id) return;
+  
+    const { data, error } = await supabase
+      .from('messages')
+      .select('task_id')
+      .eq('is_new', true)
+      .neq('sent_by', user.id) // Сообщения не от текущего пользователя
+      .neq('is_system', true); // Исключаем системные сообщения
+  
+    if (!error && data) {
+      const taskIds = new Set(data.map(msg => msg.task_id));
+      setTasksWithNewMessages(taskIds);
+      console.log('Задачи с новыми сообщениями:', Array.from(taskIds));
+    }
+  };
+
+  const handleTaskClick = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
+      // 1. Помечаем сообщения как прочитанные в Supabase
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_new: false })
+        .eq('task_id', taskId)
+        .eq('is_new', true);
+  
+      if (error) {
+        console.error('Ошибка при обновлении статуса сообщений:', error);
+        // Можно добавить уведомление для пользователя
+        toast({
+          title: "Ошибка",
+          description: "Не удалось обновить статус сообщений",
+          variant: "destructive"
+        });
+      }
+  
+      // 2. Убираем индикатор из локального состояния
+      setTasksWithNewMessages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(taskId);
+        return newSet;
+      });
+  
+      // 3. Выбираем задачу и открываем детали (существующая логика)
       selectTask(task);
       if (isMobile) {
         setShowTaskDetail(true);
@@ -410,7 +503,15 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                             isAuthor && "border-l-4 border-l-blue-500", // Подсветка для автора
                             isAssignee && "bg-blue-50" // Подсветка для исполнителя
                           )}
-                          onClick={() => handleTaskClick(task.id)}
+                          onClick={() => {
+                            handleTaskClick(task.id);
+                            // При открытии задачи убираем индикатор новых сообщений
+                            setTasksWithNewMessages(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(task.id);
+                              return newSet;
+                            });
+                          }}
                         >
                           <div className="flex justify-between">
                             <div className="flex items-center gap-[10px]">
@@ -420,7 +521,13 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                                 <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
                               </div>
                               <div>
-                                <h3 className="text-sm font-medium mb-1">{task.title}</h3>
+                                <div className="flex items-center">
+                                  <h3 className="text-sm font-medium mb-1">{task.title}</h3>
+                                  {tasksWithNewMessages.has(task.id) && (
+                                    <span className="ml-2 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                  )}
+                                </div>
+                                {/* <h3 className="text-sm font-medium mb-1">{task.title}</h3> */}
                                 <p className={task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}>
                                   {formatTaskDate(task.deadline)}
                                 </p>

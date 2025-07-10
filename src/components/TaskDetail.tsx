@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Loader2, Send } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2, Send } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
@@ -52,6 +52,7 @@ export default function TaskDetail() {
   const [taskHistory, setTaskHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showOnlySystemMessages, setShowOnlySystemMessages] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -458,6 +459,11 @@ export default function TaskDetail() {
       fetchTaskHistory(selectedTask.id);
     }
   };
+
+  const filteredMessages = chatMessages.filter(msg => 
+    showOnlySystemMessages ? msg.is_system : !msg.is_system
+  );
+
 
   // Функция для определения доступных статусов
   function getAvailableStatuses() {
@@ -885,9 +891,31 @@ export default function TaskDetail() {
         <hr className="border-t border-gray-500 mb-8 ml-[65px] mt-8" />
         
         {/* Чат поручения */}
-        <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
-          <div className="h-full overflow-y-auto mb-4 rounded-md">
-          {chatMessages.map(msg => (
+         <div className="flex-1 mt-8 pt-4 pb-16 ml-[65px]">
+        {/* Кнопка переключения между обычными и системными сообщениями */}
+        <div className="flex justify-center mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowOnlySystemMessages(!showOnlySystemMessages)}
+            className="text-sm gap-2"
+          >
+            {showOnlySystemMessages ? (
+              <>
+                <EyeOff size={14} />
+                Показать обычные сообщения
+              </>
+            ) : (
+              <>
+                <Eye size={14} />
+                Показать системные сообщения
+              </>
+            )}
+          </Button>
+        </div>
+        
+        <div className="h-full overflow-y-auto mb-4 rounded-md">
+          {filteredMessages.map(msg => (
             <div 
               key={msg.id} 
               className={`mb-2 p-2 rounded-md relative pr-12 ${
@@ -1045,11 +1073,6 @@ export default function TaskDetail() {
                               <h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
                                 {task.title}
                               </h4>
-                              {/* <h4 className={`font-medium ${
-                                isCurrentTask ? 'text-blue-600' : 'text-gray-700'
-                              }`}>
-                                {task.title}
-                              </h4> */}
                               <span className="text-xs text-gray-500">
                                 {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
                               </span>
