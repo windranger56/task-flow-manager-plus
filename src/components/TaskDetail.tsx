@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Eye, EyeOff, Loader2, Send } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2, Send, Download } from "lucide-react";
 import { useTaskContext } from '@/contexts/TaskContext';
 import { cn, getTaskStatusColor } from '@/lib/utils';
 import { ru } from 'date-fns/locale';
@@ -984,82 +984,103 @@ export default function TaskDetail() {
         <div className="h-full overflow-y-auto mb-4 rounded-md">
           {filteredMessages.map(msg => (
             <div 
-              key={msg.id} 
-              className={`mb-2 p-2 rounded-md relative pr-12 ${
-                
-                     msg.sent_by === user.id 
-                    ? 'ml-auto bg-blue-100 max-w-[80%]' 
-                    : 'bg-gray-100 max-w-[80%]'
-              } ${
-                msg.is_deleted ? 'opacity-50' : ''
-              }`}
-            >
-              {msg.is_deleted ? (
-                <div className="text-gray-500 italic">Сообщение удалено</div>
-              ) : (
-                <>
-                  <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
-                    {msg.content}
-                    
-                    {msg.files && msg.files.map((file, index) => (
-                      <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <FileIcon size={16} className="mr-2" />
-                            <span>{file.name}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
-                              <button 
-                                onClick={() => setViewerFile(file)}
-                                className="text-blue-500 hover:text-blue-700 text-sm"
-                              >
-                                Просмотреть
-                              </button>
-                            )}
-                            <a 
-                              href={file.url} 
-                              download={file.name}
-                              className="text-blue-500 hover:text-blue-700 text-sm"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Скачать
-                            </a>
-                          </div>
-                        </div>
-                        
-                        {file.type.startsWith('image/') && (
-                          <img 
-                            src={file.url} 
-                            alt={file.name}
-                            className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
-                            onClick={() => setViewerFile(file)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+            key={msg.id} 
+            className={`mb-2 p-2 rounded-md relative pr-12 ${
+              msg.sent_by === user.id 
+                ? 'ml-auto bg-blue-100 max-w-[80%]' 
+                : 'bg-gray-100 max-w-[80%]'
+            } ${
+              msg.is_deleted ? 'opacity-50' : ''
+            }`}
+          >
+            {msg.is_deleted ? (
+              <div className="text-gray-500 italic">Сообщение удалено</div>
+            ) : (
+              <>
+                <div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
+                  {msg.content}
                   
-                  {/* Кнопка удаления (только для своих сообщений) */}
-                  {msg.sent_by === user.id && !msg.is_system && !msg.is_deleted && (
+                  {msg.files && msg.files.map((file, index) => (
+                    <div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileIcon size={16} className="mr-2" />
+                          <span>{file.name}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+                            <button 
+                              onClick={() => setViewerFile(file)}
+                              className="text-blue-500 hover:text-blue-700 text-sm"
+                            >
+                              Просмотреть
+                            </button>
+                          )}
+                          <a 
+                            href="#" 
+                            className="text-blue-500 hover:text-blue-700 text-sm"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              try {
+                                // Получаем файл как Blob
+                                const response = await fetch(file.url);
+                                const blob = await response.blob();
+                                
+                                // Создаем временную ссылку
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = file.name;
+                                document.body.appendChild(link);
+                                link.click();
+                                
+                                // Очистка
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(url);
+                              } catch (error) {
+                                console.error('Download error:', error);
+                              }
+                            }}
+                          >
+                            <Download size={14} />
+                          </a>
+                        </div>
+                      </div>
+                      
+                      {file.type.startsWith('image/') && (
+                        <img 
+                          src={file.url} 
+                          alt={file.name}
+                          className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
+                          onClick={() => setViewerFile(file)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Кнопка скачивания и удаления (только для своих сообщений) */}
+                {msg.sent_by === user.id && !msg.is_system && !msg.is_deleted && (
+                  <div className="absolute top-1 right-2 flex gap-1">
+                    
                     <button 
                       onClick={() => handleDeleteMessage(msg.id)}
-                      className="absolute top-1 right-2 text-gray-500 hover:text-red-500"
+                      className="text-gray-500 hover:text-red-500"
                       title="Удалить сообщение"
                     >
                       <Trash2 size={14} />
                     </button>
-                  )}
-                </>
-              )}
-              
-              <span className={`text-xs absolute bottom-1 right-2 ${
-                msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
-              }`}>
-                {format(new Date(msg.created_at), 'dd.MM HH:mm')}
-              </span>
-            </div>
+                  </div>
+                )}
+              </>
+            )}
+            
+            <span className={`text-xs absolute bottom-1 right-2 ${
+              msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
+            }`}>
+              {format(new Date(msg.created_at), 'dd.MM HH:mm')}
+            </span>
+          </div>
           ))}
 
           {/* Модальное окно для просмотра изображений */}
