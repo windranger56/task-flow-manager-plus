@@ -344,7 +344,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     if (!error && data) {
       const taskIds = new Set(data.map(msg => msg.task_id));
       setTasksWithNewMessages(taskIds);
-      console.log('Задачи с новыми сообщениями:', Array.from(taskIds));
     }
   };
 

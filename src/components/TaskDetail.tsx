@@ -605,7 +605,7 @@ export default function TaskDetail() {
               selectedTask.status === 'new' ? 'Новое' :
               selectedTask.status === 'on_verification' ? 'На проверке' :
               selectedTask.status === 'in_progress' ? 'В работе' :
-              selectedTask.status === 'overdue' ? 'Просрочена' :
+              selectedTask.status === 'overdue' ? 'Просрочено' :
               selectedTask.status}
           </Button>
           <Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>

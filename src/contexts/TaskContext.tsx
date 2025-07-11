@@ -199,7 +199,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           .eq('id', task.id);
         
         if (error) {
-          console.error(`Ошибка при обновлении статуса задачи ${task.id}:`, error);
+          console.error(`Ошибка при обновлении статуса поручения ${task.id}:`, error);
           return { ...task, status: 'overdue' as TaskStatus };
         }
         
@@ -214,7 +214,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
               is_system: 1,
             }]);
         } catch (messageError) {
-          console.error(`Ошибка при добавлении системного сообщения для задачи ${task.id}:`, messageError);
+          console.error(`Ошибка при добавлении системного сообщения для поручения ${task.id}:`, messageError);
         }
         
         return { ...task, status: 'overdue' as TaskStatus };
@@ -551,12 +551,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       
       // Обновляем локальное состояние
       setTasks([...tasks, newTask]);
-      toast({ title: "Задача добавлена", description: "Новая задача создана." });
+      toast({ title: "Поручение добавлено", description: "Новое поручение создано." });
     } catch (e) {
       console.error("Ошибка:", e);
       toast({ 
         title: "Ошибка", 
-        description: "Произошла ошибка при добавлении задачи",
+        description: "Произошла ошибка при добавлении поручения",
         variant: "destructive"
       });
     }
@@ -651,7 +651,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       setSelectedTask(null);
     }
     
-    toast({ title: "Задача удалена", description: "Задача была удалена." });
+    toast({ title: "Поручение удалено", description: "Поручение было удалено." });
   };
 
   const reassignTask = async (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => {
