@@ -125,6 +125,7 @@ export default function AdminPanel() {
 									<TableHead>Электронная почта</TableHead>
 									<TableHead>Департамент</TableHead>
 									<TableHead>Руководитель</TableHead>
+									<TableHead>Должность</TableHead>
 									<TableHead>Действия</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -149,6 +150,7 @@ export default function AdminPanel() {
 											<TableCell>{u.email}</TableCell>
 											<TableCell>{u.department?.name || "Не пренадлежит"}</TableCell>
 											<TableCell>{u.leader || "Нет руководителя"}</TableCell>
+											<TableCell>{u.department ? "Сотрудник" : "Руководитель"}</TableCell>
 											<TableCell className="space-x-2">
 												<Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
 													<DialogTrigger asChild>

@@ -286,10 +286,10 @@ export default function ExportButton() {
               indent: { left: 0 },
             }),
             
-            new Paragraph({
-              text: "___________________________",
-              indent: { left: 0 },
-            }),
+            // new Paragraph({
+            //   text: "___________________________",
+            //   indent: { left: 0 },
+            // }),
           ].filter(Boolean),
         },
       ],
@@ -349,7 +349,7 @@ export default function ExportButton() {
       content += `${filters.protocolAuthorPosition}\n`;
     }
     content += `${filters.protocolAuthor || "___________________________"}\n`;
-    // content += "___________________________\n";
+    content += "___________________________\n";
     // content += "___________________________\n";
     
     return content;

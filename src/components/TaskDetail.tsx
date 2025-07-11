@@ -853,7 +853,7 @@ export default function TaskDetail() {
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path>
               </svg>
             </Button>
-            <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            <div className="absolute z-10 top-full left-0 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               {selectedTask.isProtocol === 'active' ? 'Протокол активен' : 'Протокол неактивен'}
             </div>
           </div>
@@ -1016,35 +1016,36 @@ export default function TaskDetail() {
                               Просмотреть
                             </button>
                           )}
-                          <a 
-                            href="#" 
-                            className="text-blue-500 hover:text-blue-700 text-sm"
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              try {
-                                // Получаем файл как Blob
-                                const response = await fetch(file.url);
-                                const blob = await response.blob();
-                                
-                                // Создаем временную ссылку
-                                const url = window.URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = file.name;
-                                document.body.appendChild(link);
-                                link.click();
-                                
-                                // Очистка
-                                document.body.removeChild(link);
-                                window.URL.revokeObjectURL(url);
-                              } catch (error) {
-                                console.error('Download error:', error);
-                              }
-                            }}
-                          >
-                            <Download size={14} />
-                          </a>
+                          <div className="relative group">
+                            <a 
+                              href="#" 
+                              className="text-blue-500 hover:text-blue-700 text-sm"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const response = await fetch(file.url);
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = file.name;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                }
+                              }}
+                            >
+                              <Download size={14} />
+                            </a>
+                            <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                              Скачать
+                            </div>
+                          </div>
                         </div>
+                        
                       </div>
                       
                       {file.type.startsWith('image/') && (
@@ -1062,15 +1063,16 @@ export default function TaskDetail() {
                 {/* Кнопка скачивания и удаления (только для своих сообщений) */}
                 {msg.sent_by === user.id && !msg.is_system && !msg.is_deleted && (
                   <div className="absolute top-1 right-2 flex gap-1">
-                    
+                  <div className="relative group overflow-visible">
                     <button 
                       onClick={() => handleDeleteMessage(msg.id)}
                       className="text-gray-500 hover:text-red-500"
-                      title="Удалить сообщение"
                     >
                       <Trash2 size={14} />
                     </button>
+                    
                   </div>
+                </div>
                 )}
               </>
             )}
