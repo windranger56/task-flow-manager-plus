@@ -65,6 +65,17 @@ export default function ExportButton() {
   }, []);
 
   const generateProtocolDocument = async (filteredTasks) => {
+    const logoImage = await fetch('/img/label.png').then(res => res.arrayBuffer());
+
+    const imageRun = new ImageRun({
+      data: logoImage,
+      transformation: {
+        width: 200,
+        height: 50,
+      },
+      type: "png", // Указываем MIME-тип изображения
+      
+    });
     // Собираем уникальных пользователей (ответственные и создатели)
     const uniqueUserIds = new Set();
     filteredTasks.forEach(task => {
@@ -156,17 +167,22 @@ export default function ExportButton() {
             },
           },
           children: [
-            new Paragraph({
-              text: "Акционерное общество",
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 0 },
-            }),
-            
-            new Paragraph({
-              text: '(АО"Мосинжпроект")',
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 400 },
-            }),
+            // Заменяем текстовые параграфы на изображение
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: logoImage,
+                transformation: {
+                  width: 200, // ширина в пикселях
+                  height: 75, // высота в пикселях
+                },
+                type: "png", // Важно указать тип
+                
+              }),
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 400 },
+          }),
   
             new Paragraph({
               text: "УТВЕРЖДАЮ",
