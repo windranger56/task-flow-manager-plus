@@ -864,13 +864,38 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const getDepartmentByUserId = async (userId: string): Promise<Department | undefined> => {
-    const userDept = userDepartments.find(ud => ud.userId === userId);
-    if (!userDept) return undefined;
-    
-    // Since departments is now a state array, we don't need an async call here
-    return departments.find(dept => dept.id === userDept.departmentId);
+    try {
+      // 1. Получаем departmentId пользователя из БД
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('departmentId')
+        .eq('id', userId)
+        .single();
+  
+      if (userError || !userData?.departmentId) return undefined;
+  
+      // 2. Получаем данные подразделения
+      const { data: department, error: deptError } = await supabase
+        .from('departments')
+        .select('*, manager:users!departments_managerId_fkey(id, fullname)')
+        .eq('id', userData.departmentId)
+        .single();
+  
+      if (deptError || !department) return undefined;
+  
+      // 3. Возвращаем с дополнительными полями
+      return {
+        ...department,
+        color: getDepartmentColor(department.id),
+        managerName: department.manager?.fullname || 'Руководитель не назначен'
+      };
+      
+    } catch (error) {
+      console.error('Error in getDepartmentByUserId:', error);
+      return undefined;
+    }
   };
-
+   
   // Функция для добавления пользователей в существующий департамент
   const addUsersToDepartment = async (departmentId: string, userIds: string[]) => {
     const { data: { session } } = await supabase.auth.getSession();
