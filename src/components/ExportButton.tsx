@@ -494,7 +494,7 @@ export default function ExportButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="protocolAuthor">Ведет протокол</Label>
+              <Label htmlFor="protocolAuthor">Протокол ведет</Label>
               <Input
                 id="protocolAuthor"
                 value={filters.protocolAuthor || ''}

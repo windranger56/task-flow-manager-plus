@@ -202,17 +202,17 @@ export default function TaskDetail() {
         'completed': 'Завершено',
         'overdue': 'Просрочено',
       };
+      
+      // Первое сообщение - статус и дедлайн (системное)
       let statusMessage = `Статус изменён на: ${statusLabels[newStatus] || newStatus}`;
       
       // Добавляем информацию о новом дедлайне, если статус меняется с 'overdue' на 'in_progress' или 'on_verification'
       if ((newStatus === 'in_progress' || newStatus === 'on_verification') && newDeadline) {
         const formattedDeadline = formatDateSafe(newDeadline, 'dd.MM.yyyy');
-        statusMessage += `. Новый дедлайн: ${formattedDeadline}`;
+        statusMessage += `\nНовый дедлайн: ${formattedDeadline}`;
       }
       
-      if (newStatus === 'in_progress' && reason) {
-        statusMessage += `. Комментарий: ${reason}`;
-      }
+      // Вставляем первое сообщение (системное)
       await supabase
         .from('messages')
         .insert([{
@@ -221,6 +221,18 @@ export default function TaskDetail() {
           sent_by: user.id,
           is_system: 1,
         }]);
+
+      // Второе сообщение - комментарий (несистемное), только если есть reason
+      if (newStatus === 'in_progress' && reason) {
+        await supabase
+          .from('messages')
+          .insert([{
+            content: `Комментарий: ${reason}`,
+            task_id: taskId,
+            sent_by: user.id,
+            is_system: 0,
+          }]);
+      }
 
       // Получаем обновлённую задачу и обновляем selectedTask
       const { data: updatedTask, error: fetchError } = await supabase
@@ -273,7 +285,6 @@ export default function TaskDetail() {
 
   const handleReassign = async () => {
     if (!reassignTo) return;
-
     try {
       await reassignTask(
         selectedTask.id, 
@@ -975,9 +986,8 @@ export default function TaskDetail() {
             <div 
               key={msg.id} 
               className={`mb-2 p-2 rounded-md relative pr-12 ${
-                msg.is_system
-                  ? 'bg-gray-100 mx-auto text-center italic max-w-[80%] flex justify-center' 
-                  : msg.sent_by === user.id 
+                
+                     msg.sent_by === user.id 
                     ? 'ml-auto bg-blue-100 max-w-[80%]' 
                     : 'bg-gray-100 max-w-[80%]'
               } ${

@@ -30,6 +30,7 @@ export interface Task {
   assignedTo: string;
   createdBy: string;
   departmentId: string;
+  parentId:string;
   priority: Priority;
   isProtocol: ProtocolStatus; // Используем кастомный тип вместо boolean
   createdAt: Date;

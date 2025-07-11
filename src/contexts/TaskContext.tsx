@@ -654,32 +654,111 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     toast({ title: "Поручение удалено", description: "Поручение было удалено." });
   };
 
-  const reassignTask = async (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => {
+  const reassignTask = async (
+    taskId: string, 
+    newAssigneeId: string, 
+    newTitle?: string, 
+    newDescription?: string, 
+    newDeadline?: Date
+  ) => {
+    // Проверка аутентификации
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+      return;
+    }
+  
+    // Получаем текущего пользователя (того, кто переназначает)
+    const { data: currentUserData, error: userError } = await supabase
+      .from('users')
+      .select('id, fullname')
+      .eq('user_unique_id', session.user.id)
+      .single();
+  
+    if (userError || !currentUserData) {
+      console.error("Ошибка при получении данных пользователя:", userError);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось получить данные пользователя",
+        variant: "destructive"
+      });
+      return;
+    }
+  
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
+    
+    // Получаем данные нового исполнителя
     const assignee = await getUserById(newAssigneeId);
+    if (!assignee) return;
+    
+    // Получаем подразделение нового исполнителя
+    const newDepartment = await getDepartmentByUserId(newAssigneeId);
+    if (!newDepartment) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось определить подразделение нового исполнителя",
+        variant: "destructive"
+      });
+      return;
+    }
+    //Изменить
     const now = new Date();
-    // const info = `---\n${format(now, 'dd.MM.yyyy HH:mm')}: ${user.fullname} переназначил(а) поручение на ${assignee?.fullname}`;
-    const descriptionWithInfo = (newDescription || task.description || '') + '\n';
-    const newTask = {
-      title: newTitle || task.title,
+    const descriptionWithInfo = (newDescription || task.description || '');
+    
+    // Создаем новую задачу в подразделении нового исполнителя
+    const newTaskData = {
+      title: newTitle || `[Переназначено] ${task.title}`,
       description: descriptionWithInfo,
       assigned_to: newAssigneeId,
-      created_by: user.id,
-      departmentId: task.departmentId,
+      created_by: currentUserData.id, // Создатель - тот, кто переназначил
+      departmentId: newDepartment.id, // Подразделение нового исполнителя
+      parent_id: task.id, // Ссылка на оригинальную задачу
       priority: task.priority,
       is_protocol: task.isProtocol,
       deadline: newDeadline || task.deadline,
-      parent_id: task.id
+      status: 'new' as TaskStatus // Новая задача начинается со статуса "new"
     };
-    const { data } = await supabase
+    
+    // Сохраняем новую задачу в базу данных
+    const { data, error } = await supabase
       .from('tasks')
-      .insert(newTask)
+      .insert(newTaskData)
       .select()
-    setTasks([...tasks, data[0]]);
+      .single();
+    
+    if (error) {
+      console.error("Ошибка при создании переназначенной задачи:", error);
+      toast({ 
+        title: "Ошибка", 
+        description: "Не удалось переназначить поручение",
+        variant: "destructive" 
+      });
+      return;
+    }
+  
+    // Преобразуем данные в формат Task
+    const createdTask: Task = {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      assignedTo: data.assigned_to,
+      createdBy: data.created_by,
+      departmentId: data.departmentId,
+      parentId: data.parent_id,
+      priority: data.priority,
+      isProtocol: data.is_protocol as ProtocolStatus,
+      createdAt: new Date(data.created_at),
+      deadline: new Date(data.deadline),
+      status: data.status as TaskStatus
+    };
+  
+    // Обновляем локальное состояние
+    setTasks([...tasks, createdTask]);
+    
     toast({ 
       title: "Поручение переназначено", 
-      description: `Поручение переназначено на ${assignee?.fullname}.` 
+      description: `Создана новая задача в подразделении "${newDepartment.name}" для ${assignee.fullname}.` 
     });
   };
 
