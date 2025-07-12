@@ -84,23 +84,28 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       const tasksWithUsers = await Promise.all(tasks.map(async t => ({
         ...t, 
         assignee: await getUserById(t.assignedTo),
-        creator: await getUserById(t.createdBy) // Добавляем данные автора
-      })))
-      console.log(tasksWithUsers)
+        creator: await getUserById(t.createdBy)
+      })));
       
-      // Фильтруем задачи в зависимости от состояния архива
-      const filteredTasks = showArchive 
-        ? tasksWithUsers.filter(task => task.status === 'completed')
-        : tasksWithUsers.filter(task => task.status !== 'completed');
+      // Фильтруем задачи в зависимости от состояния архива И роли пользователя
+      const filteredTasks = tasksWithUsers.filter(task => {
+        // Проверяем, является ли пользователь автором или исполнителем
+        const isAuthorOrAssignee = user?.id === task.createdBy || user?.id === task.assignedTo;
+        
+        // В зависимости от showArchive применяем дополнительный фильтр
+        return showArchive 
+          ? isAuthorOrAssignee && task.status === 'completed'
+          : isAuthorOrAssignee && task.status !== 'completed';
+      });
       
       setTasksByDepartment(departments.map(department => {
         return {
           department,
           tasks: filteredTasks.filter(task => task.departmentId === department.id)
         };
-      }))
-    })()
-  }, [tasks, showArchive])
+      }));
+    })();
+  }, [tasks, showArchive, user?.id]);
   
   
   useEffect(() => {

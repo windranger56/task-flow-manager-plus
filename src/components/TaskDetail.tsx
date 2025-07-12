@@ -577,24 +577,6 @@ export default function TaskDetail() {
         {/* Кнопки управления задачей */}
         <div className="flex items-center space-x-2">
 
-          {/* Кнопка истории поручения */}
-          {selectedTask.parentId && (
-            <div className="relative group">
-              <Button 
-                className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-                onClick={handleOpenHistory}
-              >
-                <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-              </Button>
-              <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                История поручения
-              </div>
-            </div>
-            )}
 
           {/* Кнопка для открытия модального окна смены статуса */}
           <Button
@@ -732,6 +714,25 @@ export default function TaskDetail() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Кнопка истории поручения */}
+          {selectedTask.parentId && (
+            <div className="relative group">
+              <Button 
+                className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
+                onClick={handleOpenHistory}
+              >
+                <svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </Button>
+              <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                История поручения
+              </div>
+            </div>
+            )}
 
           {/* Кнопка переназначения */}
           <Dialog open={showReassign} onOpenChange={setShowReassign}>
@@ -1007,19 +1008,24 @@ export default function TaskDetail() {
                           <FileIcon size={16} className="mr-2" />
                           <span>{file.name}</span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           {(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
-                            <button 
-                              onClick={() => setViewerFile(file)}
-                              className="text-blue-500 hover:text-blue-700 text-sm"
-                            >
-                              Просмотреть
-                            </button>
+                            <div className="relative group">
+                              <button 
+                                onClick={() => setViewerFile(file)}
+                                className="text-blue-500 hover:text-blue-700 p-1 flex items-center justify-center"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                Просмотреть
+                              </div>
+                            </div>
                           )}
                           <div className="relative group">
                             <a 
                               href="#" 
-                              className="text-blue-500 hover:text-blue-700 text-sm"
+                              className="text-blue-500 hover:text-blue-700 p-1 flex items-center justify-center"
                               onClick={async (e) => {
                                 e.preventDefault();
                                 try {
