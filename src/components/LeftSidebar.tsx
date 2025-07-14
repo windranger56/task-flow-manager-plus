@@ -420,8 +420,70 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </DialogContent>
         </Dialog>
 
-          {/* Остальные диалоги остаются без изменений */}
-          {/* ... */}
+        {/* Диалог добавления пользователей (остаётся без изменений) */}
+        <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="department-select">Выберите подразделение</Label>
+                <Select 
+                  value={selectedDeptForUsers} 
+                  onValueChange={setSelectedDeptForUsers}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите подразделение" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Выберите пользователей</Label>
+                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                  {availableUsers.length > 0 ? (
+                    availableUsers.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`user-${user.id}`} 
+                          checked={selectedUsersToAdd.includes(user.id)}
+                          onCheckedChange={() => handleUserSelection(user.id)}
+                        />
+                        <Label htmlFor={`user-${user.id}`} className="flex items-center">
+                          <span>{user.fullname}</span>
+                        </Label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 py-2">
+                      Нет доступных пользователей без руководителя
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Отображаются только пользователи без руководителя
+                </p>
+              </div>
+              <Button 
+                onClick={handleAddUsersToDepartment} 
+                disabled={!selectedDeptForUsers || selectedUsersToAdd.length === 0} 
+                className="w-full"
+              >
+                Добавить пользователей
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+
+          
         </div>
         
         {/* Stats */}
