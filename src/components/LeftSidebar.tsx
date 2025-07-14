@@ -588,6 +588,19 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Кнопка выхода - только иконка на мобильных */}
+        {isMobile ? (
+            <Button 
+              onClick={handleLogout} 
+              variant="outline" 
+              className="w-[36px] h-[36px] ml-5 p-0 bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
+              data-tooltip-id="tooltip" 
+              data-tooltip-content="Выйти"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          ) : null}
           
         </div>
         
@@ -666,8 +679,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           )}
         </div>
       </div>
-
+      
       {/* Logout button at the bottom */}
+      {!isMobile ? (
       <div className={`mt-auto p-4 ${isMobile ? '' : 'border-t border-gray-200'}`}>
         <Button 
           onClick={handleLogout} 
@@ -680,6 +694,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           <span>Выйти</span>
         </Button>
       </div>
+      ) : null}
       
       <Tooltip id="tooltip" />
     </div>
