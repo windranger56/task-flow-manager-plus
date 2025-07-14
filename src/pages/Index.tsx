@@ -31,7 +31,7 @@ export default function Index() {
 						<Drawer open={showMobileDrawer} onOpenChange={setShowMobileDrawer}>
 							<DrawerContent className="h-[100vh] p-0">
 								<div className="relative">
-									<DrawerClose className="absolute right-4 top-4 z-50">
+									<DrawerClose className="absolute right-4 mt-20 z-50">
 										<X className="h-6 w-6" />
 									</DrawerClose>
 									<LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />

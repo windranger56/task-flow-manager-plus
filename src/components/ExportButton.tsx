@@ -71,25 +71,16 @@ export default function ExportButton() {
     const loadSubordinates = async () => {
       try {
         const subs = await getSubordinates();
-        setSubordinates(subs);
+        // Добавляем проверку на наличие fullname
+        const filteredSubs = subs.filter(sub => sub?.fullname);
+        setSubordinates(filteredSubs);
       } catch (error) {
         console.error('Ошибка загрузки подчиненных:', error);
+        setSubordinates([]);
       }
     };
     loadSubordinates();
-  }, []);
-
-  React.useEffect(() => {
-    const loadSubordinates = async () => {
-      try {
-        const subs = await getSubordinates();
-        setSubordinates(subs);
-      } catch (error) {
-        console.error('Ошибка загрузки подчиненных:', error);
-      }
-    };
-    loadSubordinates();
-  }, []);
+  }, []); // Убедитесь, что зависимостей нет или они правильные
 
   const generateProtocolDocument = async (filteredTasks) => {
     const logoImage = await fetch('/img/label.png').then(res => res.arrayBuffer());
@@ -497,7 +488,7 @@ export default function ExportButton() {
           className="max-w-2xl max-h-[80vh] overflow-y-auto sm:max-h-none"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="sticky top-0 bg-background z-10 pt-2">
+          <DialogHeader className="top-0 bg-background z-10 pt-2">
             <DialogTitle>Экспорт протокола совещания</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pb-4">
@@ -653,8 +644,13 @@ export default function ExportButton() {
                 <SelectContent>
                   <SelectItem value="all">Все исполнители</SelectItem>
                   {subordinates.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.fullname}
+                    <SelectItem 
+                      key={user.id} 
+                      value={user.id}
+                      // Добавляем проверку на наличие имени
+                      disabled={!user?.fullname}
+                    >
+                      {user?.fullname || 'Без имени'}
                     </SelectItem>
                   ))}
                 </SelectContent>

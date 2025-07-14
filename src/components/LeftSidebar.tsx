@@ -365,6 +365,61 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             </DialogContent>
           </Dialog>
 
+          <Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Добавить новое подразделение</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="department-name">Название подразделения <span className="text-red-500">*</span> </Label>
+                <Input 
+                  id="department-name" 
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  placeholder="Введите название подразделения"
+                  className={!newDeptName && "border-red-500"}
+                />
+               
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department-manager">Руководитель подразделения <span className="text-red-500">*</span> </Label>
+                <Select value={newDeptManager} onValueChange={setNewDeptManager}>
+                  <SelectTrigger className={!newDeptManager && "border-red-500"}>
+                    <SelectValue placeholder="Выберите руководителя" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableUsers.length > 0 ? (
+                      availableUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.fullname}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-gray-500">
+                        Нет доступных пользователей без руководителя
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+              </div>
+              <Button 
+                onClick={() => {
+                  if (!newDeptName || !newDeptManager) {
+                    // Поля уже подсвечиваются красным и показываются сообщения об ошибке
+                    return;
+                  }
+                  handleCreateDepartment();
+                }} 
+                className="w-full"
+              >
+                Добавить подразделение
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
           {/* Остальные диалоги остаются без изменений */}
           {/* ... */}
         </div>

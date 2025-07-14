@@ -618,10 +618,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
           <DrawerContent className="h-[100vh] max-h-[100vh]">
             <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50">
+              <DrawerClose className="absolute right-4 top-4 z-50 mt-20">
                 <X className="h-6 w-6" />
               </DrawerClose>
-              <div className="px-4 py-2 h-full overflow-auto">
+              <div className="px-4 py-2 h-full overflow-auto mt-20">
                 <TaskDetail />
               </div>
             </div>
@@ -630,15 +630,15 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       )}
 
 			{/* Add task */}
-			<div className='h-[57px] bg-transparent border-0 flex justify-center items-center'>
+			<div className='h-[57px] bg-transparent border-0 flex justify-center items-center z-50'>
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
         <DialogTrigger asChild>
           <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-[8px] px-[26px]'>
             <span>Добавить поручение</span>
           </Button>
         </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader className=" top-0 bg-background z-10 pt-2 pb-4">
             <DialogTitle>Создать новое поручение</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
