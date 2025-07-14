@@ -19,16 +19,14 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-		const badge = document.getElementById('lovable-badge')
-		if(badge) badge.style.display = "none";
+    const badge = document.getElementById('lovable-badge');
+    if(badge) badge.style.display = "none";
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -39,56 +37,58 @@ const App = () => {
   }, []);
 
   if (loading) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
     <div className="min-h-screen bg-background">
       <div className="flex">
-        <div className="flex-1 px-10">
+        {/* Измененные стили для адаптивности */}
+        <div className="flex-1 px-4 sm:px-6 md:px-10 w-full max-w-screen">
           {children}
         </div>
       </div>
     </div>
   );
 
-return (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="/auth"
-            element={
-              session ? <Navigate to="/" replace /> : <Auth />
-            }
-          />
-          <Route
-            path="/"
-            element={
-              session ? (
-                <AuthenticatedLayout>
-                  <Index />
-                </AuthenticatedLayout>
-              ) : (
-                <Navigate to="/auth" replace />
-              )
-            }
-          />
-					<Route
-						path="/admin"
-						element={<AdminPanel />}
-					/>
-					<Route
-						path="/admin/users/:id"
-						element={<UserForm />}
-					/>
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/auth"
+              element={
+                session ? <Navigate to="/" replace /> : <Auth />
+              }
+            />
+            <Route
+              path="/"
+              element={
+                session ? (
+                  <AuthenticatedLayout>
+                    <Index />
+                  </AuthenticatedLayout>
+                ) : (
+                  <Navigate to="/auth" replace />
+                )
+              }
+            />
+            <Route
+              path="/admin"
+              element={<AdminPanel />}
+            />
+            <Route
+              path="/admin/users/:id"
+              element={<UserForm />}
+            />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
+
 export default App;

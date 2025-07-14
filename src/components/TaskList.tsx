@@ -630,7 +630,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       )}
 
 			{/* Add task */}
-			<div className='h-[57px] bg-[#f9f9fb] border-[#e5e4e9] border-t flex justify-center items-center'>
+			<div className='h-[57px] bg-transparent border-0 flex justify-center items-center'>
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
         <DialogTrigger asChild>
           <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-[8px] px-[26px]'>

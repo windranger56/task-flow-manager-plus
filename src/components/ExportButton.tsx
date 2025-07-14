@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef} from 'react';
 import { Button } from '@/components/ui/button';
 import { ImageRun } from 'docx';
 import { 
@@ -49,8 +49,35 @@ export default function ExportButton() {
   const [previewContent, setPreviewContent] = useState<string>('');
   const [filters, setFilters] = useState<ExportFilters>({});
   const { tasks, getSubordinates, getUserById } = useTaskContext();
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const activeInputRef = useRef<HTMLInputElement>(null);
 
   const [subordinates, setSubordinates] = useState([]);
+
+  React.useEffect(() => {
+    if (!isOpen || !activeInputRef.current) return;
+
+    const timer = setTimeout(() => {
+      activeInputRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, filters]);
+
+  React.useEffect(() => {
+    const loadSubordinates = async () => {
+      try {
+        const subs = await getSubordinates();
+        setSubordinates(subs);
+      } catch (error) {
+        console.error('Ошибка загрузки подчиненных:', error);
+      }
+    };
+    loadSubordinates();
+  }, []);
 
   React.useEffect(() => {
     const loadSubordinates = async () => {
@@ -465,21 +492,32 @@ export default function ExportButton() {
             <span className="hidden sm:inline">Экспорт протокола</span>
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2x1">
-          <DialogHeader>
+        <DialogContent 
+          ref={dialogContentRef}
+          className="max-w-2xl max-h-[80vh] overflow-y-auto sm:max-h-none"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="sticky top-0 bg-background z-10 pt-2">
             <DialogTitle>Экспорт протокола совещания</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="approvedBy">Утвержден (кем)</Label>
               <Input
                 id="approvedBy"
+                ref={activeInputRef}
                 value={filters.approvedBy || ''}
                 onChange={(e) => setFilters(prev => ({
                   ...prev,
                   approvedBy: e.target.value
                 }))}
                 placeholder="Введите ФИО утверждающего"
+                onFocus={(e) => {
+                  activeInputRef.current = e.target;
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }, 100);
+                }}
               />
             </div>
 
@@ -493,6 +531,12 @@ export default function ExportButton() {
                   approvedByPosition: e.target.value
                 }))}
                 placeholder="Например: Исполнительный директор"
+                onFocus={(e) => {
+                  activeInputRef.current = e.target;
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }, 100);
+                }}
               />
             </div>
 
@@ -506,6 +550,12 @@ export default function ExportButton() {
                   protocolName: e.target.value
                 }))}
                 placeholder="Введите название протокола"
+                onFocus={(e) => {
+                  activeInputRef.current = e.target;
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }, 100);
+                }}
               />
             </div>
 
@@ -519,6 +569,12 @@ export default function ExportButton() {
                   protocolAuthor: e.target.value
                 }))}
                 placeholder="Введите ФИО ведущего протокол"
+                onFocus={(e) => {
+                  activeInputRef.current = e.target;
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }, 100);
+                }}
               />
             </div>
 
@@ -532,6 +588,12 @@ export default function ExportButton() {
                   protocolAuthorPosition: e.target.value
                 }))}
                 placeholder="Например: Секретарь совещания"
+                onFocus={(e) => {
+                  activeInputRef.current = e.target;
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }, 100);
+                }}
               />
             </div>
 
@@ -556,7 +618,7 @@ export default function ExportButton() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
                     selected={{
@@ -599,7 +661,7 @@ export default function ExportButton() {
               </Select>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-background pb-2 pt-4">
               <Button 
                 variant="outline" 
                 onClick={handlePreview}
@@ -607,7 +669,8 @@ export default function ExportButton() {
                 className="flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
-                Предпросмотр
+                <span className="hidden sm:inline">Предпросмотр</span>
+                <span className="sm:hidden">Просмотр</span>
               </Button>
               <div className="flex space-x-2">
                 <Button 
@@ -621,7 +684,7 @@ export default function ExportButton() {
                   onClick={handleExport}
                   disabled={isExporting}
                 >
-                  {isExporting ? 'Формируется...' : 'Сформировать протокол'}
+                  {isExporting ? 'Формируется...' : 'Сформировать'}
                 </Button>
               </div>
             </DialogFooter>
