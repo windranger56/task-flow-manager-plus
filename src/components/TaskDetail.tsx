@@ -1040,7 +1040,7 @@ export default function TaskDetail() {
         
         {/* Описание поручения */}
         <div className="mb-8 ml-0 sm:ml-[65px] px-4 sm:px-0">
-          <p className="text-gray-700 whitespace-pre-wrap text-center sm:text-left">
+          <p className="text-gray-700 whitespace-pre-wrap text-left sm:text-left">
             {selectedTask.description}
           </p>
         </div>
