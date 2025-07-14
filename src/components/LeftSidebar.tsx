@@ -281,7 +281,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
   // Mobile-specific styles
   const sidebarClass = isMobile 
-    ? "w-full flex flex-col bg-white" 
+    ? "w-full flex flex-col bg-white max-h-[100vh] overflow-y" 
     : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200";
 
   const borderClass = isMobile ? "" : "border-b border-gray-200";
