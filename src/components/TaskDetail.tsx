@@ -1196,8 +1196,30 @@ export default function TaskDetail() {
       </div>
       
       {/* Поле ввода сообщения */}
-        <div className="absolute bottom-0 left-0 right-0 flex">
-          <div className="w-full h-[57px] border-t border-gray-200 bg-white flex">
+        {/* Поле ввода сообщения - исправленная версия */}
+        <div className="fixed sm:absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+          {/* Отображение выбранных файлов */}
+          {selectedFiles.length > 0 && (
+            <div className="bg-white p-2 max-h-[200px] overflow-y-auto">
+              {selectedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-1">
+                  <div className="flex items-center truncate">
+                    <FileIcon size={16} className="mr-2 text-gray-500" />
+                    <span className="truncate text-sm">{file.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+                  </div>
+                  <button 
+                    onClick={() => removeFile(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="flex w-full h-[57px]">
             {/* Кнопка загрузки файла */}
             <label className="flex items-center justify-center px-3 cursor-pointer text-gray-500 hover:text-gray-700">
               <input 
@@ -1215,7 +1237,7 @@ export default function TaskDetail() {
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
               placeholder="Напишите сообщение..."
-              className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb]"
+              className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleSendChatMessage();
