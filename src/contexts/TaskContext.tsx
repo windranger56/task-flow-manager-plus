@@ -640,18 +640,36 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteTask = async (taskId: string) => {
-		await supabase
-			.from('tasks')
-			.delete()
-			.eq('id', Number(taskId))
-
-    setTasks(tasks.filter(task => task.id !== taskId));
-    
-    if (selectedTask && selectedTask.id === taskId) {
-      setSelectedTask(null);
+    try {
+      // Удаляем все сообщения, связанные с задачей
+      const { error: msgError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('task_id', Number(taskId));
+      if (msgError) {
+        console.error('Ошибка при удалении сообщений поручения:', msgError);
+        toast({ title: 'Ошибка', description: 'Не удалось удалить сообщения поручения', variant: 'destructive' });
+        return;
+      }
+      // Удаляем саму задачу
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', Number(taskId));
+      if (error) {
+        console.error('Ошибка при удалении поручения:', error);
+        toast({ title: 'Ошибка', description: 'Не удалось удалить поручение', variant: 'destructive' });
+        return;
+      }
+      setTasks(tasks.filter(task => task.id !== taskId));
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(null);
+      }
+      toast({ title: 'Поручение удалено', description: 'Поручение и все связанные сообщения были удалены.' });
+    } catch (e) {
+      console.error('Ошибка при удалении поручения:', e);
+      toast({ title: 'Ошибка', description: 'Не удалось удалить поручение', variant: 'destructive' });
     }
-    
-    toast({ title: "Поручение удалено", description: "Поручение было удалено." });
   };
 
   const reassignTask = async (

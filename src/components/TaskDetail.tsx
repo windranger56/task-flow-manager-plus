@@ -974,7 +974,7 @@ export default function TaskDetail() {
                       <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
                         Отмена
                       </Button>
-                      <Button variant="destructive" onClick={() => { deleteTask(selectedTask.id); setShowDeleteDialog(false); }}>
+                      <Button variant="destructive" onClick={async () => { await deleteTask(selectedTask.id); await fetchTasks(); setShowDeleteDialog(false); }}>
                         Удалить
                       </Button>
                     </div>

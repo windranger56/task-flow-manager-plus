@@ -102,6 +102,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [newTasks, setNewTasks] = useState([]);
   const [subordinates, setSubordinates] = useState<User[]>([]);
+  const [deletingSubordinateId, setDeletingSubordinateId] = useState<string | null>(null);
   
   useEffect(() => {
     getProfile();
@@ -669,13 +670,52 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className={`flex ${isMobile ? 'justify-center' : 'flex-wrap'} gap-2`}>
           {subordinates.length > 0 ? (
             subordinates.map((user) => (
-              <Avatar key={user.id} className={subordinateAvatarSize}>
-                <AvatarImage src={user.image} alt={user.name} />
-                <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
-              </Avatar>
+              <div key={user.id} className="relative group flex flex-col items-center">
+                <Avatar className={subordinateAvatarSize}>
+                  <AvatarImage src={user.image} alt={user.name} />
+                  <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.name}</span>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 p-0 text-xs"
+                  onClick={() => setDeletingSubordinateId(user.id)}
+                  title="Удалить сотрудника"
+                >
+                  ×
+                </Button>
+                {/* Диалог подтверждения удаления */}
+                <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Удалить сотрудника</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2">Вы уверены, что хотите удалить сотрудника <b>{user.name}</b>? Это действие нельзя отменить.</div>
+                    <div className="flex gap-2 justify-end mt-4">
+                      <Button variant="ghost" onClick={() => setDeletingSubordinateId(null)}>Отмена</Button>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          const { error } = await supabase.from('users').update({ active: false, leader_id: null }).eq('id', user.id);
+                          if (!error) {
+                            setSubordinates((prev) => prev.filter((u) => u.id !== user.id));
+                            setDeletingSubordinateId(null);
+                            toast({ title: `Сотрудник ${user.name} удалён!` });
+                          } else {
+                            toast({ title: 'Ошибка', description: 'Не удалось удалить сотрудника', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        Удалить
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             ))
           ) : (
-            <p className="text-sm text-gray-500 w-full text-center">У вас нет подчиненных сотрудников</p>
+            <p className="text-sm text-gray-500 w-full text-center">У вас нет подчинённых сотрудников</p>
           )}
         </div>
       </div>
