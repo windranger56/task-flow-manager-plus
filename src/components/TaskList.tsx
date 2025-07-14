@@ -475,10 +475,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   }
   
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative pb-16"> {/* Добавим padding-bottom для места под кнопку */}
       
       {/* Task List by Departments */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-4"> {/* Уменьшим высоту списка задач */}
         <Accordion type="multiple" className="w-full">
           {tasksByDepartment.map(({ department, tasks }) => (
             <AccordionItem key={department.id} value={department.id}>
@@ -630,10 +630,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       )}
 
 			{/* Add task */}
-			<div className='fixed bottom-0 left-0 right-0  h-[57px] bg-transparent border-0 flex justify-center items-center z-1000'>
+			<div className='fixed bottom-4 left-0 right-0 flex justify-center items-center z-50'>
       <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
         <DialogTrigger asChild>
-          <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-[8px] px-[26px]'>
+          <Button className='rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-3 px-6 shadow-lg'>
+            <Plus className="mr-2 h-4 w-4" />
             <span>Добавить поручение</span>
           </Button>
         </DialogTrigger>
