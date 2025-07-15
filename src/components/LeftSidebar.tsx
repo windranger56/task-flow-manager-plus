@@ -697,6 +697,28 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                       <Button
                         variant="destructive"
                         onClick={async () => {
+                          // Проверка: является ли сотрудник руководителем департамента
+                          const { data: departmentsManaged, error: depError } = await supabase
+                            .from('departments')
+                            .select('id')
+                            .eq('managerId', user.id);
+                          if (depError) {
+                            toast({ title: 'Ошибка', description: 'Не удалось проверить руководителя департамента', variant: 'destructive' });
+                            return;
+                          }
+                          if (departmentsManaged && departmentsManaged.length > 0) {
+                            // Сбросить managerId для всех департаментов, где этот пользователь был руководителем
+                            const depIds = departmentsManaged.map(dep => dep.id);
+                            const { error: updateError } = await supabase
+                              .from('departments')
+                              .update({ managerId: null })
+                              .in('id', depIds);
+                            if (updateError) {
+                              toast({ title: 'Ошибка', description: 'Не удалось обновить департамент(ы)', variant: 'destructive' });
+                              return;
+                            }
+                          }
+                          // Деактивация пользователя
                           const { error } = await supabase.from('users').update({ active: false, leader_id: null }).eq('id', user.id);
                           if (!error) {
                             setSubordinates((prev) => prev.filter((u) => u.id !== user.id));
