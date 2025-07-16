@@ -14,6 +14,7 @@ import { ru } from 'date-fns/locale';
 import { supabase } from '@/supabase/client';
 import { Paperclip, X, FileIcon, Trash2 } from 'lucide-react';
 import { FileViewer } from './FileViewer'; // или путь к вашему компоненту
+import { time } from 'console';
 
 export default function TaskDetail() {
   const { 
@@ -303,17 +304,17 @@ export default function TaskDetail() {
         newDeadline
       );
       // Добавить системное сообщение о смене исполнителя
-      // const newAssignee = users.find(u => u.id === reassignTo);
-      // if (newAssignee) {
-      //   await supabase
-      //     .from('messages')
-      //     .insert([{
-      //       content: `Исполнитель изменён на: ${newAssignee.fullname}`,
-      //       task_id: selectedTask.id,
-      //       sent_by: user.id,
-      //       is_system: 1,
-      //     }]);
-      // }
+      const newAssignee = users.find(u => u.id === reassignTo);
+      if (newAssignee) {
+        await supabase
+          .from('messages')
+          .insert([{
+            content: `Исполнитель изменён на: ${newAssignee.fullname} ${time}`,
+            task_id: selectedTask.id,
+            sent_by: user.id,
+            is_system: 1,
+          }]);
+      }
       setShowReassign(false);
     } catch (error) {
       console.error("Ошибка переназначения:", error);
