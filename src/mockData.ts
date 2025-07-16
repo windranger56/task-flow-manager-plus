@@ -1,10 +1,9 @@
-
 import { supabase } from './supabase/client';
 import { User, Department, Task, Message, TaskAction } from './types';
 
 export const currentUser: User = {
   id: '1',
-  name: 'Наталья Смирнова',
+  fullname: 'Наталья Смирнова',
   email: 'natalie.smith@gmail.com',
   image: '/img/slut.webp',
   role: 'manager'
@@ -14,28 +13,28 @@ export const users: User[] = [
   currentUser,
   {
     id: '2',
-    name: 'Ольга Новак',
+    fullname: 'Ольга Новак',
     email: 'okla.nowak@gmail.com',
     image: 'https://i.pravatar.cc/150?img=32',
     role: 'employee'
   },
   {
     id: '3',
-    name: 'Михаил Иванов',
+    fullname: 'Михаил Иванов',
     email: 'mike.johnson@gmail.com',
     image: 'https://i.pravatar.cc/150?img=33',
     role: 'employee'
   },
   {
     id: '4',
-    name: 'Светлана Лебедева',
+    fullname: 'Светлана Лебедева',
     email: 'sarah.lee@gmail.com',
     image: 'https://i.pravatar.cc/150?img=20',
     role: 'employee'
   },
   {
     id: '5',
-    name: 'Дмитрий Чен',
+    fullname: 'Дмитрий Чен',
     email: 'david.chen@gmail.com',
     image: 'https://i.pravatar.cc/150?img=69',
     role: 'employee'
@@ -45,17 +44,14 @@ export const users: User[] = [
 export const departments: () => Promise<Department[]> = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   try {
-    // Первый запрос для получения данных департаментов
     const { data: departmentsData, error: departmentsError } = await supabase
       .from('departments')
       .select('*');
       
     if (departmentsError) throw departmentsError;
     
-    // Для каждого департамента получаем информацию о руководителе
     const departmentsWithManagers = await Promise.all(
       departmentsData.map(async (department) => {
-        // Запрос к таблице users для получения имени руководителя
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('fullname')
@@ -66,10 +62,9 @@ export const departments: () => Promise<Department[]> = async () => {
           console.error(`Ошибка при получении данных пользователя: ${userError.message}`);
         }
         
-        // Добавляем имя руководителя к департаменту и совместимость с managerId
         return {
           ...department,
-          managerId: department.managerId, // Для обратной совместимости
+          managerId: department.managerId,
           managerName: userData?.[0]?.fullname || 'Не назначен'
         };
       })
@@ -82,30 +77,28 @@ export const departments: () => Promise<Department[]> = async () => {
   }
 };
 
-
-
 export const taskActions: TaskAction[] = [
   {
-    userId: '2', // Ольга Новак
+    userId: '2',
     action: 'assigned',
     target: 'Наталья Смирнова',
-    timestamp: new Date(2019, 10, 25) // 25 Ноя, 2019
+    timestamp: new Date(2019, 10, 25)
   },
   {
-    userId: '2', // Ольга Новак
+    userId: '2',
     action: 'added',
     target: 'Маркетинг',
-    timestamp: new Date(2019, 1, 18) // 18 Фев, 2019
+    timestamp: new Date(2019, 1, 18)
   },
   {
-    userId: '2', // Ольга Новак
+    userId: '2',
     action: 'created',
-    timestamp: new Date(2019, 1, 18) // 18 Фев, 2019
+    timestamp: new Date(2019, 1, 18)
   },
   {
-    userId: '1', // Наталья Смирнова
+    userId: '1',
     action: 'status',
-    timestamp: new Date(2020, 4, 19) // 19 Май, 2020
+    timestamp: new Date(2020, 4, 19)
   }
 ];
 
@@ -133,7 +126,6 @@ export const messages: Message[] = [
   }
 ];
 
-// Mapping of which users belong to which departments for the mock data
 const userDepartments: {userId: string, departmentId: string}[] = [
   { userId: '2', departmentId: '1' },
   { userId: '3', departmentId: '2' },
@@ -141,30 +133,23 @@ const userDepartments: {userId: string, departmentId: string}[] = [
   { userId: '5', departmentId: '4' },
 ];
 
-// Helper function to get user by ID
 export const getUserById = (id: string): User | undefined => {
   return users.find(user => user.id === id);
 };
 
-// Helper function to get department by ID
 export const getDepartmentById = async (id: string): Promise<Department | undefined> => {
   const depts = await departments();
   return depts.find(department => department.id === id);
 };
 
-// Helper function to get messages by task
 export const getMessagesByTask = (taskId: string): Message[] => {
   return messages.filter(message => message.taskId === taskId);
 };
 
-// Helper function to get subordinates for current user
 export const getSubordinates = (): User[] => {
-  // In a real app, you would filter based on reporting relationships
-  // For this mock, we'll return all users except the current user
   return users.filter(user => user.id !== currentUser.id);
 };
 
-// Helper function to get department by user ID
 export const getDepartmentByUserId = async (userId: string): Promise<Department | undefined> => {
   const userDept = userDepartments.find(ud => ud.userId === userId);
   if (!userDept) return undefined;

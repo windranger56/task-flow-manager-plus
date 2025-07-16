@@ -27,6 +27,7 @@ interface TaskContextType {
   departments: Department[];
   tasks: Task[];
   messages: Message[];
+  supabase: any; // Add supabase to the interface
 
   // Selected items
   selectedDepartment: Department | null;
@@ -49,7 +50,7 @@ interface TaskContextType {
   completeTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   reassignTask: (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => void;
-  toggleProtocol: (taskId: string) => void;
+  toggleProtocol: (taskId: string, newProtocolState?: 'active' | 'inactive') => void; // Fix signature
   addMessage: (taskId: string, content: string) => void;
   searchTasks: (query: string) => Task[];
   
@@ -270,7 +271,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             assignedTo: task.assigned_to,
             createdBy: task.created_by,
             departmentId: task.departmentId,
-            parentId: task.parent_id,
+            parentId: task.parent_id || '', // Fix missing parentId
             priority: task.priority,
             isProtocol: task.is_protocol as ProtocolStatus,
             createdAt: new Date(task.created_at),
@@ -314,7 +315,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const selectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
-    // Не сбрасываем выбранную 
   };
 
   const selectTask = (task: Task | null) => {
@@ -542,6 +542,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         assignedTo: data.assigned_to,
         createdBy: data.created_by,
         departmentId: data.departmentId,
+        parentId: data.parent_id || '', // Fix missing parentId
         priority: data.priority,
         isProtocol: data.is_protocol as ProtocolStatus,
         createdAt: new Date(data.created_at),
@@ -780,11 +781,16 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const toggleProtocol = async (taskId: string, newProtocolState: 'active' | 'inactive') => {
+  const toggleProtocol = async (taskId: string, newProtocolState?: 'active' | 'inactive') => {
     try {
+      const currentTask = tasks.find(t => t.id === taskId);
+      if (!currentTask) return;
+      
+      const targetState = newProtocolState || (currentTask.isProtocol === 'active' ? 'inactive' : 'active');
+      
       const { error } = await supabase
         .from('tasks')
-        .update({ is_protocol: newProtocolState })
+        .update({ is_protocol: targetState })
         .eq('id', taskId);
   
       if (error) throw error;
@@ -792,13 +798,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       setTasks(prevTasks => 
         prevTasks.map(task => 
           task.id === taskId 
-            ? { ...task, isProtocol: newProtocolState } 
+            ? { ...task, isProtocol: targetState } 
             : task
         )
       );
   
       toast({ 
-        title: `Поручение ${newProtocolState === 'active' ? "добавлено в протокол" : "исключено из протокола"}`,
+        title: `Поручение ${targetState === 'active' ? "добавлено в протокол" : "исключено из протокола"}`,
       });
     } catch (error) {
       console.error("Ошибка:", error);
@@ -1053,7 +1059,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       // Преобразуем данные в формат User
       return subordinates.map(user => ({
         id: user.id,
-        name: user.fullname || '',
+        fullname: user.fullname || '', // Fix: use fullname instead of name
         email: user.email || '',
         image: user.image || '',
         role: 'employee' // Устанавливаем роль по умолчанию
@@ -1100,6 +1106,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           assignedTo: task.assigned_to,
           createdBy: task.created_by,
           departmentId: task.departmentId,
+          parentId: task.parent_id || '', // Fix missing parentId
           priority: task.priority,
           isProtocol: task.is_protocol as ProtocolStatus,
           createdAt: new Date(task.created_at),
@@ -1131,6 +1138,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       departments,
       tasks,
       messages,
+      supabase, // Add supabase to the context value
       selectedDepartment,
       selectedTask,
       selectDepartment,
