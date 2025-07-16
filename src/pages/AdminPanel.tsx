@@ -235,7 +235,7 @@ const handleEditUser = async () => {
 									<TableHead>Логин</TableHead>
 									<TableHead>Департамент</TableHead>
 									<TableHead>Руководитель</TableHead>
-									<TableHead>Должность</TableHead>
+									<TableHead>Роль</TableHead>
 									<TableHead>Пароль</TableHead>
 									<TableHead>Действия</TableHead>
 								</TableRow>
