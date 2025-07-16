@@ -309,7 +309,7 @@ export default function TaskDetail() {
         await supabase
           .from('messages')
           .insert([{
-            content: `Исполнитель изменён на: ${newAssignee.fullname} ${time}`,
+            content: `Исполнитель изменён на: ${newAssignee.fullname}`,
             task_id: selectedTask.id,
             sent_by: user.id,
             is_system: 1,
