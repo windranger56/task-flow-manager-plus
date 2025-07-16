@@ -118,43 +118,29 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     loadSubordinates();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      const filteredTasks = tasks.filter(task => 
-        task.createdBy === user.id || task.assignedTo === user.id
-      );
-      
-      setDoneTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
-      setOverdueTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
-      setNewTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
-      setinworkTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []));
-      setverifyTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []));
-    }
-  }, [tasks, user]);
-
   
 
-  // useEffect(() => {
-  //   setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
-  // }, [tasks])
+  useEffect(() => {
+    setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
+  }, [tasks])
 
-  // useEffect(() => {
-  //   setinworkTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []))
-  // }, [tasks])
+  useEffect(() => {
+    setinworkTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []))
+  }, [tasks])
 
-  // useEffect(() => {
-  //   setverifyTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []))
-  // }, [tasks])
+  useEffect(() => {
+    setverifyTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []))
+  }, [tasks])
 
-  // useEffect(() => {
-  //   setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []))
-  // }, [tasks])
+  useEffect(() => {
+    setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []))
+  }, [tasks])
 
-  // useEffect(() => {
-  //   setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
-  //   setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
-  //   setNewTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
-  // }, [tasks]);
+  useEffect(() => {
+    setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
+    setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
+    setNewTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
+  }, [tasks]);
 
   useEffect(() => {
     if (showNewDepartment) {
