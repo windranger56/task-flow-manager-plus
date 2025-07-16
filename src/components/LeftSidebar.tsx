@@ -308,7 +308,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className="flex flex-col items-center">
           <Avatar className={`${avatarSize} mb-2`}>
             <AvatarImage src={profile.image} alt={profile.fullname} />
-            <AvatarFallback>{profile.fullname.slice(0, 2)}</AvatarFallback>
+            <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
           </Avatar>
           <h3 className="text-lg font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
           <p className="text-sm text-gray-500">{profile.email}</p>
@@ -408,7 +408,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               <Button 
                 onClick={() => {
                   if (!newDeptName || !newDeptManager) {
-                    // Поля уже подсвечиваются красным и показываются сообщения об ошибке
                     return;
                   }
                   handleCreateDepartment();
@@ -657,7 +656,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="p-2 bg-gray-50 text-sm">
-                <p>Руководитель: {department.managerName || getUserById(department.managerId)?.name || 'Не назначен'}</p>
+                <p>Руководитель: {department.managerName || getUserById(department.managerId)?.fullname || 'Не назначен'}</p>
               </CollapsibleContent>
             </Collapsible>
           ))}
@@ -672,10 +671,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             subordinates.map((user) => (
               <div key={user.id} className="relative group flex flex-col items-center">
                 <Avatar className={subordinateAvatarSize}>
-                  <AvatarImage src={user.image} alt={user.name} />
-                  <AvatarFallback>{user.name.slice(0, 2)}</AvatarFallback>
+                  <AvatarImage src={user.image} alt={user.fullname} />
+                  <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                 </Avatar>
-                <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.name}</span>
+                <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.fullname}</span>
                 <Button
                   size="icon"
                   variant="destructive"
@@ -691,13 +690,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                     <DialogHeader>
                       <DialogTitle>Удалить сотрудника</DialogTitle>
                     </DialogHeader>
-                    <div className="py-2">Вы уверены, что хотите удалить сотрудника <b>{user.name}</b>? Это действие нельзя отменить.</div>
+                    <div className="py-2">Вы уверены, что хотите удалить сотрудника <b>{user.fullname}</b>? Это действие нельзя отменить.</div>
                     <div className="flex gap-2 justify-end mt-4">
                       <Button variant="ghost" onClick={() => setDeletingSubordinateId(null)}>Отмена</Button>
                       <Button
                         variant="destructive"
                         onClick={async () => {
-                          // Проверка: является ли сотрудник руководителем департамента
                           const { data: departmentsManaged, error: depError } = await supabase
                             .from('departments')
                             .select('id')
@@ -707,7 +705,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                             return;
                           }
                           if (departmentsManaged && departmentsManaged.length > 0) {
-                            // Сбросить managerId для всех департаментов, где этот пользователь был руководителем
                             const depIds = departmentsManaged.map(dep => dep.id);
                             const { error: updateError } = await supabase
                               .from('departments')
@@ -718,12 +715,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                               return;
                             }
                           }
-                          // Деактивация пользователя
                           const { error } = await supabase.from('users').update({ active: false, leader_id: null }).eq('id', user.id);
                           if (!error) {
                             setSubordinates((prev) => prev.filter((u) => u.id !== user.id));
                             setDeletingSubordinateId(null);
-                            toast({ title: `Сотрудник ${user.name} удалён!` });
+                            toast({ title: `Сотрудник ${user.fullname} удалён!` });
                           } else {
                             toast({ title: 'Ошибка', description: 'Не удалось удалить сотрудника', variant: 'destructive' });
                           }
