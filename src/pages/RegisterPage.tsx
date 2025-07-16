@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,162 +7,228 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullname, setFullname] = useState("");
+  const [fullnames, setFullnames] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [generatedAccounts, setGeneratedAccounts] = useState<Array<{
+    fullname: string;
+    email: string;
+    password: string;
+    status: 'success' | 'error';
+    error?: string;
+  }>>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    setAvatarFile(file);
-    
-    // Create preview URL
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setAvatarPreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+  const capitalizeFirstLetter = (str: string): string => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  const validatePassword = (password: string): { isValid: boolean; message: string } => {
+  const transliterate = (str: string): string => {
+    const ruToEn: Record<string, string> = {
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+      'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+    };
+
+    return str.toLowerCase().split('').map(char => ruToEn[char] || char).join('');
+  };
+
+  const generateEmailFromFullName = (fullname: string): string => {
+    const parts = fullname.trim().split(/\s+/);
+    if (parts.length < 3) return "";
+
+    const lastName = capitalizeFirstLetter(transliterate(parts[0]));
+    const firstNameInitial = transliterate(parts[1][0]).toUpperCase();
+    const middleNameInitial = transliterate(parts[2][0]).toUpperCase();
+
+    return `${lastName}_${firstNameInitial}${middleNameInitial}@mip.ru`;
+  };
+
+  const generateRandomPassword = (): string => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const specials = '!@#$%^&*(),.?":{}|<>';
+
+    const getRandomChar = (str: string) => str[Math.floor(Math.random() * str.length)];
+
+    // Ensure at least one character from each group
+    let password = [
+      getRandomChar(uppercase),
+      getRandomChar(lowercase),
+      getRandomChar(numbers),
+      getRandomChar(specials)
+    ];
+
+    // Fill the rest randomly
+    const allChars = uppercase + lowercase + numbers + specials;
+    while (password.length < 12) {
+      password.push(getRandomChar(allChars));
+    }
+
+    // Shuffle the array
+    for (let i = password.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [password[i], password[j]] = [password[j], password[i]];
+    }
+
+    return password.join('');
+  };
+
+  const validatePassword = (password: string): boolean => {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
     const isLongEnough = password.length >= 8;
 
-    const requirements = [];
-    if (!isLongEnough) requirements.push("не менее 8 символов");
-    if (!hasUpperCase) requirements.push("заглавную букву");
-    if (!hasLowerCase) requirements.push("строчную букву");
-    if (!hasNumbers) requirements.push("цифру");
-    if (!hasSpecialChar) requirements.push("специальный символ");
-
-    if (requirements.length > 0) {
-      return { 
-        isValid: false, 
-        message: `Пароль не соответствует требованиям безопасности. Необходимо добавить: ${requirements.join(", ")}` 
-      };
-    }
-
-    return { isValid: true, message: "" };
+    return isLongEnough && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar;
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setGeneratedAccounts([]);
 
     try {
-      // Validate password before registration
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        setError(passwordValidation.message);
+      // Split input by newlines and filter empty lines
+      const names = fullnames.split('\n')
+        .map(name => name.trim())
+        .filter(name => name.length > 0);
+
+      if (names.length === 0) {
+        setError("Пожалуйста, введите ФИО пользователей (каждое с новой строки)");
         setIsLoading(false);
         return;
       }
 
-      // Registration flow
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-        },
-      });
-      
-      console.log("Sign up response:", data);
-      
-      if (signUpError) throw signUpError;
-      
-      if (data?.user?.identities?.length === 0) {
-        setError("Пользователь с таким email уже существует");
+      // Validate each name
+      const invalidNames = names.filter(name => name.split(/\s+/).length < 3);
+      if (invalidNames.length > 0) {
+        setError(`Некорректный формат ФИО: ${invalidNames.join(', ')}. Введите Фамилию Имя Отчество полностью через пробел.`);
+        setIsLoading(false);
         return;
       }
 
-      if (!data.user || !data.user.id) {
-        throw new Error("Не удалось получить данные пользователя");
-      }
+      const results = [];
 
-      let avatarUrl = null;
-
-      // Upload avatar if a file was selected
-      if (avatarFile && data.user) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${data.user.id}/avatar.${fileExt}`;
-
+      // Process each user
+      for (const fullname of names) {
         try {
-          const { error: uploadError } = await supabase.storage
-            .from('images')
-            .upload(filePath, avatarFile, { upsert: true });
+          // Generate email and password
+          const email = generateEmailFromFullName(fullname);
+          const password = generateRandomPassword();
+          
+          // Validate generated password
+          if (!validatePassword(password)) {
+            results.push({
+              fullname,
+              email,
+              password,
+              status: 'error',
+              error: 'Не удалось сгенерировать валидный пароль'
+            });
+            continue;
+          }
 
-          if (uploadError) throw uploadError;
+          // Registration flow
+          const { data, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin,
+            },
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          if (data?.user?.identities?.length === 0) {
+            results.push({
+              fullname,
+              email,
+              password,
+              status: 'error',
+              error: 'Пользователь с таким email уже существует'
+            });
+            continue;
+          }
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('images')
-            .getPublicUrl(filePath);
-            
-          avatarUrl = publicUrl;
-        } catch (error) {
-          console.error("Avatar upload error:", error);
-          // Continue even if avatar upload fails
+          if (!data.user || !data.user.id) {
+            throw new Error("Не удалось получить данные пользователя");
+          }
+
+          // Create user record in the users table
+          const { error: userError } = await supabase
+            .from('users')
+            .insert({
+              fullname,
+              email,
+              user_unique_id: data.user.id,
+              password: password,
+            });
+
+          if (userError) {
+            throw new Error("Не удалось создать запись пользователя: " + userError.message);
+          }
+
+          results.push({
+            fullname,
+            email,
+            password,
+            status: 'success'
+          });
+        } catch (err: any) {
+          console.error(`Registration error for ${fullname}:`, err);
+          
+          let errorMessage = "Произошла ошибка при регистрации";
+          
+          if (err.message === "Invalid login credentials") {
+            errorMessage = "Неверный email или пароль";
+          } else if (err.message.includes("password")) {
+            errorMessage = "Пароль должен быть не менее 6 символов";
+          } else if (err.message.includes("email")) {
+            errorMessage = "Введите корректный email";
+          } else if (err.message.includes("Email not confirmed")) {
+            errorMessage = "Пожалуйста, подтвердите ваш email";
+          }
+          
+          results.push({
+            fullname,
+            email: generateEmailFromFullName(fullname),
+            password: generateRandomPassword(),
+            status: 'error',
+            error: errorMessage
+          });
         }
       }
 
-      // Create user record in the users table
-      try {
-        const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          fullname,
-          email,
-          user_unique_id: data.user.id,
-          image: avatarUrl,
-          password:password,
-        }, { count: 'exact' });
+      setGeneratedAccounts(results);
+      
+      // Count successful registrations
+      const successCount = results.filter(r => r.status === 'success').length;
+      
+      if (successCount > 0) {
+        toast({
+          title: "Регистрация завершена",
+          description: `Успешно зарегистрировано ${successCount} из ${names.length} пользователей`,
+        });
+      }
 
-        if(userError) {
-          console.error("Failed to create user record:", userError);
-          throw new Error("Не удалось создать запись пользователя: " + userError.message);
-        }
-      } catch (insertError) {
-        console.error("Insert error details:", insertError);
-        // We'll continue even if this fails, as the auth user is already created
+      if (successCount === names.length) {
+        // Reset form if all registrations were successful
+        setFullnames("");
       }
-      
-      toast({
-        title: "Регистрация успешна",
-        description: "Проверьте вашу почту для подтверждения аккаунта",
-      });
-      
-      // Redirect to login page after successful registration
-      navigate("/admin");
-    } catch (err: any) {
-      console.error("Registration error:", err);
-      let errorMessage = "Произошла ошибка при регистрации";
-      
-      if (err.message === "Invalid login credentials") {
-        errorMessage = "Неверный email или пароль";
-      } else if (err.message.includes("password")) {
-        errorMessage = "Пароль должен быть не менее 6 символов";
-      } else if (err.message.includes("email")) {
-        errorMessage = "Введите корректный email";
-      } else if (err.message.includes("Email not confirmed")) {
-        errorMessage = "Пожалуйста, подтвердите ваш email";
-      }
-      
-      setError(errorMessage);
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("Произошла непредвиденная ошибка при обработке запроса");
     } finally {
       setIsLoading(false);
     }
@@ -170,11 +236,11 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Регистрация</CardTitle>
+          <CardTitle>Массовая регистрация пользователей</CardTitle>
           <CardDescription>
-            Создайте аккаунт для доступа к системе
+            Введите ФИО пользователей (каждое с новой строки) для создания учетных записей
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -186,81 +252,53 @@ const RegisterPage = () => {
           )}
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullname">Фамилия Имя</Label>
-              <Input
-                id="fullname"
-                type="text"
-                placeholder="Иванов Иван"
-                value={fullname}
-                onChange={(e) => setFullname(e.target.value)}
+              <Label htmlFor="fullnames">ФИО пользователей (каждое с новой строки)</Label>
+              <Textarea
+                id="fullnames"
+                placeholder={`Иванов Аркадий Павлович\nПетрова Анна Сергеевна\nСидоров Дмитрий Иванович`}
+                value={fullnames}
+                onChange={(e) => setFullnames(e.target.value)}
                 required
+                rows={5}
               />
+              <p className="text-sm text-muted-foreground">
+                Введите Фамилию Имя Отчество полностью через пробел для каждого пользователя
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="avatar">Аватар</Label>
-              <div className="flex items-center gap-4">
-                {avatarPreview && (
-                  <div className="h-16 w-16 rounded-full overflow-hidden border">
-                    <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
-                  </div>
-                )}
-                <input
-                  type="file"
-                  id="avatar"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Загрузить фото
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Эл.почта</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Введите пароль"
-              />
-              <div className="space-y-1 mt-2 bg-muted/50 p-3 rounded-md">
-                <p className="text-sm font-medium">
-                  Требования к паролю:
-                </p>
-                <ul className="text-xs list-disc pl-4 space-y-1 mt-1">
-                  <li>Минимум 8 символов</li>
-                  <li>Хотя бы одна заглавная буква (A-Z)</li>
-                  <li>Хотя бы одна строчная буква (a-z)</li>
-                  <li>Хотя бы одна цифра (0-9)</li>
-                  <li>Хотя бы один специальный символ (!@#$%^&*(),.?":{}|&lt;&gt;)</li>
-                </ul>
-              </div>
-            </div>
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Загрузка..." : "Зарегистрироваться"}
+              {isLoading ? "Регистрация..." : "Зарегистрировать пользователей"}
             </Button>
           </form>
-          
+
+          {generatedAccounts.length > 0 && (
+            <div className="mt-6 space-y-4">
+              <h3 className="font-medium">Результаты регистрации:</h3>
+              <div className="border rounded-md divide-y">
+                {generatedAccounts.map((account, index) => (
+                  <div 
+                    key={index} 
+                    className={`p-3 ${account.status === 'success' ? 'bg-success/10' : 'bg-destructive/10'}`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">{account.fullname}</p>
+                        <p className="text-sm">Email: {account.email}</p>
+                        <p className="text-sm">Пароль: {account.password}</p>
+                      </div>
+                      <div className="text-sm">
+                        {account.status === 'success' ? (
+                          <span className="text-success">Успешно</span>
+                        ) : (
+                          <span className="text-destructive">Ошибка: {account.error}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
