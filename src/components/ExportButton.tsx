@@ -788,17 +788,18 @@ export default function ExportButton() {
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-background pb-2 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={handlePreview}
-                disabled={isExporting}
-                className="flex items-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                <span className="hidden sm:inline">Предпросмотр</span>
-                <span className="sm:hidden">Просмотр</span>
-              </Button>
+              
               <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handlePreview}
+                  disabled={isExporting}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">Предпросмотр</span>
+                  <span className="sm:hidden">Просмотр</span>
+                </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => setIsOpen(false)}
