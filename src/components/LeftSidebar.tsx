@@ -118,6 +118,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     loadSubordinates();
   }, []);
 
+  
+
   useEffect(() => {
     setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
   }, [tasks])

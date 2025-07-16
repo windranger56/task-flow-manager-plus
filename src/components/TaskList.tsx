@@ -483,12 +483,12 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           {tasksByDepartment.map(({ department, tasks }) => (
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
-                <div className="flex items-center">
-                  <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} />
-                  <span className='font-semibold text-[16px]'>{department.name}</span>
-                  {/* Показываем количество задач в этом департаменте */}
-                  <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
-                </div>
+              <div className="flex items-center w-full">
+                <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} />
+                <span className='font-semibold text-[16px] flex-grow text-left '>{department.name}</span>
+                {/* Показываем количество задач в этом департаменте */}
+                <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
+              </div>
               </AccordionTrigger>
               <AccordionContent>
                 {tasks.length > 0 ? (
