@@ -191,7 +191,7 @@ const handleEditUser = async () => {
           <div className="text-xl font-semibold capitalize">
             {selectedSection}
           </div>
-          <Button onClick={() => navigate('/auth')} variant="outline">
+          <Button onClick={() => navigate('/register')} variant="outline">
             Создать пользователя
           </Button>
           <div className="flex gap-2">

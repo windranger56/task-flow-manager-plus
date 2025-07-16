@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import { useState } from "react";
 import AdminPanel from "./pages/AdminPanel";
 import UserForm from "./pages/UserForm";
+import RegisterPage from "./pages/RegisterPage";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,10 @@ const App = () => {
             <Route
               path="/admin"
               element={<AdminPanel />}
+            />
+            <Route
+              path="/register"
+              element={<RegisterPage />}
             />
             <Route
               path="/admin/users/:id"
