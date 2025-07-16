@@ -11,19 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
 import { FileDown, Eye } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ExportFilters } from '@/types';
+import { ExportFilters, User } from '@/types';
 import { Packer } from 'docx';
 import { saveAs } from 'file-saver';
 import {
@@ -41,6 +34,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
+import DepartmentSelector from './DepartmentSelector';
+import ExecutorSelector from './ExecutorSelector';
 
 export default function ExportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,11 +43,14 @@ export default function ExportButton() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [filters, setFilters] = useState<ExportFilters>({});
-  const { tasks, getSubordinates, getUserById } = useTaskContext();
+  const { tasks, departments, getUserById } = useTaskContext();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const activeInputRef = useRef<HTMLInputElement>(null);
 
-  const [subordinates, setSubordinates] = useState([]);
+  // New state for department and executor management
+  const [availableExecutors, setAvailableExecutors] = useState<User[]>([]);
+  const [departmentUsers, setDepartmentUsers] = useState<{ [key: string]: User[] }>({});
+  const [isLoadingExecutors, setIsLoadingExecutors] = useState(false);
 
   React.useEffect(() => {
     if (!isOpen || !activeInputRef.current) return;
@@ -67,20 +65,126 @@ export default function ExportButton() {
     return () => clearTimeout(timer);
   }, [isOpen, filters]);
 
+  // Initialize default selections when dialog opens
   React.useEffect(() => {
-    const loadSubordinates = async () => {
-      try {
-        const subs = await getSubordinates();
-        // Добавляем проверку на наличие fullname
-        const filteredSubs = subs.filter(sub => sub?.fullname);
-        setSubordinates(filteredSubs);
-      } catch (error) {
-        console.error('Ошибка загрузки подчиненных:', error);
-        setSubordinates([]);
+    if (isOpen && departments.length > 0) {
+      const allDepartmentIds = departments.map(dept => dept.id);
+      
+      // Set all departments as selected by default
+      if (!filters.selectedDepartments) {
+        setFilters(prev => ({
+          ...prev,
+          selectedDepartments: allDepartmentIds,
+          selectedExecutors: [] // Will be populated when executors load
+        }));
+        
+        // Load executors for all departments
+        loadExecutorsForDepartments(allDepartmentIds);
       }
-    };
-    loadSubordinates();
-  }, []); // Убедитесь, что зависимостей нет или они правильные
+    }
+  }, [isOpen, departments]);
+
+  // Load executors when selected departments change
+  React.useEffect(() => {
+    if (filters.selectedDepartments && filters.selectedDepartments.length > 0) {
+      loadExecutorsForDepartments(filters.selectedDepartments);
+    } else {
+      setAvailableExecutors([]);
+      setFilters(prev => ({ ...prev, selectedExecutors: [] }));
+    }
+  }, [filters.selectedDepartments]);
+
+  const loadExecutorsForDepartments = async (departmentIds: string[]) => {
+    setIsLoadingExecutors(true);
+    try {
+      const allExecutors: User[] = [];
+      const newDepartmentUsers = { ...departmentUsers };
+
+      for (const deptId of departmentIds) {
+        if (!departmentUsers[deptId]) {
+          // Load users for this department (simplified - you may need to implement this in TaskContext)
+          // For now, we'll use tasks to find users assigned to tasks in this department
+          const deptTasks = tasks.filter(task => task.departmentId === deptId);
+          const userIds = [...new Set(deptTasks.map(task => task.assignedTo))];
+          
+          const users = await Promise.all(
+            userIds.map(async userId => {
+              try {
+                return await getUserById(userId);
+              } catch {
+                return null;
+              }
+            })
+          );
+          
+          newDepartmentUsers[deptId] = users.filter((user): user is User => 
+            user !== null && user.fullname
+          );
+        }
+        
+        allExecutors.push(...newDepartmentUsers[deptId]);
+      }
+
+      // Remove duplicates
+      const uniqueExecutors = allExecutors.filter((executor, index, self) =>
+        index === self.findIndex(e => e.id === executor.id)
+      );
+
+      setDepartmentUsers(newDepartmentUsers);
+      setAvailableExecutors(uniqueExecutors);
+      
+      // Set all executors as selected by default if not already set
+      if (!filters.selectedExecutors || filters.selectedExecutors.length === 0) {
+        setFilters(prev => ({
+          ...prev,
+          selectedExecutors: uniqueExecutors.map(exec => exec.id)
+        }));
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки исполнителей:', error);
+      toast({
+        title: "Ошибка загрузки",
+        description: "Не удалось загрузить список исполнителей",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingExecutors(false);
+    }
+  };
+
+  const handleDepartmentToggle = (departmentId: string) => {
+    setFilters(prev => {
+      const currentSelected = prev.selectedDepartments || [];
+      const newSelected = currentSelected.includes(departmentId)
+        ? currentSelected.filter(id => id !== departmentId)
+        : [...currentSelected, departmentId];
+      
+      return {
+        ...prev,
+        selectedDepartments: newSelected
+      };
+    });
+  };
+
+  const handleExecutorToggle = (executorId: string) => {
+    setFilters(prev => {
+      const currentSelected = prev.selectedExecutors || [];
+      const newSelected = currentSelected.includes(executorId)
+        ? currentSelected.filter(id => id !== executorId)
+        : [...currentSelected, executorId];
+      
+      return {
+        ...prev,
+        selectedExecutors: newSelected
+      };
+    });
+  };
+
+  // Create department name mapping for ExecutorSelector
+  const departmentNameMap = departments.reduce((acc, dept) => {
+    acc[dept.id] = dept.name;
+    return acc;
+  }, {} as { [key: string]: string });
 
   const generateProtocolDocument = async (filteredTasks) => {
     const logoImage = await fetch('/img/label.png').then(res => res.arrayBuffer());
@@ -91,29 +195,24 @@ export default function ExportButton() {
         width: 200,
         height: 50,
       },
-      type: "png", // Указываем MIME-тип изображения
-      
+      type: "png",
     });
-    // Собираем уникальных пользователей (ответственные и создатели)
+
     const uniqueUserIds = new Set();
     filteredTasks.forEach(task => {
       if (task.assignedTo) uniqueUserIds.add(task.assignedTo);
       if (task.createdBy) uniqueUserIds.add(task.createdBy);
     });
   
-    // Получаем данные пользователей
     const users = await Promise.all(
       Array.from(uniqueUserIds).map(async userId => await getUserById(userId))
     );
   
-    // Формируем массив ФИО присутствующих
     const attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
   
-    // Добавляем ФИО из полей попапа, если они заполнены
     if (filters.approvedBy) attendees.push(filters.approvedBy);
     if (filters.protocolAuthor) attendees.push(filters.protocolAuthor);
   
-    // Удаляем дубликаты и преобразуем в строку
     const uniqueAttendees = [...new Set(attendees)];
     const attendeesString = uniqueAttendees.join(', ');
   
@@ -185,22 +284,20 @@ export default function ExportButton() {
             },
           },
           children: [
-            // Заменяем текстовые параграфы на изображение
-          new Paragraph({
-            children: [
-              new ImageRun({
-                data: logoImage,
-                transformation: {
-                  width: 200, // ширина в пикселях
-                  height: 75, // высота в пикселях
-                },
-                type: "png", // Важно указать тип
-                
-              }),
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 },
-          }),
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  data: logoImage,
+                  transformation: {
+                    width: 200,
+                    height: 75,
+                  },
+                  type: "png",
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+            }),
   
             new Paragraph({
               text: "УТВЕРЖДАЮ",
@@ -233,7 +330,6 @@ export default function ExportButton() {
               spacing: { after: 200 },
             }),
             
-            // Добавляем название протокола из поля filters.protocolName
             new Paragraph({
               text: filters.protocolName || "",
               alignment: AlignmentType.CENTER,
@@ -303,11 +399,6 @@ export default function ExportButton() {
               text: "___________________________",
               indent: { left: 0 },
             }),
-            
-            // new Paragraph({
-            //   text: "___________________________",
-            //   indent: { left: 0 },
-            // }),
           ].filter(Boolean),
         },
       ],
@@ -319,22 +410,18 @@ export default function ExportButton() {
   const generatePreviewContent = async (filteredTasks) => {
     let content = '';
     
-    // Заголовок
     content += 'Акционерное общество\n';
     content += '(АО"Мосинжпроект")\n\n';
     
-    // Утверждающий
     content += 'УТВЕРЖДАЮ\n\n';
     if (filters.approvedByPosition) content += `${filters.approvedByPosition}\n`;
     content += `${filters.approvedBy || "___________________________"}\n`;
     content += "___________________________\n\n";
     
-    // Название протокола
     content += 'ПРОТОКОЛ\n\n';
     if (filters.protocolName) content += `${filters.protocolName}\n\n`;
     content += `от ${format(new Date(), 'dd.MM.yyyy', { locale: ru })} г. Москва\n\n`;
     
-    // Присутствующие
     const uniqueUserIds = new Set();
     filteredTasks.forEach(task => {
       if (task.assignedTo) uniqueUserIds.add(task.assignedTo);
@@ -352,15 +439,12 @@ export default function ExportButton() {
     const uniqueAttendees = [...new Set(attendees)];
     content += `Присутствовали: ${uniqueAttendees.join(', ')}\n\n`;
     
-    // Таблица поручений
     content += '№ | Поручение | Ответственный (Ф.И.О.) | Срок исполнения\n';
-    // content += '--- | --- | --- | ---\n';
     
     filteredTasks.forEach((task, index) => {
       content += `${index + 1} | ${task.title} | ${task.assignedToName || ''} | ${format(new Date(task.deadline), 'dd.MM.yyyy', { locale: ru })}\n`;
     });
     
-    // Подпись
     content += '\n';
     if (filters.protocolAuthorPosition) {
       content += 'Протокол вел:\n';
@@ -368,7 +452,6 @@ export default function ExportButton() {
     }
     content += `${filters.protocolAuthor || "___________________________"}\n`;
     content += "___________________________\n";
-    // content += "___________________________\n";
     
     return content;
   };
@@ -400,7 +483,22 @@ export default function ExportButton() {
 
   const filterTasks = async () => {
     let filteredTasks = tasks.filter(task => task.isProtocol === 'active');
-  
+
+    // Filter by selected departments
+    if (filters.selectedDepartments && filters.selectedDepartments.length > 0) {
+      filteredTasks = filteredTasks.filter(task => 
+        filters.selectedDepartments!.includes(task.departmentId)
+      );
+    }
+
+    // Filter by selected executors
+    if (filters.selectedExecutors && filters.selectedExecutors.length > 0) {
+      filteredTasks = filteredTasks.filter(task => 
+        filters.selectedExecutors!.includes(task.assignedTo)
+      );
+    }
+
+    // Date filters
     if (filters.startDate && filters.endDate) {
       filteredTasks = filteredTasks.filter(task => {
         const taskDate = new Date(task.deadline);
@@ -415,13 +513,8 @@ export default function ExportButton() {
         new Date(task.deadline) <= filters.endDate!
       );
     }
-  
-    if (filters.assigneeId && filters.assigneeId !== 'all') {
-      filteredTasks = filteredTasks.filter(task => 
-        task.assignedTo === filters.assigneeId
-      );
-    }
-  
+
+    // Add assignee names
     filteredTasks = await Promise.all(filteredTasks.map(async task => {
       const assignee = await getUserById(task.assignedTo);
       return {
@@ -429,7 +522,7 @@ export default function ExportButton() {
         assignedToName: assignee?.fullname || 'Не указан'
       };
     }));
-  
+
     return filteredTasks;
   };
 
@@ -629,32 +722,28 @@ export default function ExportButton() {
               </Popover>
             </div>
 
-            <div className="space-y-2">
-              <Label>Исполнитель</Label>
-              <Select 
-                value={filters.assigneeId || 'all'} 
-                onValueChange={(value) => setFilters(prev => ({ 
-                  ...prev, 
-                  assigneeId: value === 'all' ? undefined : value 
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Все исполнители" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все исполнители</SelectItem>
-                  {subordinates.map((user) => (
-                    <SelectItem 
-                      key={user.id} 
-                      value={user.id}
-                      // Добавляем проверку на наличие имени
-                      disabled={!user?.fullname}
-                    >
-                      {user?.fullname || 'Без имени'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* New Department Selector */}
+            <div className="border-t pt-4">
+              <DepartmentSelector
+                departments={departments}
+                selectedDepartments={filters.selectedDepartments || []}
+                onDepartmentToggle={handleDepartmentToggle}
+              />
+            </div>
+
+            {/* New Executor Selector */}
+            <div className="border-t pt-4">
+              <ExecutorSelector
+                executors={availableExecutors}
+                selectedExecutors={filters.selectedExecutors || []}
+                onExecutorToggle={handleExecutorToggle}
+                departmentNames={departmentNameMap}
+              />
+              {isLoadingExecutors && (
+                <div className="text-sm text-gray-500 mt-2">
+                  Загрузка исполнителей...
+                </div>
+              )}
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-background pb-2 pt-4">

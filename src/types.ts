@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   fullname: string;
@@ -56,5 +55,12 @@ export interface TaskAction {
 export interface ExportFilters {
   startDate?: Date;
   endDate?: Date;
-  assigneeId?: string;
+  assigneeId?: string; // Keeping for backward compatibility
+  selectedDepartments?: string[]; // ID выбранных департаментов
+  selectedExecutors?: string[];   // ID выбранных исполнителей
+  approvedBy?: string;
+  approvedByPosition?: string;
+  protocolName?: string;
+  protocolAuthor?: string;
+  protocolAuthorPosition?: string;
 }
