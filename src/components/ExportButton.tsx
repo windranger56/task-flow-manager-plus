@@ -1,3 +1,4 @@
+
 import React, { useState, useRef} from 'react';
 import { Button } from '@/components/ui/button';
 import { ImageRun } from 'docx';
@@ -43,7 +44,7 @@ export default function ExportButton() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [filters, setFilters] = useState<ExportFilters>({});
-  const { tasks, departments, getUserById } = useTaskContext();
+  const { tasks, departments, getUserById, supabase } = useTaskContext();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const activeInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,24 +103,56 @@ export default function ExportButton() {
 
       for (const deptId of departmentIds) {
         if (!departmentUsers[deptId]) {
-          // Load users for this department (simplified - you may need to implement this in TaskContext)
-          // For now, we'll use tasks to find users assigned to tasks in this department
-          const deptTasks = tasks.filter(task => task.departmentId === deptId);
-          const userIds = [...new Set(deptTasks.map(task => task.assignedTo))];
+          // Get all users where departmentId matches
+          const { data: departmentEmployees, error: employeesError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('departmentId', deptId);
+
+          if (employeesError) {
+            console.error('Error fetching department employees:', employeesError);
+            continue;
+          }
+
+          // Get department manager
+          const department = departments.find(d => d.id === deptId);
+          let manager = null;
           
-          const users = await Promise.all(
-            userIds.map(async userId => {
-              try {
-                return await getUserById(userId);
-              } catch {
-                return null;
+          if (department?.managerId) {
+            try {
+              manager = await getUserById(department.managerId);
+            } catch (error) {
+              console.error('Error fetching department manager:', error);
+            }
+          }
+
+          // Combine employees and manager
+          const deptUsers: User[] = [];
+          
+          // Add department employees
+          if (departmentEmployees) {
+            departmentEmployees.forEach(emp => {
+              if (emp.fullname) { // Only add users with fullname
+                deptUsers.push({
+                  id: emp.id,
+                  fullname: emp.fullname,
+                  email: emp.email || '',
+                  image: emp.image || '',
+                  role: emp.role || deptId
+                });
               }
-            })
-          );
-          
-          newDepartmentUsers[deptId] = users.filter((user): user is User => 
-            user !== null && user.fullname
-          );
+            });
+          }
+
+          // Add manager if not already in the list
+          if (manager && manager.fullname && !deptUsers.find(u => u.id === manager.id)) {
+            deptUsers.push({
+              ...manager,
+              role: deptId // Set role to department ID for consistency
+            });
+          }
+
+          newDepartmentUsers[deptId] = deptUsers;
         }
         
         allExecutors.push(...newDepartmentUsers[deptId]);
@@ -205,7 +238,7 @@ export default function ExportButton() {
     });
   
     const users = await Promise.all(
-      Array.from(uniqueUserIds).map(async userId => await getUserById(userId))
+      Array.from(uniqueUserIds).map(async userId => await getUserById(userId as string))
     );
   
     const attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
@@ -244,27 +277,35 @@ export default function ExportButton() {
       children: [
         new TableCell({
           children: [new Paragraph({
-            text: "№",
-            bold: true,
+            children: [new TextRun({
+              text: "№",
+              bold: true,
+            })],
             alignment: AlignmentType.CENTER,
           })],
         }),
         new TableCell({
           children: [new Paragraph({
-            text: "Поручение",
-            bold: true,
+            children: [new TextRun({
+              text: "Поручение",
+              bold: true,
+            })],
           })],
         }),
         new TableCell({
           children: [new Paragraph({
-            text: "Ответственный (Ф.И.О.)",
-            bold: true,
+            children: [new TextRun({
+              text: "Ответственный (Ф.И.О.)",
+              bold: true,
+            })],
           })],
         }),
         new TableCell({
           children: [new Paragraph({
-            text: "Срок исполнения",
-            bold: true,
+            children: [new TextRun({
+              text: "Срок исполнения",
+              bold: true,
+            })],
           })],
         }),
       ],
@@ -429,7 +470,7 @@ export default function ExportButton() {
     });
     
     const users = await Promise.all(
-      Array.from(uniqueUserIds).map(async userId => await getUserById(userId))
+      Array.from(uniqueUserIds).map(async userId => await getUserById(userId as string))
     );
     
     let attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
