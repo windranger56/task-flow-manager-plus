@@ -338,14 +338,14 @@ const Auth = () => {
               {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
             </Button>
           </form>
-          <div className="mt-4 text-center">
+          <div className="opacity-0">
             <Button
               variant="link"
               onClick={() => {
                 console.log("Switching auth mode, current isSignUp:", isSignUp);
                 setIsSignUp(!isSignUp);
               }}
-              className="text-sm"
+              className="text-[5px]"
             >
               {isSignUp
                 ? "Уже есть аккаунт? Войти"

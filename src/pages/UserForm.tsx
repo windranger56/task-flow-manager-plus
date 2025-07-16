@@ -37,6 +37,7 @@ export default function UserForm() {
 				if (error || !data.length) navigate("not-found")
 				form.setValue("fullname", data[0].fullname)
 				form.setValue("email", data[0].email)
+				form.setValue("password", data[0].password || "")
 			})
 		)
 	}, [])
@@ -82,13 +83,15 @@ export default function UserForm() {
 			}
 
 			// Editing an existing user
+			const updateData = {
+				fullname: values.fullname,
+				email: values.email,
+				...(avatarUrl ? { image: avatarUrl } : {}),
+				...(values.password ? { password: values.password } : {})
+			};
 			const { error: updateError } = await supabase
 				.from('users')
-				.update({
-					fullname: values.fullname,
-					email: values.email,
-					...(avatarUrl ? { image: avatarUrl } : {})
-				})
+				.update(updateData)
 				.eq('id', id);
 
 			if (updateError) {
@@ -138,6 +141,18 @@ export default function UserForm() {
 									<FormItem className="w-full">
 										<FormControl>
 											<Input placeholder="Электронная почта" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="password"
+								render={({ field }) => (
+									<FormItem className="w-full">
+										<FormControl>
+											<Input type="password" placeholder="Пароль (оставьте пустым, чтобы не менять)" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>

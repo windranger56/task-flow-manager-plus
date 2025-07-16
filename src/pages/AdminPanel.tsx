@@ -12,6 +12,8 @@ import { toast } from "sonner"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { useNavigate } from "react-router-dom"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 export default function AdminPanel() {
   const [selectedSection, setSelectedSection] = useState("главная");
@@ -22,6 +24,61 @@ export default function AdminPanel() {
 
 	const navigate = useNavigate();
 
+  const [editUser, setEditUser] = useState(null);
+const [editUserData, setEditUserData] = useState(null);
+const [departments, setDepartments] = useState([]);
+const [leaders, setLeaders] = useState([]);
+const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+const [showCreateDept, setShowCreateDept] = useState(false);
+const [newDept, setNewDept] = useState({ name: '', managerId: '' });
+
+useEffect(() => {
+  if (editUser) {
+    supabase.from('departments').select('id, name').then(({ data }) => setDepartments(data || []));
+    supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
+    setEditUserData({
+      ...editUser,
+      departmentId: editUser.department?.id || '',
+      leaderId: editUser.leader_id || '',
+      role: editUser.role || 'employee',
+      avatar: null,
+      password: editUser.password || ''
+    });
+    setAvatarPreview(editUser.image || null);
+  }
+}, [editUser]);
+
+const handleEditUser = async () => {
+  let avatarUrl = editUser.image;
+  if (editUserData.avatar) {
+    const fileExt = editUserData.avatar.name.split('.').pop();
+    const filePath = `${Date.now()}/avatar.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from('images').upload(filePath, editUserData.avatar, { upsert: true });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+      avatarUrl = publicUrl;
+    }
+  }
+  const { error } = await supabase.from('users').update({
+    fullname: editUserData.fullname,
+    email: editUserData.email,
+    password: editUserData.password,
+    image: avatarUrl,
+    departmentId: editUserData.departmentId,
+    role: editUserData.role,
+    leader_id: editUserData.leaderId || null
+  }).eq('id', editUser.id);
+  if (!error) {
+    toast.success('Пользователь обновлен');
+    setEditUser(null);
+    setEditUserData(null);
+    setAvatarPreview(null);
+    fetchUsers();
+  } else {
+    toast.error('Ошибка при обновлении пользователя');
+  }
+};
+
   const handleSectionChange = (section) => {
     setSelectedSection(section)
     setIsSheetOpen(false)
@@ -30,7 +87,7 @@ export default function AdminPanel() {
 	const fetchUsers = async () => {
 		const response = await supabase
 			.from("users")
-			.select(`id, fullname, email, image, leader_id, department:users_departmentId_fkey(*)`)
+			.select(`id, fullname, email, image, leader_id, password, department:users_departmentId_fkey(*)`)
 			.eq("active", true);
 
 
@@ -41,7 +98,8 @@ export default function AdminPanel() {
 
 		response.data = await Promise.all(response.data.map(
 			u => u.leader_id
-				? supabase.from("users").select("fullname").eq("id", u.leader_id).eq("active", true).then(({data}) => ({ ...u, leader: data[0].fullname }))
+				? supabase.from("users").select("fullname").eq("id", u.leader_id).eq("active", true)
+					.then(({data}) => ({ ...u, leader: data?.[0]?.fullname || "Нет руководителя" }))
 				: u
 		))
 
@@ -50,6 +108,29 @@ export default function AdminPanel() {
 
 	useEffect(() => { fetchUsers() }, [])
 	useEffect(() => { console.log(deletingId) }, [deletingId])
+
+  const handleCreateDept = async () => {
+    if (!newDept.name || !newDept.managerId) {
+      toast.error('Заполните все поля');
+      return;
+    }
+    const { error } = await supabase.from('departments').insert({ name: newDept.name, managerId: newDept.managerId });
+    if (!error) {
+      toast.success('Департамент создан');
+      setShowCreateDept(false);
+      setNewDept({ name: '', managerId: '' });
+      // обновить список департаментов, если нужно
+      if (typeof fetchDepartments === 'function') fetchDepartments();
+    } else {
+      toast.error('Ошибка при создании департамента');
+    }
+  };
+
+  useEffect(() => {
+    if (showCreateDept) {
+      supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
+    }
+  }, [showCreateDept]);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -110,6 +191,35 @@ export default function AdminPanel() {
           <div className="text-xl font-semibold capitalize">
             {selectedSection}
           </div>
+          <Button onClick={() => navigate('/auth')} variant="outline">
+            Создать пользователя
+          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowCreateDept(true)} variant="outline">Создать департамент</Button>
+            <Dialog open={showCreateDept} onOpenChange={setShowCreateDept}>
+              <DialogContent onClick={e => e.stopPropagation()}>
+                <DialogHeader>
+                  <DialogTitle>Создать департамент</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input placeholder="Название департамента" value={newDept.name} onChange={e => setNewDept(d => ({ ...d, name: e.target.value }))} />
+                  <Select value={newDept.managerId} onValueChange={val => setNewDept(d => ({ ...d, managerId: val }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите руководителя" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leaders.map(leader => (
+                        <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleCreateDept}>Создать</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </header>
 
         <main className="p-6">
@@ -122,10 +232,11 @@ export default function AdminPanel() {
 								<TableRow>
 									<TableHead>Аватар</TableHead>
 									<TableHead>ФИО</TableHead>
-									<TableHead>Электронная почта</TableHead>
+									<TableHead>Логин</TableHead>
 									<TableHead>Департамент</TableHead>
 									<TableHead>Руководитель</TableHead>
 									<TableHead>Должность</TableHead>
+									<TableHead>Пароль</TableHead>
 									<TableHead>Действия</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -135,7 +246,7 @@ export default function AdminPanel() {
 										<TableRow
 											key={u.id}
 											className="cursor-pointer hover:bg-[#d7d7d7] transition-all duration-300"
-											onClick={() => navigate(`/admin/users/${u.id}`)}
+											onClick={() => setEditUser(u)}
 										>
 											<TableCell>
 												<Avatar>
@@ -151,6 +262,7 @@ export default function AdminPanel() {
 											<TableCell>{u.department?.name || "Не пренадлежит"}</TableCell>
 											<TableCell>{u.leader || "Нет руководителя"}</TableCell>
 											<TableCell>{u.department ? "Сотрудник" : "Руководитель"}</TableCell>
+											<TableCell>{u.password || ''}</TableCell>
 											<TableCell className="space-x-2">
 												<Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
 													<DialogTrigger asChild>
@@ -196,6 +308,68 @@ export default function AdminPanel() {
           )}
         </main>
       </div>
+      <Dialog open={!!editUser} onOpenChange={open => { if (!open) { setEditUser(null); setEditUserData(null); setAvatarPreview(null); } }}>
+  <DialogContent onClick={e => e.stopPropagation()}>
+    <DialogHeader>
+      <DialogTitle>Редактировать пользователя</DialogTitle>
+    </DialogHeader>
+    {editUserData && (
+      <div className="space-y-4">
+        <Input placeholder="ФИО" value={editUserData.fullname} onChange={e => setEditUserData(d => ({ ...d, fullname: e.target.value }))} />
+        <Input placeholder="Логин (email)" value={editUserData.email} onChange={e => setEditUserData(d => ({ ...d, email: e.target.value }))} />
+        <Input type="password" placeholder="Пароль" value={editUserData.password} onChange={e => setEditUserData(d => ({ ...d, password: e.target.value }))} />
+        <Input type="file" accept="image/*" onChange={e => {
+          const file = e.target.files?.[0] || null;
+          setEditUserData(d => ({ ...d, avatar: file }));
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
+            reader.readAsDataURL(file);
+          } else {
+            setAvatarPreview(editUser.image || null);
+          }
+        }} />
+        {avatarPreview && (
+          <div className="h-16 w-16 rounded-full overflow-hidden border">
+            <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
+          </div>
+        )}
+        <Select value={editUserData.departmentId} onValueChange={val => setEditUserData(d => ({ ...d, departmentId: val }))}>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите департамент" />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map(dep => (
+              <SelectItem key={dep.id} value={dep.id}>{dep.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={editUserData.leaderId || ''} onValueChange={val => setEditUserData(d => ({ ...d, leaderId: val }))}>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите руководителя" />
+          </SelectTrigger>
+          <SelectContent>
+            {leaders.map(leader => (
+              <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={editUserData.role} onValueChange={val => setEditUserData(d => ({ ...d, role: val }))}>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите должность" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="employee">Сотрудник</SelectItem>
+            <SelectItem value="manager">Руководитель</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    )}
+    <DialogFooter>
+      <Button onClick={handleEditUser}>Сохранить</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </div>
   )
 }
