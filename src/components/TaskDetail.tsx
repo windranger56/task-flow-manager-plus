@@ -1072,7 +1072,7 @@ export default function TaskDetail() {
           </Button>
         </div>
         
-        <div className="h-full overflow-y-auto mb-4 rounded-md">
+        <div className="h-full overflow-y-auto mb-4 rounded-md pb-16">
           {filteredMessages.map(msg => (
             <div 
             key={msg.id} 
