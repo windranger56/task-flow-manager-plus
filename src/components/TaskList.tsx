@@ -520,7 +520,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                           <div className="flex justify-between">
                             <div className="flex items-center gap-[10px]">
                               <div 
-                                className={`flex justify-center items-center ${getTaskStatusColor(task.status)} rounded-full h-[24px] w-[24px] cursor-pointer`}
+                                className={`flex-shrink-0 flex justify-center items-center ${getTaskStatusColor(task.status)} rounded-full h-[24px] w-[24px] cursor-pointer`}
                               >
                                 <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
                               </div>

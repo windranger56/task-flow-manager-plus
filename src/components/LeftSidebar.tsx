@@ -326,7 +326,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             <AvatarImage src={profile.image} alt={profile.fullname} />
             <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
           </Avatar>
-          <h3 className="text-lg font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
+          <h3 className="text-center font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
           <p className="text-sm text-gray-500">{profile.email}</p>
         </div>
         

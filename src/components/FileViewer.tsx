@@ -97,12 +97,12 @@ export const FileViewer = ({ file, onClose }: { file: any; onClose: () => void }
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto relative">
-        <button 
-          onClick={onClose}
-          className="absolute top-2 right-2 bg-gray-200 rounded-full p-2 z-10"
-        >
-          ✕
-        </button>
+      <button 
+        onClick={onClose}
+        className="sticky top-2 right-2 float-right bg-gray-200 rounded-full p-2 z-10 ml-auto"
+      >
+        ✕
+      </button>
         
         <div className="p-4">
           <h3 className="text-lg font-medium mb-4">{file.name}</h3>
