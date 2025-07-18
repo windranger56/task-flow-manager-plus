@@ -12,6 +12,7 @@ export interface Department {
   managerId: string;
   managerName?: string;
   color: string;
+  created_by?: string; // для поддержки логики переназначения
 }
 
 export type Priority = 'high' | 'medium' | 'low';

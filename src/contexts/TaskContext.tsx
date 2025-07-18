@@ -680,144 +680,129 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     newDescription?: string, 
     newDeadline?: Date
   ) => {
-    // Проверка аутентификации
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       navigate("/auth");
       return;
     }
-  
-    // Получаем текущего пользователя (того, кто переназначает)
+
     const { data: currentUserData, error: userError } = await supabase
       .from('users')
-      .select('id, fullname')
+      .select('id, fullname, departmentId')
       .eq('user_unique_id', session.user.id)
       .single();
-  
+
     if (userError || !currentUserData) {
-      console.error("Ошибка при получении данных пользователя:", userError);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось получить данные пользователя",
-        variant: "destructive"
-      });
+      toast({ title: "Ошибка", description: "Не удалось получить данные пользователя", variant: "destructive" });
       return;
     }
-  
+
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    
-    // Проверяем, что текущий пользователь является исполнителем поручения
-    if (task.assignedTo !== currentUserData.id) {
-      toast({
-        title: "Ошибка",
-        description: "Вы можете переназначить только те поручения, где являетесь исполнителем",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Получаем данные нового исполнителя
-    const assignee = await getUserById(newAssigneeId);
-    if (!assignee) return;
-    
-    // Проверяем права на переназначение
+
+    // Получаем департаменты, где текущий пользователь руководитель
+    const managedDepartments = departments.filter(dept => dept.managerId === currentUserData.id);
+    // Получаем департаменты, где текущий пользователь является создателем
+    const createdDepartments = departments.filter(dept => dept.created_by === currentUserData.id);
+    // Получаем департамент задачи
+    const taskDepartment = departments.find(dept => dept.id === task.departmentId);
+    // Получаем департамент нового исполнителя
+    const newAssigneeDept = departments.find(dept => dept.id === (taskDepartment && taskDepartment.id));
+
     let canReassign = false;
-    let targetDepartmentId = '';
-    
-    // Проверяем, является ли текущий пользователь руководителем департамента
-    const userDepartments = departments.filter(dept => dept.managerId === currentUserData.id);
-    
-    if (userDepartments.length > 0) {
-      // Пользователь является руководителем департамента
-      // Проверяем, что новый исполнитель работает в одном из его департаментов
-      for (const dept of userDepartments) {
-        const { data: deptEmployees, error: empError } = await supabase
+    let targetDepartmentId = task.departmentId;
+
+    // 1. Руководитель департамента может переназначить задачу любому сотруднику своего департамента
+    if (managedDepartments.some(dept => dept.id === task.departmentId)) {
+      // Проверяем, что новый исполнитель состоит в этом департаменте
+      const { data: usersInDept } = await supabase
+        .from('users')
+        .select('id')
+        .eq('departmentId', task.departmentId);
+      if (usersInDept?.some((u: any) => u.id === newAssigneeId)) {
+        canReassign = true;
+        targetDepartmentId = task.departmentId;
+      }
+    }
+
+    // 2. Создатель задачи может переназначить задачу любому сотруднику того же департамента или в другой департамент
+    if (!canReassign && task.createdBy === currentUserData.id) {
+      // Можно переназначить на любого сотрудника любого департамента
+      const { data: userData } = await supabase
+        .from('users')
+        .select('departmentId')
+        .eq('id', newAssigneeId)
+        .single();
+      if (userData && userData.departmentId) {
+        canReassign = true;
+        targetDepartmentId = userData.departmentId;
+      }
+    }
+
+    // 3. Исполнитель может переназначить задачу сотруднику департамента, где он руководитель
+    if (!canReassign && task.assignedTo === currentUserData.id) {
+      for (const dept of managedDepartments) {
+        const { data: usersInDept } = await supabase
           .from('users')
           .select('id')
           .eq('departmentId', dept.id);
-          
-        if (!empError && deptEmployees?.some(emp => emp.id === newAssigneeId)) {
+        if (usersInDept?.some((u: any) => u.id === newAssigneeId)) {
           canReassign = true;
           targetDepartmentId = dept.id;
           break;
         }
       }
     }
-    
-    // Если не руководитель, проверяем, является ли создателем департаментов
-    if (!canReassign) {
-      const createdDepartments = departments.filter(dept => dept.created_by === currentUserData.id);
-      
-      if (createdDepartments.length > 0) {
-        // Пользователь является создателем департаментов
-        // Проверяем, что новый исполнитель является руководителем одного из созданных департаментов
-        const isManagerOfCreatedDept = createdDepartments.some(dept => dept.managerId === newAssigneeId);
-        
-        if (isManagerOfCreatedDept) {
+
+    // 4. Исполнитель может переназначить задачу на руководителя департамента, где он created_by
+    if (!canReassign && task.assignedTo === currentUserData.id) {
+      for (const dept of createdDepartments) {
+        if (dept.managerId === newAssigneeId) {
           canReassign = true;
-          // Найдем департамент нового исполнителя
-          const newAssigneeDept = await getDepartmentByUserId(newAssigneeId);
-          if (newAssigneeDept) {
-            targetDepartmentId = newAssigneeDept.id;
-          }
+          targetDepartmentId = dept.id;
+          break;
         }
       }
     }
-    
+
     if (!canReassign) {
       toast({
         title: "Ошибка переназначения",
-        description: "Вы можете переназначать поручения только на сотрудников своих департаментов (если вы руководитель) или на руководителей департаментов, которые вы создали",
+        description: "Недостаточно прав для переназначения поручения на выбранного сотрудника.",
         variant: "destructive"
       });
       return;
     }
-    
-    if (!targetDepartmentId) {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось определить подразделение для переназначения",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const now = new Date();
+
+    const assignee = await getUserById(newAssigneeId);
+    if (!assignee) return;
+
     const descriptionWithInfo = (newDescription || task.description || '');
-    
-    // Создаем новую задачу в подразделении нового исполнителя
+
     const newTaskData = {
       title: newTitle || `[Переназначено] ${task.title}`,
       description: descriptionWithInfo,
       assigned_to: newAssigneeId,
-      created_by: currentUserData.id, // Создатель - тот, кто переназначил
-      departmentId: targetDepartmentId, // Подразделение нового исполнителя
-      parent_id: task.id, // Ссылка на оригинальную задачу
+      created_by: currentUserData.id,
+      departmentId: targetDepartmentId,
+      parent_id: task.id,
       priority: task.priority,
       is_protocol: task.isProtocol,
       deadline: newDeadline || task.deadline,
-      status: 'new' as TaskStatus // Новая задача начинается со статуса "new"
+      status: 'new' as TaskStatus
     };
-    
-    // Сохраняем новую задачу в базу данных
+
     const { data, error } = await supabase
       .from('tasks')
       .insert(newTaskData)
       .select()
       .single();
-    
+
     if (error) {
-      console.error("Ошибка при создании переназначенной задачи:", error);
-      toast({ 
-        title: "Ошибка", 
-        description: "Не удалось переназначить поручение",
-        variant: "destructive" 
-      });
+      toast({ title: "Ошибка", description: "Не удалось переназначить поручение", variant: "destructive" });
       return;
     }
-  
-    // Преобразуем данные в формат Task
+
     const createdTask: Task = {
       id: data.id,
       title: data.title,
@@ -832,14 +817,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       deadline: new Date(data.deadline),
       status: data.status as TaskStatus
     };
-  
-    // Обновляем локальное состояние
+
     setTasks([...tasks, createdTask]);
-    
+
     const targetDepartment = await getDepartmentById(targetDepartmentId);
-    toast({ 
-      title: "Поручение переназначено", 
-      description: `Создана новая задача в подразделении "${targetDepartment?.name}" для ${assignee.fullname}.` 
+    toast({
+      title: "Поручение переназначено",
+      description: `Создана новая задача в подразделении "${targetDepartment?.name}" для ${assignee.fullname}.`
     });
   };
 
