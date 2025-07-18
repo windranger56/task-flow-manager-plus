@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   fullname: string;
@@ -64,4 +65,10 @@ export interface ExportFilters {
   protocolName?: string;
   protocolAuthor?: string;
   protocolAuthorPosition?: string;
+}
+
+export interface DuplicationData {
+  isDuplicate: boolean;
+  selectedDepartments: string[];
+  selectedExecutors: string[];
 }

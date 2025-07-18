@@ -47,6 +47,14 @@ interface TaskContextType {
     selectedDepartmentId?: string,
     assigneeId?: string,
   ) => Promise<void>;
+  addTaskWithDuplication: (
+    title: string,
+    description: string,
+    priority: Priority,
+    isProtocol: ProtocolStatus,
+    deadline: Date,
+    duplicationData: DuplicationData
+  ) => Promise<void>;
   completeTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
   reassignTask: (taskId: string, newAssigneeId: string, newTitle?: string, newDescription?: string, newDeadline?: Date) => void;
@@ -63,6 +71,7 @@ interface TaskContextType {
   getSubordinates: () => Promise<User[]>;
   updateSelectedDepartmentId: (departmentId: string) => Promise<void>;
   fetchTasks: () => Promise<void>;
+  getUsersByDepartments: (departmentIds: string[]) => Promise<User[]>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -558,6 +567,127 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       toast({ 
         title: "Ошибка", 
         description: "Произошла ошибка при добавлении поручения",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addTaskWithDuplication = async (
+    title: string,
+    description: string,
+    priority: Priority,
+    isProtocol: ProtocolStatus,
+    deadline: Date,
+    duplicationData: DuplicationData
+  ) => {
+    // Проверка наличия сессии
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      // Получаем ID текущего пользователя из таблицы users
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('users')
+        .select('id, departmentId')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      
+      if (currentUserError || !currentUserData.length) {
+        console.error("Ошибка при получении данных текущего пользователя:", currentUserError);
+        toast({ 
+          title: "Ошибка", 
+          description: "Не удалось получить данные пользователя",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      const createdBy = currentUserData[0].id;
+
+      if (duplicationData.isDuplicate && duplicationData.selectedExecutors.length > 0) {
+        // Получаем данные о департаментах выбранных исполнителей
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, departmentId')
+          .in('id', duplicationData.selectedExecutors);
+
+        if (usersError) {
+          console.error("Ошибка при получении данных исполнителей:", usersError);
+          toast({ 
+            title: "Ошибка", 
+            description: "Не удалось получить данные исполнителей",
+            variant: "destructive" 
+          });
+          return;
+        }
+
+        // Создаем массив задач для batch-вставки
+        const tasksToCreate = usersData.map(user => ({
+          title,
+          description,
+          created_by: createdBy,
+          departmentId: user.departmentId,
+          assigned_to: user.id,
+          priority,
+          is_protocol: isProtocol,
+          created_at: new Date().toISOString(),
+          deadline: deadline.toISOString(),
+          status: 'new' as TaskStatus
+        }));
+
+        // Выполняем batch-вставку
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert(tasksToCreate)
+          .select();
+        
+        if (error) {
+          console.error("Ошибка при создании дублированных поручений:", error);
+          toast({ 
+            title: "Ошибка", 
+            description: "Не удалось создать дублированные поручения",
+            variant: "destructive" 
+          });
+          return;
+        }
+
+        // Преобразуем полученные данные в формат Task для локального состояния
+        const newTasks: Task[] = data.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          assignedTo: task.assigned_to,
+          createdBy: task.created_by,
+          departmentId: task.departmentId,
+          parentId: task.parent_id || '',
+          priority: task.priority,
+          isProtocol: task.is_protocol as ProtocolStatus,
+          createdAt: new Date(task.created_at),
+          deadline: new Date(task.deadline),
+          status: task.status as TaskStatus
+        }));
+        
+        // Обновляем локальное состояние
+        setTasks(prev => [...prev, ...newTasks]);
+        toast({ 
+          title: "Поручения созданы", 
+          description: `Создано ${newTasks.length} дублированных поручений.`
+        });
+      } else {
+        toast({ 
+          title: "Ошибка", 
+          description: "Не выбраны исполнители для дублирования",
+          variant: "destructive" 
+        });
+      }
+    } catch (e) {
+      console.error("Ошибка:", e);
+      toast({ 
+        title: "Ошибка", 
+        description: "Произошла ошибка при создании дублированных поручений",
         variant: "destructive"
       });
     }
@@ -1152,7 +1282,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           assignedTo: task.assigned_to,
           createdBy: task.created_by,
           departmentId: task.departmentId,
-          parentId: task.parent_id || '', // Fix missing parentId
+          parentId: task.parent_id || '',
           priority: task.priority,
           isProtocol: task.is_protocol as ProtocolStatus,
           createdAt: new Date(task.created_at),
@@ -1175,6 +1305,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getUsersByDepartments = async (departmentIds: string[]): Promise<User[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .in('departmentId', departmentIds)
+        .order('fullname');
+        
+      if (error) {
+        console.error("Ошибка при загрузке пользователей департаментов:", error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error("Ошибка при загрузке пользователей:", error);
+      return [];
+    }
+  };
+
   return (
     <TaskContext.Provider value={{
 			user,
@@ -1192,6 +1342,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       addDepartment,
       addUsersToDepartment,
       addTask,
+      addTaskWithDuplication,
       completeTask,
       deleteTask,
       reassignTask,
@@ -1205,7 +1356,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getMessagesByTask,
       getSubordinates,
       updateSelectedDepartmentId,
-      fetchTasks
+      fetchTasks,
+      getUsersByDepartments
     }}>
       {children}
     </TaskContext.Provider>
