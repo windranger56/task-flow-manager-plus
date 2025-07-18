@@ -296,6 +296,10 @@ export default function TaskDetail() {
   const handleReassign = async () => {
     if (!reassignTo) return;
     try {
+      // Получаем данные нового исполнителя перед переназначением
+      const newAssignee = subordinates.find(u => u.id === reassignTo);
+      
+      // Выполняем переназначение
       await reassignTask(
         selectedTask.id, 
         reassignTo, 
@@ -303,21 +307,41 @@ export default function TaskDetail() {
         newDescription || undefined,
         newDeadline
       );
-      // Добавить системное сообщение о смене исполнителя
-      const newAssignee = users.find(u => u.id === reassignTo);
+      
+      // Добавляем системное сообщение о переназначении
       if (newAssignee) {
+        const currentDate = format(new Date(), 'dd.MM.yyyy HH:mm');
         await supabase
           .from('messages')
           .insert([{
-            content: `Исполнитель изменён на: ${newAssignee.fullname}`,
+            content: `Поручение переназначено ${currentDate} на: ${newAssignee.fullname}`,
             task_id: selectedTask.id,
             sent_by: user.id,
             is_system: 1,
           }]);
       }
+      
+      // Добавляем сообщение в локальное состояние для мгновенного отображения
+      const newSystemMessage = {
+        id: Date.now().toString(), // временный ID
+        content: `Поручение переназначено ${format(new Date(), 'dd.MM.yyyy HH:mm')} на: ${newAssignee?.fullname || 'нового исполнителя'}`,
+        task_id: selectedTask.id,
+        sent_by: user.id,
+        is_system: 1,
+        created_at: new Date().toISOString()
+      };
+      
+      setChatMessages(prev => [...prev, newSystemMessage]);
       setShowReassign(false);
+      
+      // Сбрасываем поля формы
+      setReassignTo('');
+      setNewTitle('');
+      setNewDescription('');
+      setNewDeadline(undefined);
     } catch (error) {
       console.error("Ошибка переназначения:", error);
+      alert('Произошла ошибка при переназначении поручения');
     }
   };
 
