@@ -1,519 +1,374 @@
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Menu } from "lucide-react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { supabase } from "@/supabase/client"
-import { toast } from "sonner"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { useNavigate } from "react-router-dom"
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Users, Building, Settings, UserPlus, Shield } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AdminPanel() {
-  const [selectedSection, setSelectedSection] = useState("главная");
-	const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [newUser, setNewUser] = useState({
+    email: '',
+    fullname: '',
+    password: '',
+    departmentId: ''
+  });
+  const [newDepartment, setNewDepartment] = useState({
+    name: '',
+    managerId: '',
+    color: '#3B82F6'
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-	const [deletingId, setDeletingId] = useState();
+  useEffect(() => {
+    loadData();
+  }, []);
 
-	const navigate = useNavigate();
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Загружаем пользователей
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .order('fullname');
+      
+      if (usersError) throw usersError;
+      
+      // Загружаем департаменты
+      const { data: departmentsData, error: departmentsError } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name');
+      
+      if (departmentsError) throw departmentsError;
+      
+      setUsers(usersData || []);
+      setDepartments(departmentsData || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить данные",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const [editUser, setEditUser] = useState(null);
-const [editUserData, setEditUserData] = useState(null);
-const [departments, setDepartments] = useState([]);
-const [leaders, setLeaders] = useState([]);
-const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-const [showCreateDept, setShowCreateDept] = useState(false);
-const [newDept, setNewDept] = useState({ name: '', managerId: '' });
-const [departmentsTab, setDepartmentsTab] = useState([]);
-const [editDept, setEditDept] = useState(null);
-const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
-
-// useEffect для загрузки департаментов один раз при монтировании
-useEffect(() => {
-  supabase.from('departments').select('id, name').then(({ data }) => setDepartments(data || []));
-}, []);
-
-// Удалить загрузку департаментов из useEffect, который зависит от editUser
-useEffect(() => {
-  if (editUser) {
-    supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
-    setEditUserData({
-      ...editUser,
-      departmentId: editUser.department?.id || '',
-      leaderId: editUser.leader_id || '',
-      role: editUser.role || 'employee',
-      avatar: null,
-      password: editUser.password || ''
-    });
-    setAvatarPreview(editUser.image || null);
-  }
-}, [editUser]);
-
-useEffect(() => {
-  if (selectedSection === "департаменты") {
-    fetchDepartmentsWithUsers();
-  }
-}, [selectedSection]);
-
-const fetchDepartmentsWithUsers = async () => {
-  // Получаем департаменты с руководителями и сотрудниками
-  const { data: departments, error } = await supabase
-    .from('departments')
-    .select('id, name, managerId, manager:managerId (id, fullname, email), users:users_departmentId_fkey (id, fullname, email)');
-  if (!error) {
-    // Для каждого департамента добавляем руководителя в список сотрудников, если его там нет
-    const departmentsWithManager = (departments || []).map(dep => {
-      let users = dep.users || [];
-      if (dep.manager && !users.some(u => u.id === dep.manager.id)) {
-        users = [dep.manager, ...users];
+  const createUser = async () => {
+    try {
+      if (!newUser.email || !newUser.fullname || !newUser.password || !newUser.departmentId) {
+        toast({
+          title: "Ошибка",
+          description: "Заполните все поля",
+          variant: "destructive"
+        });
+        return;
       }
-      return { ...dep, users };
-    });
-    setDepartmentsTab(departmentsWithManager);
-  }
-};
 
-const handleEditUser = async () => {
-  let avatarUrl = editUser.image;
-  if (editUserData.avatar) {
-    const fileExt = editUserData.avatar.name.split('.').pop();
-    const filePath = `${Date.now()}/avatar.${fileExt}`;
-    const { error: uploadError } = await supabase.storage.from('images').upload(filePath, editUserData.avatar, { upsert: true });
-    if (!uploadError) {
-      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
-      avatarUrl = publicUrl;
-    }
-  }
-  const { error } = await supabase.from('users').update({
-    fullname: editUserData.fullname,
-    email: editUserData.email,
-    password: editUserData.password,
-    image: avatarUrl,
-    departmentId: editUserData.departmentId ? Number(editUserData.departmentId) : null,
-    role: editUserData.role,
-    leader_id: editUserData.leaderId ? Number(editUserData.leaderId) : null
-  }).eq('id', editUser.id);
-  if (!error) {
-    toast.success('Пользователь обновлен');
-    setEditUser(null);
-    setEditUserData(null);
-    setAvatarPreview(null);
-    fetchUsers();
-  } else {
-    toast.error('Ошибка при обновлении пользователя');
-  }
-};
+      // Создаем пользователя в auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password
+      });
 
-  const handleSectionChange = (section) => {
-    setSelectedSection(section)
-    setIsSheetOpen(false)
-  }
+      if (authError) throw authError;
 
-	const fetchUsers = async () => {
-		const response = await supabase
-			.from("users")
-			.select(`id, fullname, email, image, leader_id, password, departmentId, role, department:users_departmentId_fkey (*)`)
-			.eq("active", true);
+      // Добавляем пользователя в таблицу users
+      if (authData.user) {
+        const { error: userError } = await supabase
+          .from('users')
+          .insert([{
+            id: authData.user.id,
+            email: newUser.email,
+            fullname: newUser.fullname,
+            departmentId: newUser.departmentId,
+            image: null,
+            role: newUser.departmentId
+          }]);
 
+        if (userError) throw userError;
+      }
 
-		if (response.error) {
-			toast.error(response.error.message)
-			return
-		}
+      toast({
+        title: "Успех",
+        description: "Пользователь создан успешно"
+      });
 
-		// Получаем департаменты для поиска по managerId и departmentId
-		const { data: allDepartments } = await supabase.from('departments').select('id, name, managerId');
-		const departmentsList = Array.isArray(allDepartments) ? allDepartments.filter(dep => dep && dep.id) : [];
-		setDepartments(departmentsList);
+      // Очищаем форму
+      setNewUser({
+        email: '',
+        fullname: '',
+        password: '',
+        departmentId: ''
+      });
 
-		response.data = await Promise.all(response.data.map(
-			u => u.leader_id
-				? supabase.from("users").select("fullname").eq("id", u.leader_id).eq("active", true)
-					.then(({data}) => ({ ...u, leader: data?.[0]?.fullname || "Нет руководителя" }))
-				: u
-		))
-
-		setUsers(response.data)
-	}
-
-	useEffect(() => { fetchUsers() }, [])
-	useEffect(() => { console.log(deletingId) }, [deletingId])
-
-  const handleCreateDept = async () => {
-    if (!newDept.name || !newDept.managerId) {
-      toast.error('Заполните все поля');
-      return;
-    }
-    const { error } = await supabase.from('departments').insert({
-      name: newDept.name,
-      managerId: newDept.managerId ? Number(newDept.managerId) : null
-    });
-    if (!error) {
-      toast.success('Департамент создан');
-      setShowCreateDept(false);
-      setNewDept({ name: '', managerId: '' });
-      // обновить список департаментов, если нужно
-    } else {
-      toast.error('Ошибка при создании департамента');
+      // Обновляем список пользователей
+      loadData();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать пользователя",
+        variant: "destructive"
+      });
     }
   };
 
-  useEffect(() => {
-    if (showCreateDept) {
-      supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
-    }
-  }, [showCreateDept]);
+  const createDepartment = async () => {
+    try {
+      if (!newDepartment.name || !newDepartment.managerId) {
+        toast({
+          title: "Ошибка",
+          description: "Заполните все поля",
+          variant: "destructive"
+        });
+        return;
+      }
 
-  const handleEditDept = async () => {
-    if (!editDeptData.name || !editDeptData.managerId) {
-      toast.error('Заполните все поля');
-      return;
-    }
-    const { error } = await supabase.from('departments').update({
-      name: editDeptData.name,
-      managerId: editDeptData.managerId ? Number(editDeptData.managerId) : null
-    }).eq('id', editDept.id);
-    if (!error) {
-      toast.success('Департамент обновлен');
-      setEditDept(null);
-      setEditDeptData({ name: '', managerId: '' });
-      fetchDepartmentsWithUsers();
-    } else {
-      toast.error('Ошибка при обновлении департамента');
+      const { error } = await supabase
+        .from('departments')
+        .insert([{
+          name: newDepartment.name,
+          managerId: newDepartment.managerId,
+          color: newDepartment.color
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Успех",
+        description: "Подразделение создано успешно"
+      });
+
+      // Очищаем форму
+      setNewDepartment({
+        name: '',
+        managerId: '',
+        color: '#3B82F6'
+      });
+
+      // Обновляем список подразделений
+      loadData();
+    } catch (error) {
+      console.error('Error creating department:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать подразделение",
+        variant: "destructive"
+      });
     }
   };
 
-  useEffect(() => {
-    if (editDept) {
-      supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
-    }
-  }, [editDept]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white border-r flex-col p-4">
-        <div className="text-2xl font-bold mb-6">Панель управления</div>
-        <nav className="flex flex-col gap-2">
-          <Button
-            variant={selectedSection === "главная" ? "default" : "ghost"}
-            onClick={() => setSelectedSection("главная")}
-            className="justify-start"
-          >
-            Главная
-          </Button>
-          <Button
-            variant={selectedSection === "пользователи" ? "default" : "ghost"}
-            onClick={() => setSelectedSection("пользователи")}
-            className="justify-start"
-          >
-            Пользователи
-          </Button>
-          <Button
-            variant={selectedSection === "департаменты" ? "default" : "ghost"}
-            onClick={() => setSelectedSection("департаменты")}
-            className="justify-start"
-          >
-            Департаменты
-          </Button>
-        </nav>
-      </aside>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Shield className="h-6 w-6 text-blue-600" />
+        <h1 className="text-2xl font-semibold">Панель администратора</h1>
+      </div>
 
-      {/* Main Section */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white shadow p-4 flex items-center justify-between">
-          <div className="md:hidden">
-            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left">
-                <div className="text-2xl font-bold mb-6">Панель управления</div>
-                <nav className="flex flex-col gap-2">
-                  <Button
-                    variant={selectedSection === "главная" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("главная")}
-                    className="justify-start"
-                  >
-                    Главная
-                  </Button>
-                  <Button
-                    variant={selectedSection === "пользователи" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("пользователи")}
-                    className="justify-start"
-                  >
-                    Пользователи
-                  </Button>
-                  <Button
-                    variant={selectedSection === "департаменты" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("департаменты")}
-                    className="justify-start"
-                  >
-                    Департаменты
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-
-          <div className="text-xl font-semibold capitalize">
-            {selectedSection}
-          </div>
-          <Button onClick={() => navigate('/register')} variant="outline">
-            Создать пользователя
-          </Button>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowCreateDept(true)} variant="outline">Создать департамент</Button>
-            <Dialog open={showCreateDept} onOpenChange={setShowCreateDept}>
-              <DialogContent onClick={e => e.stopPropagation()}>
-                <DialogHeader>
-                  <DialogTitle>Создать департамент</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input placeholder="Название департамента" value={newDept.name} onChange={e => setNewDept(d => ({ ...d, name: e.target.value }))} />
-                  <Select value={newDept.managerId} onValueChange={val => setNewDept(d => ({ ...d, managerId: val }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите руководителя" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leaders.map(leader => (
-                        <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleCreateDept}>Создать</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </header>
-
-        <main className="p-6">
-          {selectedSection === "главная" && (
-            <div>Это главная страница со статистикой приложения. Она пока пустая.</div>
-          )}
-          {selectedSection === "пользователи" && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Аватар</TableHead>
-                  <TableHead>ФИО</TableHead>
-                  <TableHead>Логин</TableHead>
-                  <TableHead>Департамент</TableHead>
-                  <TableHead>Руководитель</TableHead>
-                  <TableHead>Должность</TableHead>
-                  <TableHead>Пароль</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {
-                  users.map(u => {
-                    let departmentName = "Не пренадлежит";
-                    // Сначала ищем департамент, где managerId совпадает с user.id
-                    let dept = departments.find(dep => String(dep.managerId) === String(u.id));
-                    if (!dept) {
-                      // Если не найдено, ищем по departmentId
-                      dept = departments.find(dep => String(dep.id) === String(u.departmentId));
-                    }
-                    if (dept) departmentName = dept.name;
-                    return (
-                      <TableRow
-                        key={u.id}
-                        className="cursor-pointer hover:bg-[#d7d7d7] transition-all duration-300"
-                        onClick={() => setEditUser(u)}
-                      >
-                        <TableCell>
-                          <Avatar>
-                            <AvatarImage
-                              src={u.image}
-                              alt={u.fullname}
-                            />
-                            <AvatarFallback>{u.fullname[0]}</AvatarFallback>
-                          </Avatar>
-                        </TableCell>
-                        <TableCell>{u.fullname}</TableCell>
-                        <TableCell>{u.email}</TableCell>
-                        <TableCell>{departmentName}</TableCell>
-                        <TableCell>{u.leader || "Нет руководителя"}</TableCell>
-                        <TableCell>{u.role === 'manager' ? "Руководитель" : "Сотрудник"}</TableCell>
-                        <TableCell>{u.password || ''}</TableCell>
-                        <TableCell className="space-x-2">
-                          <Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
-                            <DialogTrigger asChild>
-                              <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
-                                Delete
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent onClick={e => e.stopPropagation()}>
-                              <DialogHeader>
-                                <DialogTitle>Удалить пользователя</DialogTitle>
-                                <DialogDescription>
-                                  Вы точно хотите удалить пользователя {u.fullname}? После удаления пользователя вернуть будет уже нельзя!
-                                </DialogDescription>
-                              </DialogHeader>
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button variant="ghost" onClick={() => setDeletingId(null)}>
-                                    Отмена
-                                  </Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                  <Button variant="destructive" onClick={async () => {
-                                    const { error } = await supabase.from("users").update({ active: false }).eq("id", u.id)
-                                    if (!error) {
-                                      toast.success(`Пользователь ${u.fullname} успешно удалён!`)
-                                      setUsers(p => p.filter(fu => fu.id != u.id))
-                                      return
-                                    }
-                                    toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`)
-                                  }}>
-                                    Удалить
-                                  </Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                }
-              </TableBody>
-            </Table>
-          )}
-          {selectedSection === "департаменты" && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Руководитель</TableHead>
-                    <TableHead>Сотрудники</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {departmentsTab.map(dep => (
-                    <TableRow key={dep.id} className="cursor-pointer hover:bg-[#d7d7d7]" onClick={() => {
-                      setEditDept(dep);
-                      setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
-                    }}>
-                      <TableCell>{dep.name}</TableCell>
-                      <TableCell>{dep.manager?.fullname || '—'}</TableCell>
-                      <TableCell>
-                        {dep.users && dep.users.length > 0 ? (
-                          <ul className="list-disc ml-4">
-                            {dep.users.map(user => (
-                              <li key={user.id}>{user.fullname} ({user.email})</li>
-                            ))}
-                          </ul>
-                        ) : 'Нет сотрудников'}
-                      </TableCell>
-                    </TableRow>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Создание пользователя */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Создать пользователя
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="user-email">Email</Label>
+              <Input
+                id="user-email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                placeholder="user@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-fullname">Полное имя</Label>
+              <Input
+                id="user-fullname"
+                value={newUser.fullname}
+                onChange={(e) => setNewUser({...newUser, fullname: e.target.value})}
+                placeholder="Иванов Иван Иванович"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-password">Пароль</Label>
+              <Input
+                id="user-password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                placeholder="••••••••"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user-department">Подразделение</Label>
+              <Select
+                value={newUser.departmentId}
+                onValueChange={(value) => setNewUser({...newUser, departmentId: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите подразделение" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
                   ))}
-                </TableBody>
-              </Table>
-              <Dialog open={!!editDept} onOpenChange={open => { if (!open) { setEditDept(null); setEditDeptData({ name: '', managerId: '' }); } }}>
-                <DialogContent onClick={e => e.stopPropagation()}>
-                  <DialogHeader>
-                    <DialogTitle>Редактировать департамент</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input placeholder="Название департамента" value={editDeptData.name} onChange={e => setEditDeptData(d => ({ ...d, name: e.target.value }))} />
-                    <Select value={editDeptData.managerId} onValueChange={val => setEditDeptData(d => ({ ...d, managerId: val }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите руководителя" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {leaders.map(leader => (
-                          <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={createUser} className="w-full">
+              Создать пользователя
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Создание подразделения */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Создать подразделение
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="dept-name">Название</Label>
+              <Input
+                id="dept-name"
+                value={newDepartment.name}
+                onChange={(e) => setNewDepartment({...newDepartment, name: e.target.value})}
+                placeholder="Отдел разработки"
+              />
+            </div>
+            <div>
+              <Label htmlFor="dept-manager">Руководитель</Label>
+              <Select
+                value={newDepartment.managerId}
+                onValueChange={(value) => setNewDepartment({...newDepartment, managerId: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите руководителя" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.fullname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="dept-color">Цвет</Label>
+              <Input
+                id="dept-color"
+                type="color"
+                value={newDepartment.color}
+                onChange={(e) => setNewDepartment({...newDepartment, color: e.target.value})}
+              />
+            </div>
+            <Button onClick={createDepartment} className="w-full">
+              Создать подразделение
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      {/* Список пользователей */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Пользователи ({users.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {users.map((user) => (
+              <div key={user.id} className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-sm font-medium text-blue-600">
+                      {user.fullname?.charAt(0) || 'U'}
+                    </span>
                   </div>
-                  <DialogFooter>
-                    <Button onClick={handleEditDept}>Сохранить</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-        </main>
-      </div>
-      <Dialog open={!!editUser} onOpenChange={open => { if (!open) { setEditUser(null); setEditUserData(null); setAvatarPreview(null); } }}>
-  <DialogContent onClick={e => e.stopPropagation()}>
-    <DialogHeader>
-      <DialogTitle>Редактировать пользователя</DialogTitle>
-    </DialogHeader>
-    {editUserData && (
-      <div className="space-y-4">
-        <Input placeholder="ФИО" value={editUserData.fullname} onChange={e => setEditUserData(d => ({ ...d, fullname: e.target.value }))} />
-        <Input placeholder="Логин (email)" value={editUserData.email} onChange={e => setEditUserData(d => ({ ...d, email: e.target.value }))} />
-        <Input type="password" placeholder="Пароль" value={editUserData.password} onChange={e => setEditUserData(d => ({ ...d, password: e.target.value }))} />
-        <Input type="file" accept="image/*" onChange={e => {
-          const file = e.target.files?.[0] || null;
-          setEditUserData(d => ({ ...d, avatar: file }));
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
-            reader.readAsDataURL(file);
-          } else {
-            setAvatarPreview(editUser.image || null);
-          }
-        }} />
-        {avatarPreview && (
-          <div className="h-16 w-16 rounded-full overflow-hidden border">
-            <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
+                  <div>
+                    <h4 className="font-medium">{user.fullname}</h4>
+                    <p className="text-sm text-gray-600">{user.email}</p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {departments.find(d => d.id === user.departmentId)?.name || 'Без подразделения'}
+                </Badge>
+              </div>
+            ))}
           </div>
-        )}
-        <Select value={editUserData.departmentId} onValueChange={val => setEditUserData(d => ({ ...d, departmentId: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите департамент" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map(dep => (
-              <SelectItem key={dep.id} value={dep.id}>{dep.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={editUserData.leaderId || ''} onValueChange={val => setEditUserData(d => ({ ...d, leaderId: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите руководителя" />
-          </SelectTrigger>
-          <SelectContent>
-            {leaders.map(leader => (
-              <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={editUserData.role} onValueChange={val => setEditUserData(d => ({ ...d, role: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите должность" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="employee">Сотрудник</SelectItem>
-            <SelectItem value="manager">Руководитель</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    )}
-    <DialogFooter>
-      <Button onClick={handleEditUser}>Сохранить</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Список подразделений */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Подразделения ({departments.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {departments.map((dept) => {
+              const manager = users.find(u => u.id === dept.managerId);
+              return (
+                <div key={dept.id} className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div 
+                      className="w-4 h-4 rounded-sm"
+                      style={{ backgroundColor: dept.color }}
+                    />
+                    <h4 className="font-medium">{dept.name}</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Руководитель: {manager?.fullname || 'Не назначен'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Сотрудников: {users.filter(u => u.departmentId === dept.id).length}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

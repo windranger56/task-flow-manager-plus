@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -69,8 +70,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   // Состояние для хранения списка пользователей из БД
   const [dbUsers, setDbUsers] = useState<{id: string, fullname: string}[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  // В начале компонента TaskList, после других состояний
+  
+  // Состояние для отслеживания новых сообщений
   const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
+  const [lastMessageCheck, setLastMessageCheck] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     if (showNewTask) {
@@ -435,6 +438,30 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     const date = e.target.value ? new Date(e.target.value) : new Date();
     setTaskDeadline(date);
   };
+
+  // Функция для переключения выбора департамента
+  const handleDepartmentToggle = (departmentId: string) => {
+    setDuplicateSelectedDepartments(prev => 
+      prev.includes(departmentId) 
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId]
+    );
+  };
+
+  // Функция для переключения выбора исполнителя
+  const handleExecutorToggle = (executorId: string) => {
+    setDuplicateSelectedExecutors(prev => 
+      prev.includes(executorId) 
+        ? prev.filter(id => id !== executorId)
+        : [...prev, executorId]
+    );
+  };
+
+  // Получаем названия департаментов для отображения
+  const departmentNames = departments.reduce((acc, dept) => {
+    acc[dept.id] = dept.name;
+    return acc;
+  }, {} as { [key: string]: string });
   
   const handleCreateTask = () => {
     if (isDuplicateMode) {
@@ -529,32 +556,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       return "Дата не указана";
     }
   };
-  
-  // Добавить функцию для обновления задач из базы
-  async function refreshTasksFromDb(departments, setTasks) {
-    if (!departments || departments.length === 0) return;
-    const departmentIds = departments.map(dept => dept.id);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .in('departmentId', departmentIds)
-      .order('created_at', { ascending: false });
-    if (!error && data) {
-      setTasks(data.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        assignedTo: task.assigned_to,
-        createdBy: task.created_by,
-        departmentId: task.departmentId,
-        priority: task.priority,
-        isProtocol: task.is_protocol,
-        createdAt: new Date(task.created_at),
-        deadline: new Date(task.deadline),
-        status: task.status
-      })));
-    }
-  }
   
   const renderTaskForm = () => (
     <div className="space-y-4 py-4">
@@ -675,18 +676,17 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
             <DepartmentSelector
               departments={departments}
               selectedDepartments={duplicateSelectedDepartments}
-              onDepartmentChange={setDuplicateSelectedDepartments}
+              onDepartmentToggle={handleDepartmentToggle}
             />
           </div>
           
           <div className="space-y-2">
             <Label>Исполнители <span className="text-red-500">*</span></Label>
             <ExecutorSelector
-              users={duplicateUsers}
+              executors={duplicateUsers}
               selectedExecutors={duplicateSelectedExecutors}
-              onExecutorChange={setDuplicateSelectedExecutors}
-              isLoading={isLoadingUsers}
-              disabled={duplicateSelectedDepartments.length === 0}
+              onExecutorToggle={handleExecutorToggle}
+              departmentNames={departmentNames}
             />
           </div>
         </>
@@ -696,7 +696,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         <Checkbox 
           id="task-priority" 
           checked={taskPriority === 'high'}
-          onCheckedChange={(checked) => setTaskPriority(checked ? 'high' : 'medium')}
+          onCheckedChange={(checked) => setTaskPriority(checked === true ? 'high' : 'medium')}
         />
         <Label htmlFor="task-priority">Высокий приоритет</Label>
       </div>
@@ -705,7 +705,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         <Checkbox 
           id="task-protocol" 
           checked={taskProtocol === 'active'}
-          onCheckedChange={(checked) => setTaskProtocol(checked ? 'active' : 'inactive')}
+          onCheckedChange={(checked) => setTaskProtocol(checked === true ? 'active' : 'inactive')}
         />
         <Label htmlFor="task-protocol">Добавить в протокол</Label>
       </div>
@@ -715,8 +715,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           id="task-duplicate" 
           checked={isDuplicateMode}
           onCheckedChange={(checked) => {
-            setIsDuplicateMode(checked);
-            if (!checked) {
+            setIsDuplicateMode(checked === true);
+            if (checked !== true) {
               setDuplicateSelectedDepartments([]);
               setDuplicateSelectedExecutors([]);
             }
