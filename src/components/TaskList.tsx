@@ -28,6 +28,8 @@ import { supabase } from '@/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { ProtocolStatus, TaskStatus } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@radix-ui/react-avatar';
+import DepartmentSelector from './DepartmentSelector';
+import ExecutorSelector from './ExecutorSelector';
 
 interface TaskListProps {
   showArchive?: boolean;
@@ -61,6 +63,13 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   // В начале компонента TaskList, после других состояний
   const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
+  
+  // Состояния для дублирования поручений
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
+  const [selectedDepartmentsForDuplication, setSelectedDepartmentsForDuplication] = useState<string[]>([]);
+  const [selectedExecutorsForDuplication, setSelectedExecutorsForDuplication] = useState<string[]>([]);
+  const [availableExecutors, setAvailableExecutors] = useState<{id: string, fullname: string, departmentId: string}[]>([]);
+  const [lastMessageCheck, setLastMessageCheck] = useState<{[key: string]: string}>({});
   
   // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
   useEffect(() => {
@@ -195,7 +204,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   
     const lastMessage = messages[0];
     const lastChecked = lastMessageCheck[taskId];
-  
+
     // Если нет записи о проверке или есть новое сообщение
     return !lastChecked || new Date(lastMessage.created_at) > new Date(lastChecked);
   };
@@ -400,25 +409,103 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     setTaskDeadline(date);
   };
   
+  // Функция для загрузки исполнителей из выбранных департаментов
+  const loadExecutorsFromDepartments = async (departmentIds: string[]) => {
+    if (departmentIds.length === 0) {
+      setAvailableExecutors([]);
+      return;
+    }
+    
+    try {
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('id, fullname, departmentId')
+        .in('departmentId', departmentIds)
+        .order('fullname');
+        
+      if (error) {
+        console.error("Ошибка при загрузке исполнителей:", error);
+        return;
+      }
+      
+      setAvailableExecutors(users || []);
+    } catch (error) {
+      console.error("Ошибка при загрузке исполнителей:", error);
+    }
+  };
+
+  // Обработчики для дублирования
+  const handleDepartmentToggleForDuplication = (departmentId: string) => {
+    setSelectedDepartmentsForDuplication(prev => {
+      const updated = prev.includes(departmentId)
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId];
+      
+      // Загружаем исполнителей для обновленных департаментов
+      loadExecutorsFromDepartments(updated);
+      
+      // Сбрасываем выбранных исполнителей
+      setSelectedExecutorsForDuplication([]);
+      
+      return updated;
+    });
+  };
+
+  const handleExecutorToggleForDuplication = (executorId: string) => {
+    setSelectedExecutorsForDuplication(prev => 
+      prev.includes(executorId)
+        ? prev.filter(id => id !== executorId)
+        : [...prev, executorId]
+    );
+  };
+
   const handleCreateTask = () => {
     // Проверяем каждое обязательное поле отдельно
     const errors = [];
     if (!taskTitle) errors.push("Заголовок");
     if (!taskDescription) errors.push("Описание");
-    if (!taskDepartment) errors.push("Подразделение");
-    if (!taskAssignee) errors.push("Исполнитель");
+    
+    // Для обычного режима проверяем департамент и исполнителя
+    if (!isDuplicateMode) {
+      if (!taskDepartment) errors.push("Подразделение");
+      if (!taskAssignee) errors.push("Исполнитель");
+    } else {
+      // Для режима дублирования проверяем выбранных исполнителей
+      if (selectedExecutorsForDuplication.length === 0) {
+        errors.push("Выберите исполнителей для дублирования");
+      }
+    }
+    
     if (!taskDeadline) errors.push("Дедлайн");
 
     if (errors.length === 0) {
-      addTask(
-        taskTitle, 
-        taskDescription, 
-        taskPriority,
-        taskProtocol, 
-        taskDeadline,
-        taskDepartment,
-        taskAssignee
-      );
+      if (isDuplicateMode) {
+        // Создаем дублированные поручения
+        addTask(
+          taskTitle, 
+          taskDescription, 
+          taskPriority,
+          taskProtocol, 
+          taskDeadline,
+          undefined, // selectedDepartmentId не нужен для дублирования
+          undefined, // assigneeId не нужен для дублирования
+          {
+            selectedDepartments: selectedDepartmentsForDuplication,
+            selectedExecutors: selectedExecutorsForDuplication
+          }
+        );
+      } else {
+        // Создаем обычное поручение
+        addTask(
+          taskTitle, 
+          taskDescription, 
+          taskPriority,
+          taskProtocol, 
+          taskDeadline,
+          taskDepartment,
+          taskAssignee
+        );
+      }
       
       // Reset form
       setTaskTitle("");
@@ -428,6 +515,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       setTaskPriority('medium');
       setTaskProtocol('inactive');
       setTaskDeadline(new Date());
+      setIsDuplicateMode(false);
+      setSelectedDepartmentsForDuplication([]);
+      setSelectedExecutorsForDuplication([]);
+      setAvailableExecutors([]);
       setShowNewTask(false);
     } else {
       toast({ 
@@ -669,90 +760,94 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="task-department">Подразделение <span className="text-red-500">*</span></Label>
-              <Select value={taskDepartment} onValueChange={setTaskDepartment}>
-                <SelectTrigger className={!taskDepartment && "border-red-500"}>
-                  <SelectValue placeholder="Выберите подразделение" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.length > 0 ? (
-                    departments.map((department) => (
-                      <SelectItem key={department.id} value={department.id}>
-                        {department.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500">
-                      У вас нет доступных подразделений
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="task-assignee">Исполнитель <span className="text-red-500">*</span></Label>
-              <Select 
-                value={taskAssignee} 
-                onValueChange={setTaskAssignee}
-                disabled={!taskDepartment || isLoadingUsers}
-              >
-                <SelectTrigger className={!taskAssignee && "border-red-500"}>
-                  {isLoadingUsers ? (
-                    <span className="text-gray-500">Загрузка пользователей...</span>
-                  ) : (
-                    <SelectValue placeholder={!taskDepartment ? "Сначала выберите подразделение" : "Выберите исполнителя"} />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {dbUsers.length > 0 ? (
-                    <>
-                      {/* Сначала показываем руководителя, если он есть */}
-                      {dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
-                        <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                          Руководитель
-                        </div>
-                      )}
-                      
-                      {/* Выводим руководителя */}
-                      {dbUsers
-                        .filter(user => user.fullname.includes('(Руководитель)'))
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.fullname.replace(' (Руководитель)', '')}
+            {!isDuplicateMode && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="task-department">Подразделение <span className="text-red-500">*</span></Label>
+                  <Select value={taskDepartment} onValueChange={setTaskDepartment}>
+                    <SelectTrigger className={!taskDepartment && "border-red-500"}>
+                      <SelectValue placeholder="Выберите подразделение" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.length > 0 ? (
+                        departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
                           </SelectItem>
                         ))
-                      }
-                      
-                      {/* Если есть обычные сотрудники, добавляем разделитель */}
-                      {dbUsers.some(user => !user.fullname.includes('(Руководитель)')) && 
-                      dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
-                        <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                          Сотрудники
+                      ) : (
+                        <div className="p-2 text-center text-gray-500">
+                          У вас нет доступных подразделений
                         </div>
                       )}
-                      
-                      {/* Выводим остальных сотрудников */}
-                      {dbUsers
-                        .filter(user => !user.fullname.includes('(Руководитель)'))
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.fullname}
-                          </SelectItem>
-                        ))
-                      }
-                    </>
-                  ) : (
-                    <div className="p-2 text-center text-gray-500">
-                      {!taskDepartment 
-                        ? "Сначала выберите подразделение" 
-                        : "В этом подразделении нет пользователей"}
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="task-assignee">Исполнитель <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={taskAssignee} 
+                    onValueChange={setTaskAssignee}
+                    disabled={!taskDepartment || isLoadingUsers}
+                  >
+                    <SelectTrigger className={!taskAssignee && "border-red-500"}>
+                      {isLoadingUsers ? (
+                        <span className="text-gray-500">Загрузка пользователей...</span>
+                      ) : (
+                        <SelectValue placeholder={!taskDepartment ? "Сначала выберите подразделение" : "Выберите исполнителя"} />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dbUsers.length > 0 ? (
+                        <>
+                          {/* Сначала показываем руководителя, если он есть */}
+                          {dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
+                            <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                              Руководитель
+                            </div>
+                          )}
+                          
+                          {/* Выводим руководителя */}
+                          {dbUsers
+                            .filter(user => user.fullname.includes('(Руководитель)'))
+                            .map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.fullname.replace(' (Руководитель)', '')}
+                              </SelectItem>
+                            ))
+                          }
+                          
+                          {/* Если есть обычные сотрудники, добавляем разделитель */}
+                          {dbUsers.some(user => !user.fullname.includes('(Руководитель)')) && 
+                          dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
+                            <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                              Сотрудники
+                            </div>
+                          )}
+                          
+                          {/* Выводим остальных сотрудников */}
+                          {dbUsers
+                            .filter(user => !user.fullname.includes('(Руководитель)'))
+                            .map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.fullname}
+                              </SelectItem>
+                            ))
+                          }
+                        </>
+                      ) : (
+                        <div className="p-2 text-center text-gray-500">
+                          {!taskDepartment 
+                            ? "Сначала выберите подразделение" 
+                            : "В этом подразделении нет пользователей"}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             
             <div className="flex items-center space-x-2">
               <Checkbox 
@@ -771,6 +866,44 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
               />
               <Label htmlFor="task-protocol">Добавить в протокол</Label>
             </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="duplicate-mode" 
+                checked={isDuplicateMode}
+                onCheckedChange={(checked) => {
+                  setIsDuplicateMode(!!checked);
+                  if (!checked) {
+                    setSelectedDepartmentsForDuplication([]);
+                    setSelectedExecutorsForDuplication([]);
+                    setAvailableExecutors([]);
+                  }
+                }}
+              />
+              <Label htmlFor="duplicate-mode">Дублировать</Label>
+            </div>
+            
+            {isDuplicateMode && (
+              <>
+                <DepartmentSelector
+                  departments={departments}
+                  selectedDepartments={selectedDepartmentsForDuplication}
+                  onDepartmentToggle={handleDepartmentToggleForDuplication}
+                />
+                
+                {selectedDepartmentsForDuplication.length > 0 && (
+                  <ExecutorSelector
+                    executors={availableExecutors}
+                    selectedExecutors={selectedExecutorsForDuplication}
+                    onExecutorToggle={handleExecutorToggleForDuplication}
+                    departmentNames={departments.reduce((acc, dept) => {
+                      acc[dept.id] = dept.name;
+                      return acc;
+                    }, {} as {[key: string]: string})}
+                  />
+                )}
+              </>
+            )}
             
             <div className="space-y-2">
               <Label>Дедлайн <span className="text-red-500">*</span></Label>
@@ -830,90 +963,94 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="task-department">Подразделение <span className="text-red-500">*</span></Label>
-              <Select value={taskDepartment} onValueChange={setTaskDepartment}>
-                <SelectTrigger className={!taskDepartment && "border-red-500"}>
-                  <SelectValue placeholder="Выберите подразделение" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.length > 0 ? (
-                    departments.map((department) => (
-                      <SelectItem key={department.id} value={department.id}>
-                        {department.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500">
-                      У вас нет доступных подразделений
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="task-assignee">Исполнитель <span className="text-red-500">*</span></Label>
-              <Select 
-                value={taskAssignee} 
-                onValueChange={setTaskAssignee}
-                disabled={!taskDepartment || isLoadingUsers}
-              >
-                <SelectTrigger className={!taskAssignee && "border-red-500"}>
-                  {isLoadingUsers ? (
-                    <span className="text-gray-500">Загрузка пользователей...</span>
-                  ) : (
-                    <SelectValue placeholder={!taskDepartment ? "Сначала выберите подразделение" : "Выберите исполнителя"} />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  {dbUsers.length > 0 ? (
-                    <>
-                      {/* Сначала показываем руководителя, если он есть */}
-                      {dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
-                        <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                          Руководитель
-                        </div>
-                      )}
-                      
-                      {/* Выводим руководителя */}
-                      {dbUsers
-                        .filter(user => user.fullname.includes('(Руководитель)'))
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.fullname.replace(' (Руководитель)', '')}
+            {!isDuplicateMode && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="task-department">Подразделение <span className="text-red-500">*</span></Label>
+                  <Select value={taskDepartment} onValueChange={setTaskDepartment}>
+                    <SelectTrigger className={!taskDepartment && "border-red-500"}>
+                      <SelectValue placeholder="Выберите подразделение" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.length > 0 ? (
+                        departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
                           </SelectItem>
                         ))
-                      }
-                      
-                      {/* Если есть обычные сотрудники, добавляем разделитель */}
-                      {dbUsers.some(user => !user.fullname.includes('(Руководитель)')) && 
-                      dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
-                        <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                          Сотрудники
+                      ) : (
+                        <div className="p-2 text-center text-gray-500">
+                          У вас нет доступных подразделений
                         </div>
                       )}
-                      
-                      {/* Выводим остальных сотрудников */}
-                      {dbUsers
-                        .filter(user => !user.fullname.includes('(Руководитель)'))
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.fullname}
-                          </SelectItem>
-                        ))
-                      }
-                    </>
-                  ) : (
-                    <div className="p-2 text-center text-gray-500">
-                      {!taskDepartment 
-                        ? "Сначала выберите подразделение" 
-                        : "В этом подразделении нет пользователей"}
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="task-assignee">Исполнитель <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={taskAssignee} 
+                    onValueChange={setTaskAssignee}
+                    disabled={!taskDepartment || isLoadingUsers}
+                  >
+                    <SelectTrigger className={!taskAssignee && "border-red-500"}>
+                      {isLoadingUsers ? (
+                        <span className="text-gray-500">Загрузка пользователей...</span>
+                      ) : (
+                        <SelectValue placeholder={!taskDepartment ? "Сначала выберите подразделение" : "Выберите исполнителя"} />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dbUsers.length > 0 ? (
+                        <>
+                          {/* Сначала показываем руководителя, если он есть */}
+                          {dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
+                            <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                              Руководитель
+                            </div>
+                          )}
+                          
+                          {/* Выводим руководителя */}
+                          {dbUsers
+                            .filter(user => user.fullname.includes('(Руководитель)'))
+                            .map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.fullname.replace(' (Руководитель)', '')}
+                              </SelectItem>
+                            ))
+                          }
+                          
+                          {/* Если есть обычные сотрудники, добавляем разделитель */}
+                          {dbUsers.some(user => !user.fullname.includes('(Руководитель)')) && 
+                          dbUsers.some(user => user.fullname.includes('(Руководитель)')) && (
+                            <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
+                              Сотрудники
+                            </div>
+                          )}
+                          
+                          {/* Выводим остальных сотрудников */}
+                          {dbUsers
+                            .filter(user => !user.fullname.includes('(Руководитель)'))
+                            .map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.fullname}
+                              </SelectItem>
+                            ))
+                          }
+                        </>
+                      ) : (
+                        <div className="p-2 text-center text-gray-500">
+                          {!taskDepartment 
+                            ? "Сначала выберите подразделение" 
+                            : "В этом подразделении нет пользователей"}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
             
             <div className="flex items-center space-x-2">
               <Checkbox 
@@ -932,6 +1069,44 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
               />
               <Label htmlFor="task-protocol">Добавить в протокол</Label>
             </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="duplicate-mode-desktop" 
+                checked={isDuplicateMode}
+                onCheckedChange={(checked) => {
+                  setIsDuplicateMode(!!checked);
+                  if (!checked) {
+                    setSelectedDepartmentsForDuplication([]);
+                    setSelectedExecutorsForDuplication([]);
+                    setAvailableExecutors([]);
+                  }
+                }}
+              />
+              <Label htmlFor="duplicate-mode-desktop">Дублировать</Label>
+            </div>
+            
+            {isDuplicateMode && (
+              <>
+                <DepartmentSelector
+                  departments={departments}
+                  selectedDepartments={selectedDepartmentsForDuplication}
+                  onDepartmentToggle={handleDepartmentToggleForDuplication}
+                />
+                
+                {selectedDepartmentsForDuplication.length > 0 && (
+                  <ExecutorSelector
+                    executors={availableExecutors}
+                    selectedExecutors={selectedExecutorsForDuplication}
+                    onExecutorToggle={handleExecutorToggleForDuplication}
+                    departmentNames={departments.reduce((acc, dept) => {
+                      acc[dept.id] = dept.name;
+                      return acc;
+                    }, {} as {[key: string]: string})}
+                  />
+                )}
+              </>
+            )}
             
             <div className="space-y-2">
               <Label>Дедлайн <span className="text-red-500">*</span></Label>

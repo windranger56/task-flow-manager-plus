@@ -70,8 +70,8 @@ const fetchDepartmentsWithUsers = async () => {
   if (!error) {
     // Для каждого департамента добавляем руководителя в список сотрудников, если его там нет
     const departmentsWithManager = (departments || []).map(dep => {
-      let users = dep.users || [];
-      if (dep.manager && !users.some(u => u.id === dep.manager.id)) {
+      let users = Array.isArray(dep.users) ? dep.users : [];
+      if (dep.manager && Array.isArray(users) && !users.some(u => u.id === dep.manager.id)) {
         users = [dep.manager, ...users];
       }
       return { ...dep, users };

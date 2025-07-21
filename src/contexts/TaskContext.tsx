@@ -46,6 +46,7 @@ interface TaskContextType {
     deadline: Date,
     selectedDepartmentId?: string,
     assigneeId?: string,
+    duplicationData?: { selectedDepartments: string[]; selectedExecutors: string[]; }
   ) => Promise<void>;
   completeTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
@@ -462,7 +463,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     deadline: Date,
     selectedDepartmentId?: string,
     assigneeId?: string,
-    status: TaskStatus = 'new' // Изменено с 'in_progress' на 'new'
+    duplicationData?: { selectedDepartments: string[]; selectedExecutors: string[]; }
   ) => {
     // Проверка наличия сессии
     const { data: { session } } = await supabase.auth.getSession();
@@ -490,10 +491,92 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
 
       const createdBy = currentUserData[0].id;
-      // Используем переданный ID департамента или берем из профиля пользователя
+
+      // Если есть данные дублирования, создаем несколько поручений
+      if (duplicationData && duplicationData.selectedExecutors.length > 0) {
+        const tasksToCreate = [];
+        
+        // Создаем массив задач для каждого выбранного исполнителя
+        for (const executorId of duplicationData.selectedExecutors) {
+          // Получаем департамент исполнителя
+          const { data: executorData, error: executorError } = await supabase
+            .from('users')
+            .select('departmentId')
+            .eq('id', executorId)
+            .single();
+            
+          if (executorError || !executorData?.departmentId) {
+            console.error(`Ошибка при получении данных исполнителя ${executorId}:`, executorError);
+            continue;
+          }
+          
+          tasksToCreate.push({
+            title,
+            description,
+            created_by: createdBy,
+            departmentId: executorData.departmentId,
+            assigned_to: executorId,
+            priority,
+            is_protocol: isProtocol,
+            created_at: new Date().toISOString(),
+            deadline: deadline.toISOString(),
+            status: 'new' as TaskStatus
+          });
+        }
+        
+        if (tasksToCreate.length === 0) {
+          toast({ 
+            title: "Ошибка", 
+            description: "Не удалось получить данные исполнителей для дублирования",
+            variant: "destructive" 
+          });
+          return;
+        }
+        
+        // Массовая вставка задач
+        const { data: createdTasks, error: insertError } = await supabase
+          .from('tasks')
+          .insert(tasksToCreate)
+          .select();
+        
+        if (insertError) {
+          console.error("Ошибка при создании дублированных поручений:", insertError);
+          toast({ 
+            title: "Ошибка", 
+            description: "Не удалось создать дублированные поручения",
+            variant: "destructive" 
+          });
+          return;
+        }
+        
+        // Преобразуем созданные задачи в формат Task
+        const newTasks: Task[] = createdTasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          assignedTo: task.assigned_to,
+          createdBy: task.created_by,
+          departmentId: task.departmentId,
+          parentId: task.parent_id || '',
+          priority: task.priority,
+          isProtocol: task.is_protocol as ProtocolStatus,
+          createdAt: new Date(task.created_at),
+          deadline: new Date(task.deadline),
+          status: task.status as TaskStatus
+        }));
+        
+        // Обновляем локальное состояние
+        setTasks([...tasks, ...newTasks]);
+        toast({ 
+          title: "Поручения созданы", 
+          description: `Создано ${newTasks.length} поручений для выбранных исполнителей.` 
+        });
+        return;
+      }
+      
+      // Обычное создание одного поручения
       const departmentId = selectedDepartmentId || currentUserData[0].departmentId;
 
-      // Если departmentId не указан в профиле, выводим ошибку
       if (!departmentId) {
         toast({ 
           title: "Ошибка", 
@@ -503,21 +586,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Подготовка данных для сохранения
       const taskData = {
         title,
         description,
         created_by: createdBy,
         departmentId: departmentId,
-        assigned_to: assigneeId || createdBy, // Используем указанного исполнителя или создателя
+        assigned_to: assigneeId || createdBy,
         priority,
         is_protocol: isProtocol,
         created_at: new Date().toISOString(),
         deadline: deadline.toISOString(),
-        status: 'new' as TaskStatus // Изменено на 'new'
+        status: 'new' as TaskStatus
       };
 
-      // Сохраняем поручение в базу данных
       const { data, error } = await supabase
         .from('tasks')
         .insert(taskData)
@@ -534,7 +615,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Преобразуем полученные данные в формат Task для локального состояния
       const newTask: Task = {
         id: data.id,
         title: data.title,
@@ -542,7 +622,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         assignedTo: data.assigned_to,
         createdBy: data.created_by,
         departmentId: data.departmentId,
-        parentId: data.parent_id || '', // Fix missing parentId
+        parentId: data.parent_id || '',
         priority: data.priority,
         isProtocol: data.is_protocol as ProtocolStatus,
         createdAt: new Date(data.created_at),
@@ -550,7 +630,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         status: data.status as TaskStatus
       };
       
-      // Обновляем локальное состояние
       setTasks([...tasks, newTask]);
       toast({ title: "Поручение добавлено", description: "Новое поручение создано." });
     } catch (e) {

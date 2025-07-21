@@ -939,7 +939,7 @@ export default function TaskDetail() {
                   });
                   
                   // Затем вызываем API
-                  toggleProtocol(selectedTask.id, newProtocolState).catch(() => {
+                  Promise.resolve(toggleProtocol(selectedTask.id, newProtocolState)).catch(() => {
                     // В случае ошибки - возвращаем предыдущее состояние
                     selectTask({
                       ...selectedTask,
@@ -1305,7 +1305,6 @@ export default function TaskDetail() {
       <FileViewer 
       file={viewerFile} 
       onClose={() => setViewerFile(null)}
-      className="w-[95vw] h-[95vh] sm:w-[80vw] sm:h-[80vh]"
       />
     )}
     </div>

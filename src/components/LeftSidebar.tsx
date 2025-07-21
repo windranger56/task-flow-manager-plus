@@ -672,7 +672,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="p-2 bg-gray-50 text-sm">
-                <p>Руководитель: {department.managerName || getUserById(department.managerId)?.fullname || 'Не назначен'}</p>
+                <p>Руководитель: {department.managerName || 'Не назначен'}</p>
               </CollapsibleContent>
             </Collapsible>
           ))}

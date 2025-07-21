@@ -775,7 +775,7 @@ export default function ExportButton() {
             {/* New Executor Selector */}
             <div className="border-t pt-4">
               <ExecutorSelector
-                executors={availableExecutors}
+                executors={availableExecutors.map(u => ({ id: u.id, fullname: u.fullname, departmentId: u.role || '' }))}
                 selectedExecutors={filters.selectedExecutors || []}
                 onExecutorToggle={handleExecutorToggle}
                 departmentNames={departmentNameMap}

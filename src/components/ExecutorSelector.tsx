@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { User } from '@/types';
 
 interface ExecutorSelectorProps {
-  executors: User[];
+  executors: {id: string, fullname: string, departmentId: string}[];
   selectedExecutors: string[];
   onExecutorToggle: (executorId: string) => void;
   departmentNames: { [key: string]: string };
@@ -65,12 +65,10 @@ export default function ExecutorSelector({
                 htmlFor={`exec-${executor.id}`}
                 className="text-sm cursor-pointer flex-1"
               >
-                <span>{executor.fullname || 'Без имени'}</span>
-                {executor.role && (
-                  <span className="text-xs text-gray-500 ml-1">
-                    ({departmentNames[executor.role] || executor.role})
-                  </span>
-                )}
+                {executor.fullname}
+                <div className="text-xs text-gray-500">
+                  {departmentNames[executor.departmentId] || 'Неизвестное подразделение'}
+                </div>
               </Label>
             </div>
           ))

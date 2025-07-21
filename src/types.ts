@@ -65,3 +65,8 @@ export interface ExportFilters {
   protocolAuthor?: string;
   protocolAuthorPosition?: string;
 }
+
+export interface DuplicationData {
+  selectedDepartments: string[];
+  selectedExecutors: string[];
+}
