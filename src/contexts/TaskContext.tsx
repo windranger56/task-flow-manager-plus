@@ -36,6 +36,7 @@ interface TaskContextType {
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   getUserById: (userId: string) => Promise<User | null>;
   getUsersByDepartments: (departmentIds: string[]) => Promise<User[]>;
+  searchTasks: (query: string) => Task[];
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -91,19 +92,19 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
       if (!user?.id) return;
       
       try {
-        const { data: userDepartments, error } = await supabase
-          .from('users')
-          .select(`
-            departmentId,
-            departments (
-              id,
-              name,
-              managerId,
-              color,
-              created_by
-            )
-          `)
-          .eq('id', user.id);
+         const { data: userDepartments, error } = await supabase
+           .from('users')
+           .select(`
+             departmentId,
+             departments!inner (
+               id,
+               name,
+               managerId,
+               color,
+               created_by
+             )
+           `)
+           .eq('id', user.id);
 
         if (error) throw error;
 
@@ -116,8 +117,12 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
         
         // Add user's own department
         if (userDepartments?.[0]?.departments) {
-          const dept = userDepartments[0].departments;
-          allDepartments.set(dept.id, dept);
+          const dept: any = userDepartments[0].departments;
+          if (Array.isArray(dept) && dept.length > 0) {
+            allDepartments.set(dept[0].id, dept[0]);
+          } else if (dept && dept.id) {
+            allDepartments.set(dept.id, dept);
+          }
         }
         
         // Add managed departments
@@ -414,6 +419,17 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     }
   };
 
+  const searchTasks = (query: string): Task[] => {
+    if (!query.trim()) return [];
+    
+    const searchTerm = query.toLowerCase();
+    return tasks.filter(task => 
+      task.title.toLowerCase().includes(searchTerm) ||
+      task.description.toLowerCase().includes(searchTerm) ||
+      task.status.toLowerCase().includes(searchTerm)
+    );
+  };
+
   const value: TaskContextType = {
     tasks,
     departments,
@@ -431,6 +447,7 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({ children }) => {
     updateTaskStatus,
     getUserById,
     getUsersByDepartments,
+    searchTasks,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
