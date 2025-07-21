@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FileDown, Eye } from 'lucide-react';
 import { useTaskContext } from '@/contexts/TaskContext';
-import { supabase } from '@/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -45,7 +44,7 @@ export default function ExportButton() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string>('');
   const [filters, setFilters] = useState<ExportFilters>({});
-  const { tasks, departments, getUserById } = useTaskContext();
+  const { tasks, departments, getUserById, supabase } = useTaskContext();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const activeInputRef = useRef<HTMLInputElement>(null);
 

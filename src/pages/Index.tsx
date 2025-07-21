@@ -34,7 +34,7 @@ export default function Index() {
 									<DrawerClose className="absolute right-4 mt-20 z-50">
 										<X className="h-6 w-6" />
 									</DrawerClose>
-									<LeftSidebar />
+									<LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
 								</div>
 							</DrawerContent>
 						</Drawer>
