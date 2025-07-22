@@ -438,7 +438,12 @@ export default function TaskDetail() {
       while (currentId) {
         const { data: task, error } = await supabase
           .from('tasks')
-          .select('*')
+          .select(`
+            *,
+            creator:created_by(id, fullname),
+            assignee:assigned_to(id, fullname),
+            department:departmentId(id, name)
+          `)
           .eq('id', currentId)
           .single();
   
@@ -447,8 +452,11 @@ export default function TaskDetail() {
   
         parentChain.push({
           ...task,
-          createdAt: task.createdAt ? new Date(task.createdAt) : null,
-          deadline: task.deadline ? new Date(task.deadline) : null
+          createdAt: task.created_at ? new Date(task.created_at) : null,
+          deadline: task.deadline ? new Date(task.deadline) : null,
+          creatorName: task.creator?.fullname || 'Неизвестно',
+          assigneeName: task.assignee?.fullname || 'Неизвестно',
+          departmentName: task.department?.name || 'Неизвестно'
         });
   
         currentId = task.parent_id?.toString();
@@ -462,7 +470,12 @@ export default function TaskDetail() {
       while (hasChildren) {
         const { data: children, error } = await supabase
           .from('tasks')
-          .select('*')
+          .select(`
+            *,
+            creator:created_by(id, fullname),
+            assignee:assigned_to(id, fullname),
+            department:departmentId(id, name)
+          `)
           .eq('parent_id', childId);
   
         if (error) throw error;
@@ -472,8 +485,11 @@ export default function TaskDetail() {
           const child = children[0];
           childChain.push({
             ...child,
-            createdAt: child.createdAt ? new Date(child.createdAt) : null,
-            deadline: child.deadline ? new Date(child.deadline) : null
+            createdAt: child.created_at ? new Date(child.created_at) : null,
+            deadline: child.deadline ? new Date(child.deadline) : null,
+            creatorName: child.creator?.fullname || 'Неизвестно',
+            assigneeName: child.assignee?.fullname || 'Неизвестно',
+            departmentName: child.department?.name || 'Неизвестно'
           });
           childId = child.id;
         } else {

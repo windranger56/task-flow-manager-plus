@@ -73,8 +73,9 @@ const fetchDepartmentsWithUsers = async () => {
     // Для каждого департамента добавляем руководителя в список сотрудников, если его там нет
     const departmentsWithManager = (departments || []).map(dep => {
       let users = Array.isArray(dep.users) ? dep.users : [];
-      if (dep.manager && Array.isArray(users) && !users.some(u => u.id === dep.manager.id)) {
-        users = [dep.manager, ...users];
+      const manager = Array.isArray(dep.manager) ? dep.manager[0] : dep.manager;
+      if (manager && manager.id && Array.isArray(users) && !users.find(u => u.id === manager.id)) {
+        users = [manager, ...users];
       }
       return { ...dep, users };
     });
@@ -153,15 +154,34 @@ const handleEditUser = async () => {
       toast.error('Заполните все поля');
       return;
     }
-    const { error } = await supabase.from('departments').insert({
-      name: newDept.name,
-      managerId: newDept.managerId ? Number(newDept.managerId) : null
-    });
-    if (!error) {
+    
+    const { data: deptData, error: deptError } = await supabase
+      .from('departments')
+      .insert({
+        name: newDept.name,
+        managerId: newDept.managerId ? Number(newDept.managerId) : null
+      })
+      .select()
+      .single();
+    
+    if (!deptError && deptData) {
+      // Обновляем departmentId у руководителя
+      if (newDept.managerId) {
+        const { error: userUpdateError } = await supabase
+          .from('users')
+          .update({ departmentId: deptData.id })
+          .eq('id', newDept.managerId);
+        
+        if (userUpdateError) {
+          console.error('Ошибка при обновлении departmentId руководителя:', userUpdateError);
+        }
+      }
+      
       toast.success('Департамент создан');
       setShowCreateDept(false);
       setNewDept({ name: '', managerId: '' });
-      // обновить список департаментов, если нужно
+      fetchDepartmentsWithUsers(); // Обновляем список департаментов
+      fetchUsers(); // Обновляем список пользователей
     } else {
       toast.error('Ошибка при создании департамента');
     }
