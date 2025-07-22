@@ -3,7 +3,13 @@ export interface User {
   fullname: string;
   email: string;
   image: string;
-  role?: string;
+  role?: Role;
+}
+
+export enum Role {
+	employee,
+	manager,
+	admin
 }
 
 export interface Department {

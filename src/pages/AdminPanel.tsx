@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -15,7 +15,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-export default function AdminPanel() {
+export default function AdminPanel({ session }) {
   const [selectedSection, setSelectedSection] = useState("главная");
 	const [users, setUsers] = useState([]);
 
@@ -36,6 +36,10 @@ const [editDept, setEditDept] = useState(null);
 const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
 const [sortField, setSortField] = useState<'name' | 'manager'>('name');
 const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+useLayoutEffect(() => {
+	supabase.from("users").select("role").eq('user_unique_id', session.user.id).then(({ data }) => { if (data[0].role !== "admin") navigate("/"); });
+}, []);
 
 // useEffect для загрузки департаментов один раз при монтировании
 useEffect(() => {
@@ -376,7 +380,7 @@ const handleEditUser = async () => {
                           <Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
                             <DialogTrigger asChild>
                               <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
-                                Delete
+																Удалить
                               </Button>
                             </DialogTrigger>
                             <DialogContent onClick={e => e.stopPropagation()}>
@@ -492,8 +496,8 @@ const handleEditUser = async () => {
                 <TableBody>
                   {[...departmentsTab]
                     .sort((a, b) => {
-                      let aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
-                      let bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
+                      const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
+                      const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
                       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
                       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
                       return 0;
@@ -602,6 +606,7 @@ const handleEditUser = async () => {
           <SelectContent>
             <SelectItem value="employee">Сотрудник</SelectItem>
             <SelectItem value="manager">Руководитель</SelectItem>
+            <SelectItem value="admin">Админ</SelectItem>
           </SelectContent>
         </Select>
       </div>

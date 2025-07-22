@@ -79,7 +79,7 @@ const App = () => {
             />
             <Route
               path="/admin"
-              element={<AdminPanel />}
+              element={<AdminPanel session={session} />}
             />
             <Route
               path="/register"
