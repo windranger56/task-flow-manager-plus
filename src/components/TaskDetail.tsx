@@ -57,10 +57,14 @@ export default function TaskDetail() {
   const [subordinates, setSubordinates] = useState<any[]>([]);
   const [showOnlySystemMessages, setShowOnlySystemMessages] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [hasTaskChain, setHasTaskChain] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       if(!selectedTask) return;
+
+      // Проверяем, есть ли цепочка переназначений
+      await checkTaskChain(selectedTask.id);
 
       
       // Подписка на изменения сообщений
@@ -431,10 +435,14 @@ export default function TaskDetail() {
   const fetchTaskHistory = async (taskId: string) => {
     setIsLoadingHistory(true);
     try {
-      // Сначала получаем всех родителей (как раньше)
+      // Получаем полную цепочку: сначала идем вверх к корню, потом вниз к листу
+      const fullChain = [];
+      
+      // Сначала получаем все родительские задачи до корня
       const parentChain = [];
       let currentId = taskId;
       
+      // Находим корневую задачу
       while (currentId) {
         const { data: task, error } = await supabase
           .from('tasks')
@@ -450,7 +458,7 @@ export default function TaskDetail() {
         if (error) throw error;
         if (!task) break;
   
-        parentChain.push({
+        parentChain.unshift({
           ...task,
           createdAt: task.created_at ? new Date(task.created_at) : null,
           deadline: task.deadline ? new Date(task.deadline) : null,
@@ -461,13 +469,18 @@ export default function TaskDetail() {
   
         currentId = task.parent_id?.toString();
       }
-  
-      // Теперь получаем всех детей (если они есть)
-      const childChain = [];
-      let childId = taskId;
-      let hasChildren = true;
-  
-      while (hasChildren) {
+      
+      // Теперь строим полную цепочку от корня до листа
+      let chainId = parentChain[0]?.id;
+      
+      while (chainId) {
+        // Находим текущую задачу в родительской цепочке
+        const currentTask = parentChain.find(task => task.id === chainId);
+        if (currentTask && !fullChain.find(task => task.id === chainId)) {
+          fullChain.push(currentTask);
+        }
+        
+        // Ищем следующую задачу в цепочке (дочернюю)
         const { data: children, error } = await supabase
           .from('tasks')
           .select(`
@@ -476,34 +489,33 @@ export default function TaskDetail() {
             assignee:assigned_to(id, fullname),
             department:departmentId(id, name)
           `)
-          .eq('parent_id', childId);
+          .eq('parent_id', chainId);
   
         if (error) throw error;
         
         if (children && children.length > 0) {
-          // Берем первого ребенка (можно модифицировать логику если нужно учитывать всех)
+          // Берем первого ребенка для продолжения цепочки
           const child = children[0];
-          childChain.push({
+          const formattedChild = {
             ...child,
             createdAt: child.created_at ? new Date(child.created_at) : null,
             deadline: child.deadline ? new Date(child.deadline) : null,
             creatorName: child.creator?.fullname || 'Неизвестно',
             assigneeName: child.assignee?.fullname || 'Неизвестно',
             departmentName: child.department?.name || 'Неизвестно'
-          });
-          childId = child.id;
+          };
+          
+          // Добавляем только если это не дублирует уже существующую задачу
+          if (!fullChain.find(task => task.id === child.id)) {
+            fullChain.push(formattedChild);
+          }
+          chainId = child.id;
         } else {
-          hasChildren = false;
+          chainId = null;
         }
       }
   
-      // Объединяем цепочки: родители в обратном порядке + текущая задача + дети
-      const fullHistory = [
-        ...parentChain.reverse(), // родители от корня к текущему
-        ...childChain            // дети от текущего к последнему
-      ];
-  
-      setTaskHistory(fullHistory);
+      setTaskHistory(fullChain);
   
     } catch (error) {
       console.error('Error loading history:', error);
@@ -534,11 +546,32 @@ export default function TaskDetail() {
     }
   };
 
+  const checkTaskChain = async (taskId: string) => {
+    try {
+      // Проверяем, есть ли родительская задача
+      const { data: currentTask } = await supabase
+        .from('tasks')
+        .select('parent_id')
+        .eq('id', taskId)
+        .single();
+
+      // Проверяем, есть ли дочерние задачи
+      const { data: children } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('parent_id', taskId);
+
+      const hasChain = !!(currentTask?.parent_id || (children && children.length > 0));
+      setHasTaskChain(hasChain);
+    } catch (error) {
+      console.error('Error checking task chain:', error);
+      setHasTaskChain(false);
+    }
+  };
+
   const handleOpenHistory = () => {
     setHistoryOpen(true);
-    if (selectedTask?.parentId) {
-      fetchTaskHistory(selectedTask.id);
-    }
+    fetchTaskHistory(selectedTask.id);
   };
 
   const filteredMessages = chatMessages.filter(msg => 
@@ -766,7 +799,7 @@ export default function TaskDetail() {
             </Dialog>
 
             {/* Кнопка истории поручения */}
-            {selectedTask.parentId && (
+            {hasTaskChain && (
               <div className="relative group">
                 <Button 
                   className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
@@ -825,28 +858,35 @@ export default function TaskDetail() {
                                     </p>
                                   )}
                                   
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                      {getStatusLabel(task.status)}
-                                    </span>
-                                    
-                                    {task.deadline && (
-                                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                        Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
-                                      </span>
-                                    )}
-                                    
-                                    {task.assigned_to && (
-                                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                        Исполнитель: {assignee.fullname || 'Неизвестно'}
-                                      </span>
-                                    )}
-                                    {task.created_by && (
-                                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                        Автор: {creator.fullname || 'Неизвестно'}
-                                      </span>
-                                    )}
-                                  </div>
+                                   <div className="mt-2 flex flex-wrap gap-2">
+                                     <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                       {getStatusLabel(task.status)}
+                                     </span>
+                                     
+                                     {task.isProtocol === 'active' && (
+                                       <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+                                         Протокольное
+                                       </span>
+                                     )}
+                                     
+                                     <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                       Автор: {task.creatorName}
+                                     </span>
+                                     
+                                     <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                                       Исполнитель: {task.assigneeName}
+                                     </span>
+                                     
+                                     <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                       Создано: {formatDateSafe(task.createdAt, 'dd.MM.yyyy')}
+                                     </span>
+                                     
+                                     {task.deadline && (
+                                       <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+                                         Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+                                       </span>
+                                     )}
+                                   </div>
                                 </div>
                               </div>
                             </div>
