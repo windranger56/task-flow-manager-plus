@@ -34,6 +34,8 @@ const [newDept, setNewDept] = useState({ name: '', managerId: '' });
 const [departmentsTab, setDepartmentsTab] = useState([]);
 const [editDept, setEditDept] = useState(null);
 const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
+const [sortField, setSortField] = useState<'name' | 'manager'>('name');
+const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
 // useEffect для загрузки департаментов один раз при монтировании
 useEffect(() => {
@@ -372,13 +374,52 @@ const handleEditUser = async () => {
                                 </DialogClose>
                                 <DialogClose asChild>
                                   <Button variant="destructive" onClick={async () => {
-                                    const { error } = await supabase.from("users").update({ active: false }).eq("id", u.id)
-                                    if (!error) {
-                                      toast.success(`Пользователь ${u.fullname} успешно удалён!`)
-                                      setUsers(p => p.filter(fu => fu.id != u.id))
-                                      return
+                                    // 1. Снять пользователя с руководства департаментами
+                                    const { data: departmentsManaged, error: depError } = await supabase
+                                      .from('departments')
+                                      .select('id')
+                                      .eq('managerId', u.id);
+                                    if (depError) {
+                                      toast.error('Ошибка при проверке руководства департаментами');
+                                      return;
                                     }
-                                    toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`)
+                                    if (departmentsManaged && departmentsManaged.length > 0) {
+                                      const depIds = departmentsManaged.map(dep => dep.id);
+                                      const { error: updateError } = await supabase
+                                        .from('departments')
+                                        .update({ managerId: null })
+                                        .in('id', depIds);
+                                      if (updateError) {
+                                        toast.error('Ошибка при обновлении департаментов');
+                                        return;
+                                      }
+                                    }
+                                    // 2. Удалить все задачи, где пользователь исполнитель или создатель
+                                    const { data: userTasks, error: tasksError } = await supabase
+                                      .from('tasks')
+                                      .select('id')
+                                      .or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
+                                    if (tasksError) {
+                                      toast.error('Ошибка при поиске задач пользователя');
+                                      return;
+                                    }
+                                    if (userTasks && userTasks.length > 0) {
+                                      const taskIds = userTasks.map(t => t.id);
+                                      // Удалить все сообщения по этим задачам
+                                      await supabase.from('messages').delete().in('task_id', taskIds);
+                                      // Удалить задачи
+                                      await supabase.from('tasks').delete().in('id', taskIds);
+                                    }
+                                    // 3. Удалить все сообщения, где пользователь автор
+                                    await supabase.from('messages').delete().eq('sent_by', u.id);
+                                    // 4. Удалить пользователя
+                                    const { error } = await supabase.from('users').delete().eq('id', u.id);
+                                    if (!error) {
+                                      toast.success(`Пользователь ${u.fullname} и все его данные успешно удалены!`);
+                                      setUsers(p => p.filter(fu => fu.id != u.id));
+                                      return;
+                                    }
+                                    toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
                                   }}>
                                     Удалить
                                   </Button>
@@ -399,30 +440,66 @@ const handleEditUser = async () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Руководитель</TableHead>
+                    <TableHead
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (sortField === 'name') {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField('name');
+                          setSortDirection('asc');
+                        }
+                      }}
+                    >
+                      Название {sortField === 'name' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </TableHead>
+                    <TableHead
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (sortField === 'manager') {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField('manager');
+                          setSortDirection('asc');
+                        }
+                      }}
+                    >
+                      Руководитель {sortField === 'manager' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </TableHead>
                     <TableHead>Сотрудники</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {departmentsTab.map(dep => (
-                    <TableRow key={dep.id} className="cursor-pointer hover:bg-[#d7d7d7]" onClick={() => {
-                      setEditDept(dep);
-                      setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
-                    }}>
-                      <TableCell>{dep.name}</TableCell>
-                      <TableCell>{dep.manager?.fullname || '—'}</TableCell>
-                      <TableCell>
-                        {dep.users && dep.users.length > 0 ? (
-                          <ul className="list-disc ml-4">
-                            {dep.users.map(user => (
-                              <li key={user.id}>{user.fullname} ({user.email})</li>
-                            ))}
-                          </ul>
-                        ) : 'Нет сотрудников'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {[...departmentsTab]
+                    .sort((a, b) => {
+                      let aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
+                      let bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
+                      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                      return 0;
+                    })
+                    .map(dep => (
+                      <TableRow key={dep.id} className="cursor-pointer hover:bg-[#d7d7d7]" onClick={() => {
+                        setEditDept(dep);
+                        setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                      }}>
+                        <TableCell>{dep.name}</TableCell>
+                        <TableCell>{dep.manager?.fullname || '—'}</TableCell>
+                        <TableCell>
+                          {Array.isArray(dep.users) && dep.users.length > 0 ? (
+                            <ul className="list-disc ml-4">
+                              {[...dep.users]
+                                .filter(user => user && typeof user.fullname === 'string')
+                                .sort((a, b) => a.fullname.localeCompare(b.fullname, 'ru'))
+                                .map(user => {
+                                  const u = user as { id: string; fullname: string; email: string };
+                                  return <li key={u.id}>{u.fullname} ({u.email})</li>;
+                                })}
+                            </ul>
+                          ) : 'Нет сотрудников'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
               <Dialog open={!!editDept} onOpenChange={open => { if (!open) { setEditDept(null); setEditDeptData({ name: '', managerId: '' }); } }}>
