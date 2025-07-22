@@ -417,18 +417,54 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     }
     
     try {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, fullname, departmentId')
-        .in('departmentId', departmentIds)
-        .order('fullname');
-        
-      if (error) {
-        console.error("Ошибка при загрузке исполнителей:", error);
-        return;
+      const allExecutors: {id: string, fullname: string, departmentId: string}[] = [];
+      
+      for (const deptId of departmentIds) {
+        // Загружаем сотрудников департамента
+        const { data: departmentEmployees, error: employeesError } = await supabase
+          .from('users')
+          .select('id, fullname, departmentId')
+          .eq('departmentId', deptId);
+
+        if (employeesError) {
+          console.error('Ошибка при загрузке сотрудников департамента:', employeesError);
+          continue;
+        }
+
+        // Добавляем сотрудников
+        if (departmentEmployees) {
+          departmentEmployees.forEach(emp => {
+            if (emp.fullname) {
+              allExecutors.push({
+                id: emp.id,
+                fullname: emp.fullname,
+                departmentId: emp.departmentId
+              });
+            }
+          });
+        }
+
+        // Загружаем руководителя департамента
+        const department = departments.find(d => d.id === deptId);
+        if (department?.managerId) {
+          try {
+            const manager = await getUserById(department.managerId);
+            if (manager && manager.fullname && !allExecutors.find(u => u.id === manager.id)) {
+              allExecutors.push({
+                id: manager.id,
+                fullname: manager.fullname,
+                departmentId: deptId
+              });
+            }
+          } catch (error) {
+            console.error('Ошибка при загрузке руководителя департамента:', error);
+          }
+        }
       }
       
-      setAvailableExecutors(users || []);
+      // Сортируем по имени
+      allExecutors.sort((a, b) => a.fullname.localeCompare(b.fullname));
+      setAvailableExecutors(allExecutors);
     } catch (error) {
       console.error("Ошибка при загрузке исполнителей:", error);
     }
