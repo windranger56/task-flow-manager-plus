@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
-const RegisterPage = () => {
+const RegisterPage = ({session}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [fullnames, setFullnames] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +23,12 @@ const RegisterPage = () => {
   }>>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+	useLayoutEffect(() => {
+	supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
+		if (data[0].privilege_level === null || data[0].privilege_level === "observer") navigate("/admin");
+	});
+}, []);
 
   const capitalizeFirstLetter = (str: string): string => {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -60,7 +66,7 @@ const RegisterPage = () => {
     const getRandomChar = (str: string) => str[Math.floor(Math.random() * str.length)];
 
     // Ensure at least one character from each group
-    let password = [
+    const password = [
       getRandomChar(uppercase),
       getRandomChar(lowercase),
       getRandomChar(numbers),

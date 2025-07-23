@@ -36,9 +36,13 @@ const [editDept, setEditDept] = useState(null);
 const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
 const [sortField, setSortField] = useState<'name' | 'manager'>('name');
 const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+const [role, setRole] = useState(null)
 
 useLayoutEffect(() => {
-	supabase.from("users").select("role").eq('user_unique_id', session.user.id).then(({ data }) => { if (data[0].role !== "admin") navigate("/"); });
+	supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
+		if (data[0].privilege_level === null) navigate("/");
+		else setRole(data[0].privilege_level);
+	});
 }, []);
 
 // useEffect для загрузки департаментов один раз при монтировании
@@ -88,6 +92,11 @@ const fetchDepartmentsWithUsers = async () => {
 };
 
 const handleEditUser = async () => {
+	if (role === 'observer') {
+		toast.error("Недостаточно привилегий для редактирования пользователей");
+		setEditUser(null);
+		return;
+	}
   let avatarUrl = editUser.image;
   if (editUserData.avatar) {
     const fileExt = editUserData.avatar.name.split('.').pop();
@@ -198,6 +207,11 @@ const handleEditUser = async () => {
   }, [showCreateDept]);
 
   const handleEditDept = async () => {
+		if (role === 'observer') {
+			toast.error("Недостаточно привилегий для редактирования департаментов");
+			setEditDept(null);
+			return;
+		}
     if (!editDeptData.name || !editDeptData.managerId) {
       toast.error('Заполните все поля');
       return;
@@ -295,11 +309,11 @@ const handleEditUser = async () => {
           <div className="text-xl font-semibold capitalize">
             {selectedSection}
           </div>
-          <Button onClick={() => navigate('/register')} variant="outline">
+          <Button onClick={() => role !== "observer" ? navigate('/register') : toast.error("Недостаточно привилегий для создания пользователя")} variant="outline">
             Создать пользователя
           </Button>
           <div className="flex gap-2">
-            <Button onClick={() => setShowCreateDept(true)} variant="outline">Создать департамент</Button>
+            <Button onClick={() => role !== "observer" ? setShowCreateDept(true) : toast.error("Недостаточно привилегий для создания департамента")} variant="outline">Создать департамент</Button>
             <Dialog open={showCreateDept} onOpenChange={setShowCreateDept}>
               <DialogContent onClick={e => e.stopPropagation()}>
                 <DialogHeader>
@@ -341,7 +355,7 @@ const handleEditUser = async () => {
                   <TableHead>Руководитель</TableHead>
                   <TableHead>Должность</TableHead>
                   <TableHead>Пароль</TableHead>
-                  <TableHead>Действия</TableHead>
+									{ role === 'admin' && <TableHead>Действия</TableHead> }
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -376,82 +390,87 @@ const handleEditUser = async () => {
                         <TableCell>{u.leader || "Нет руководителя"}</TableCell>
                         <TableCell>{u.role === 'manager' ? "Руководитель" : "Сотрудник"}</TableCell>
                         <TableCell>{u.password || ''}</TableCell>
-                        <TableCell className="space-x-2">
-                          <Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
-                            <DialogTrigger asChild>
-                              <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
-																Удалить
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent onClick={e => e.stopPropagation()}>
-                              <DialogHeader>
-                                <DialogTitle>Удалить пользователя</DialogTitle>
-                                <DialogDescription>
-                                  Вы точно хотите удалить пользователя {u.fullname}? После удаления пользователя вернуть будет уже нельзя!
-                                </DialogDescription>
-                              </DialogHeader>
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button variant="ghost" onClick={() => setDeletingId(null)}>
-                                    Отмена
-                                  </Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                  <Button variant="destructive" onClick={async () => {
-                                    // 1. Снять пользователя с руководства департаментами
-                                    const { data: departmentsManaged, error: depError } = await supabase
-                                      .from('departments')
-                                      .select('id')
-                                      .eq('managerId', u.id);
-                                    if (depError) {
-                                      toast.error('Ошибка при проверке руководства департаментами');
-                                      return;
-                                    }
-                                    if (departmentsManaged && departmentsManaged.length > 0) {
-                                      const depIds = departmentsManaged.map(dep => dep.id);
-                                      const { error: updateError } = await supabase
-                                        .from('departments')
-                                        .update({ managerId: null })
-                                        .in('id', depIds);
-                                      if (updateError) {
-                                        toast.error('Ошибка при обновлении департаментов');
-                                        return;
-                                      }
-                                    }
-                                    // 2. Удалить все задачи, где пользователь исполнитель или создатель
-                                    const { data: userTasks, error: tasksError } = await supabase
-                                      .from('tasks')
-                                      .select('id')
-                                      .or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
-                                    if (tasksError) {
-                                      toast.error('Ошибка при поиске задач пользователя');
-                                      return;
-                                    }
-                                    if (userTasks && userTasks.length > 0) {
-                                      const taskIds = userTasks.map(t => t.id);
-                                      // Удалить все сообщения по этим задачам
-                                      await supabase.from('messages').delete().in('task_id', taskIds);
-                                      // Удалить задачи
-                                      await supabase.from('tasks').delete().in('id', taskIds);
-                                    }
-                                    // 3. Удалить все сообщения, где пользователь автор
-                                    await supabase.from('messages').delete().eq('sent_by', u.id);
-                                    // 4. Удалить пользователя
-                                    const { error } = await supabase.from('users').delete().eq('id', u.id);
-                                    if (!error) {
-                                      toast.success(`Пользователь ${u.fullname} и все его данные успешно удалены!`);
-                                      setUsers(p => p.filter(fu => fu.id != u.id));
-                                      return;
-                                    }
-                                    toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
-                                  }}>
-                                    Удалить
-                                  </Button>
-                                </DialogClose>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
+												{
+													role === 'admin' && (
+														<TableCell className="space-x-2">
+															<Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
+																<DialogTrigger asChild>
+																	<Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
+																		Удалить
+																	</Button>
+																</DialogTrigger>
+																<DialogContent onClick={e => e.stopPropagation()}>
+																	<DialogHeader>
+																		<DialogTitle>Удалить пользователя</DialogTitle>
+																		<DialogDescription>
+																			Вы точно хотите удалить пользователя {u.fullname}? После удаления пользователя вернуть будет уже нельзя!
+																		</DialogDescription>
+																	</DialogHeader>
+																	<DialogFooter>
+																		<DialogClose asChild>
+																			<Button variant="ghost" onClick={() => setDeletingId(null)}>
+																				Отмена
+																			</Button>
+																		</DialogClose>
+																		<DialogClose asChild>
+																			<Button variant="destructive" onClick={async () => {
+																				// 1. Снять пользователя с руководства департаментами
+																				const { data: departmentsManaged, error: depError } = await supabase
+																					.from('departments')
+																					.select('id')
+																					.eq('managerId', u.id);
+																				if (depError) {
+																					toast.error('Ошибка при проверке руководства департаментами');
+																					return;
+																				}
+																				if (departmentsManaged && departmentsManaged.length > 0) {
+																					const depIds = departmentsManaged.map(dep => dep.id);
+																					const { error: updateError } = await supabase
+																						.from('departments')
+																						.update({ managerId: null })
+																						.in('id', depIds);
+																					if (updateError) {
+																						toast.error('Ошибка при обновлении департаментов');
+																						return;
+																					}
+																				}
+																				// 2. Удалить все задачи, где пользователь исполнитель или создатель
+																				const { data: userTasks, error: tasksError } = await supabase
+																					.from('tasks')
+																					.select('id')
+																					.or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
+																				if (tasksError) {
+																					toast.error('Ошибка при поиске задач пользователя');
+																					return;
+																				}
+																				if (userTasks && userTasks.length > 0) {
+																					const taskIds = userTasks.map(t => t.id);
+																					// Удалить все сообщения по этим задачам
+																					await supabase.from('messages').delete().in('task_id', taskIds);
+																					// Удалить задачи
+																					await supabase.from('tasks').delete().in('id', taskIds);
+																				}
+																				// 3. Удалить все сообщения, где пользователь автор
+																				await supabase.from('messages').delete().eq('sent_by', u.id);
+																				// 4. Удалить пользователя
+																				const { error } = await supabase.from('users').delete().eq('id', u.id);
+																				if (!error) {
+																					toast.success(`Пользователь ${u.fullname} и все его данные успешно удалены!`);
+																					setUsers(p => p.filter(fu => fu.id != u.id));
+																					return;
+																				}
+																				toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
+																			}}>
+																				Удалить
+																			</Button>
+																		</DialogClose>
+																	</DialogFooter>
+																</DialogContent>
+															</Dialog>
+														</TableCell>
+													)
+												}
+                        
                       </TableRow>
                     )
                   })

@@ -83,7 +83,7 @@ const App = () => {
             />
             <Route
               path="/register"
-              element={<RegisterPage />}
+              element={<RegisterPage session={session} />}
             />
             <Route
               path="/admin/users/:id"
