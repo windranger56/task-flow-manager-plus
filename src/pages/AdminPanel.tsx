@@ -414,6 +414,16 @@ const handleEditUser = async () => {
 																		</DialogClose>
 																		<DialogClose asChild>
 																			<Button variant="destructive" onClick={async () => {
+																				// 0. Обновить все департаменты, где этот пользователь указан как created_by
+																				await supabase
+																					.from('departments')
+																					.update({ created_by: null }) // или другой id, если нельзя null
+																					.eq('created_by', u.id);
+																				// 0.1. Обновить всех пользователей, у которых этот пользователь — руководитель
+																				await supabase
+																					.from('users')
+																					.update({ leader_id: null }) // или другой id, если нельзя null
+																					.eq('leader_id', u.id);
 																				// 1. Снять пользователя с руководства департаментами
 																				const { data: departmentsManaged, error: depError } = await supabase
 																					.from('departments')
@@ -444,7 +454,7 @@ const handleEditUser = async () => {
 																					return;
 																				}
 																				if (userTasks && userTasks.length > 0) {
-																					const taskIds = userTasks.map(t => t.id);
+																					const taskIds = userTasks.map(t => t.id); // Приводим к строке
 																					// Удалить все сообщения по этим задачам
 																					await supabase.from('messages').delete().in('task_id', taskIds);
 																					// Удалить задачи
