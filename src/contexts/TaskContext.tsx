@@ -6,7 +6,8 @@ import {
   Message, 
   Priority,
   ProtocolStatus,
-  TaskStatus
+  TaskStatus,
+  Role
 } from '../types';
 import { 
   currentUser, 
@@ -1187,7 +1188,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         fullname: user.fullname || '', // Fix: use fullname instead of name
         email: user.email || '',
         image: user.image || '',
-        role: 'employee' // Устанавливаем роль по умолчанию
+        role: Role.employee // Устанавливаем роль по умолчанию
       }));
     } catch (error) {
       console.error("Ошибка при получении подчиненных:", error);

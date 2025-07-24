@@ -17,7 +17,7 @@ import { useTaskContext } from '@/contexts/TaskContext';
 import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { ExportFilters, User } from '@/types';
+import { ExportFilters, User, TaskStatus } from '@/types';
 import { Packer } from 'docx';
 import { saveAs } from 'file-saver';
 import {
@@ -37,13 +37,16 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import DepartmentSelector from './DepartmentSelector';
 import ExecutorSelector from './ExecutorSelector';
+import { TaskStatusSelector } from './TaskStatusSelector';
 
 export default function ExportButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string>('');
-  const [filters, setFilters] = useState<ExportFilters>({});
+  const [filters, setFilters] = useState<ExportFilters>({
+    selectedStatuses: ['new', 'in_progress', 'on_verification', 'completed', 'overdue'] // All statuses by default
+  });
   const { tasks, departments, getUserById, supabase } = useTaskContext();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const activeInputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +212,20 @@ export default function ExportButton() {
       return {
         ...prev,
         selectedExecutors: newSelected
+      };
+    });
+  };
+
+  const handleStatusToggle = (status: TaskStatus) => {
+    setFilters(prev => {
+      const currentSelected = prev.selectedStatuses || [];
+      const newSelected = currentSelected.includes(status)
+        ? currentSelected.filter(s => s !== status)
+        : [...currentSelected, status];
+      
+      return {
+        ...prev,
+        selectedStatuses: newSelected
       };
     });
   };
@@ -539,6 +556,13 @@ export default function ExportButton() {
       );
     }
 
+    // Filter by selected statuses
+    if (filters.selectedStatuses && filters.selectedStatuses.length > 0) {
+      filteredTasks = filteredTasks.filter(task => 
+        filters.selectedStatuses!.includes(task.status)
+      );
+    }
+
     // Date filters
     if (filters.startDate && filters.endDate) {
       filteredTasks = filteredTasks.filter(task => {
@@ -775,7 +799,11 @@ export default function ExportButton() {
             {/* New Executor Selector */}
             <div className="border-t pt-4">
               <ExecutorSelector
-                executors={availableExecutors.map(u => ({ id: u.id, fullname: u.fullname, departmentId: u.role || '' }))}
+                executors={availableExecutors.map(u => ({ 
+                  id: u.id, 
+                  fullname: u.fullname, 
+                  departmentId: typeof u.role === 'string' ? u.role : '' // Use role field which contains department info
+                }))}
                 selectedExecutors={filters.selectedExecutors || []}
                 onExecutorToggle={handleExecutorToggle}
                 departmentNames={departmentNameMap}
@@ -785,6 +813,20 @@ export default function ExportButton() {
                   Загрузка исполнителей...
                 </div>
               )}
+            </div>
+
+            {/* Task Status Selector */}
+            <div className="border-t pt-4">
+              <TaskStatusSelector
+                selectedStatuses={filters.selectedStatuses || []}
+                onStatusToggle={handleStatusToggle}
+                taskCounts={tasks.reduce((acc, task) => {
+                  if (task.isProtocol === 'active') {
+                    acc[task.status] = (acc[task.status] || 0) + 1;
+                  }
+                  return acc;
+                }, {} as { [key in TaskStatus]?: number })}
+              />
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-background pb-2 pt-4">

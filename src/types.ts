@@ -65,6 +65,7 @@ export interface ExportFilters {
   assigneeId?: string; // Keeping for backward compatibility
   selectedDepartments?: string[]; // ID выбранных департаментов
   selectedExecutors?: string[];   // ID выбранных исполнителей
+  selectedStatuses?: TaskStatus[]; // ID выбранных статусов задач
   approvedBy?: string;
   approvedByPosition?: string;
   protocolName?: string;

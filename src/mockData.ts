@@ -1,12 +1,12 @@
 import { supabase } from './supabase/client';
-import { User, Department, Task, Message, TaskAction } from './types';
+import { User, Department, Task, Message, TaskAction, Role } from './types';
 
 export const currentUser: User = {
   id: '1',
   fullname: 'Наталья Смирнова',
   email: 'natalie.smith@gmail.com',
   image: '/img/slut.webp',
-  role: 'manager'
+  role: Role.manager
 };
 
 export const users: User[] = [
@@ -16,28 +16,28 @@ export const users: User[] = [
     fullname: 'Ольга Новак',
     email: 'okla.nowak@gmail.com',
     image: 'https://i.pravatar.cc/150?img=32',
-    role: 'employee'
+    role: Role.employee
   },
   {
     id: '3',
     fullname: 'Михаил Иванов',
     email: 'mike.johnson@gmail.com',
     image: 'https://i.pravatar.cc/150?img=33',
-    role: 'employee'
+    role: Role.employee
   },
   {
     id: '4',
     fullname: 'Светлана Лебедева',
     email: 'sarah.lee@gmail.com',
     image: 'https://i.pravatar.cc/150?img=20',
-    role: 'employee'
+    role: Role.employee
   },
   {
     id: '5',
     fullname: 'Дмитрий Чен',
     email: 'david.chen@gmail.com',
     image: 'https://i.pravatar.cc/150?img=69',
-    role: 'employee'
+    role: Role.employee
   }
 ];
 
