@@ -643,7 +643,7 @@ export default function ExportButton() {
         </DialogTrigger>
         <DialogContent 
           ref={dialogContentRef}
-          className="max-w-2xl max-h-[80vh] overflow-y-auto sm:max-h-none"
+          className="max-w-2xl max-h-[80vh] overflow-y-auto sm:max-h-[100vh]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader className="top-0 bg-background z-10 pt-2">

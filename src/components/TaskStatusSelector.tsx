@@ -51,13 +51,14 @@ export const TaskStatusSelector: React.FC<TaskStatusSelectorProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium">Статусы поручений</h4>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSelectAll}
-        >
-          {allSelected ? 'Снять всё' : 'Выбрать всё'}
-        </Button>
+        <button
+            type="button"
+            onClick={handleSelectAll}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            {allSelected ? 'Снять всё' : 'Выбрать всё'}
+          </button>
+        
       </div>
       
       <div className="space-y-2">

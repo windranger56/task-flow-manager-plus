@@ -462,7 +462,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Выберите пользователей</Label>
+                <Label>Выберите пользователей <span className="text-red-500">*</span> </Label>
                 <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
                   {availableUsers.length > 0 ? (
                     availableUsers.map((user) => (

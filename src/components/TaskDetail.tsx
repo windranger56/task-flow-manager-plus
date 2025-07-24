@@ -925,7 +925,7 @@ export default function TaskDetail() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="reassign-to">Переназначить</Label>
+                    <Label htmlFor="reassign-to">Переназначить <span className="text-red-500">*</span> </Label>
                     <Select value={reassignTo} onValueChange={setReassignTo}>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите сотрудника" />
