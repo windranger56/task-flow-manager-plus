@@ -15,6 +15,8 @@ import { supabase } from '@/supabase/client';
 import { Paperclip, X, FileIcon, Trash2 } from 'lucide-react';
 import { FileViewer } from './FileViewer'; // или путь к вашему компоненту
 import { time } from 'console';
+import { Task } from '@/types';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function TaskDetail() {
   const { 
@@ -30,7 +32,7 @@ export default function TaskDetail() {
     fetchTasks,
     getSubordinates // добавляем функцию получения сотрудников
   } = useTaskContext();
-  
+
   const [viewerFile, setViewerFile] = useState<any | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showReassign, setShowReassign] = useState(false);
@@ -197,7 +199,7 @@ export default function TaskDetail() {
   const updateTaskStatus = async (taskId: string, newStatus: string, reason?: string, newDeadline?: Date) => {
     try {
       // Если меняем статус с 'overdue' на 'in_progress' или 'on_verification' и передан новый дедлайн, обновляем оба поля
-      let updateFields: any = { status: newStatus };
+      const updateFields: any = { status: newStatus };
       if (newDeadline && (newStatus === 'in_progress' || newStatus === 'on_verification')) {
         updateFields.deadline = newDeadline.toISOString();
       }
@@ -434,96 +436,64 @@ export default function TaskDetail() {
 
   const fetchTaskHistory = async (taskId: string) => {
     setIsLoadingHistory(true);
-    try {
-      // Получаем полную цепочку: сначала идем вверх к корню, потом вниз к листу
-      const fullChain = [];
-      
-      // Сначала получаем все родительские задачи до корня
-      const parentChain = [];
-      let currentId = taskId;
-      
-      // Находим корневую задачу
-      while (currentId) {
-        const { data: task, error } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            creator:created_by(id, fullname),
-            assignee:assigned_to(id, fullname),
-            department:departmentId(id, name)
-          `)
-          .eq('id', currentId)
-          .single();
-  
-        if (error) throw error;
-        if (!task) break;
-  
-        parentChain.unshift({
-          ...task,
-          createdAt: task.created_at ? new Date(task.created_at) : null,
-          deadline: task.deadline ? new Date(task.deadline) : null,
-          creatorName: task.creator?.fullname || 'Неизвестно',
-          assigneeName: task.assignee?.fullname || 'Неизвестно',
-          departmentName: task.department?.name || 'Неизвестно'
-        });
-  
-        currentId = task.parent_id?.toString();
-      }
-      
-      // Теперь строим полную цепочку от корня до листа
-      let chainId = parentChain[0]?.id;
-      
-      while (chainId) {
-        // Находим текущую задачу в родительской цепочке
-        const currentTask = parentChain.find(task => task.id === chainId);
-        if (currentTask && !fullChain.find(task => task.id === chainId)) {
-          fullChain.push(currentTask);
-        }
-        
-        // Ищем следующую задачу в цепочке (дочернюю)
-        const { data: children, error } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            creator:created_by(id, fullname),
-            assignee:assigned_to(id, fullname),
-            department:departmentId(id, name)
-          `)
-          .eq('parent_id', chainId);
-  
-        if (error) throw error;
-        
-        if (children && children.length > 0) {
-          // Берем первого ребенка для продолжения цепочки
-          const child = children[0];
-          const formattedChild = {
-            ...child,
-            createdAt: child.created_at ? new Date(child.created_at) : null,
-            deadline: child.deadline ? new Date(child.deadline) : null,
-            creatorName: child.creator?.fullname || 'Неизвестно',
-            assigneeName: child.assignee?.fullname || 'Неизвестно',
-            departmentName: child.department?.name || 'Неизвестно'
-          };
-          
-          // Добавляем только если это не дублирует уже существующую задачу
-          if (!fullChain.find(task => task.id === child.id)) {
-            fullChain.push(formattedChild);
-          }
-          chainId = child.id;
-        } else {
-          chainId = null;
-        }
-      }
-  
-      setTaskHistory(fullChain);
-  
-    } catch (error) {
-      console.error('Error loading history:', error);
-    } finally {
-      setIsLoadingHistory(false);
-    }
+
+		const history = await Promise.all([
+			fetchHistoryBackwards(selectedTask).then(tasks => tasks.slice(0, -1)),
+
+			supabase.from("tasks").select(`
+				*,
+				creator:users!created_by(fullname)
+			`).eq("id", selectedTask.id).then(async ({data}) => {
+				const task = data[0];
+				task.assignee = await supabase.from("users").select("fullname").eq("id", task.assigned_to).then(({data}) => data[0])
+				return task;
+			}),
+
+			fetchHistoryForwards(selectedTask).then(tasks => tasks.slice(1)),
+		]).then((array) => array.flat());
+
+		setIsLoadingHistory(false);
+
+		return history;
   };
-  
+
+	const fetchHistoryBackwards = async (task: Task) => {
+		const tasks: Array<any> = [task];
+
+		while (true) {
+			if(!tasks[0].parentId) break;
+
+			var {data} = await supabase.from("tasks").select(`
+				*,
+				creator:users!created_by(fullname)
+			`).eq("id", tasks[0].parentId);
+
+			tasks.unshift(data[0]);
+
+			tasks[0].assignee = await supabase.from("users").select("fullname").eq("id", tasks[0].assigned_to).then(({data}) => data[0])
+		}
+
+		return tasks;
+	}
+
+	const fetchHistoryForwards = async (task: Task) => {
+		const tasks: Array<any> = [task];
+
+		while (true) {
+			var {data} = await supabase.from("tasks").select(`
+				*,
+				creator:users!created_by(fullname)
+			`).eq("parent_id", tasks[tasks.length - 1].id);
+
+			if(!data[0]) break;
+			tasks.push(data[0]);
+
+			tasks[tasks.length - 1].assignee = await supabase.from("users").select("fullname").eq("id", tasks[tasks.length - 1].assigned_to).then(({data}) => data[0])
+		}
+
+		return tasks;
+	}
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'new': return 'Новое';
@@ -569,9 +539,11 @@ export default function TaskDetail() {
     }
   };
 
-  const handleOpenHistory = () => {
+  const handleOpenHistory = async () => {
     setHistoryOpen(true);
-    fetchTaskHistory(selectedTask.id);
+    const history = await fetchTaskHistory(selectedTask.id);
+		console.log(history)
+		setTaskHistory(history);
   };
 
   const filteredMessages = chatMessages.filter(msg => 
@@ -828,77 +800,88 @@ export default function TaskDetail() {
                   </DialogHeader>
                   
                   <div className="overflow-y-auto h-[calc(100vh-100px)]">
-                    {isLoadingHistory ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      </div>
-                    ) : taskHistory.length > 0 ? (
-                      <div className="space-y-4 pr-4">
-                        {taskHistory.map((task, index) => {
-                          const isCurrentTask = task.id === selectedTask.id;
-                          return (
-                            <div key={task.id} className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
-                              <div className="flex items-start gap-3">
-                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
-                                  {index + 1}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
-                                      {task.title}
-                                    </h4>
-                                    <span className="text-xs text-gray-500">
-                                      {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
-                                    </span>
-                                  </div>
-                                  
-                                  {task.description && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      {task.description}
-                                    </p>
-                                  )}
-                                  
-                                   <div className="mt-2 flex flex-wrap gap-2">
-                                     <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                                       {getStatusLabel(task.status)}
-                                     </span>
-                                     
-                                     {task.isProtocol === 'active' && (
-                                       <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
-                                         Протокольное
-                                       </span>
-                                     )}
-                                     
-                                     <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                                       Автор: {task.creatorName}
-                                     </span>
-                                     
-                                     <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
-                                       Исполнитель: {task.assigneeName}
-                                     </span>
-                                     
-                                     <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                                       Создано: {formatDateSafe(task.createdAt, 'dd.MM.yyyy')}
-                                     </span>
-                                     
-                                     {task.deadline && (
-                                       <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
-                                         Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
-                                       </span>
-                                     )}
-                                   </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        Нет истории изменений
-                      </div>
-                    )}
-                  </div>
+										<AnimatePresence>
+											{
+												isLoadingHistory ? (
+													<div className="flex justify-center py-8">
+														<Loader2 className="h-8 w-8 animate-spin" />
+													</div>
+												) : taskHistory.length > 0 ? (
+												<div className="space-y-4 pr-4">
+														{taskHistory.map((task, index) => {
+															const isCurrentTask = task.id === selectedTask.id;
+															return (
+																<motion.div
+																	layout
+																	key={task.id}
+																	initial={{ opacity: 0, y: 20 }}
+																	animate={{ opacity: 1, y: 0 }}
+																	transition={{ delay: index * 0.1, duration: 0.3 }}
+																	className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
+																>
+																	<div className="flex items-start gap-3">
+																		<div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+																			{index + 1}
+																		</div>
+																		<div className="flex-1">
+																			<div className="flex items-center justify-between">
+																				<h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
+																					{task.title}
+																				</h4>
+																				<span className="text-xs text-gray-500">
+																					{formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																				</span>
+																			</div>
+																			
+																			{task.description && (
+																				<p className="text-sm text-gray-600 mt-1">
+																					{task.description}
+																				</p>
+																			)}
+																			
+																			<div className="mt-2 flex flex-wrap gap-2">
+																				<span className="text-xs px-2 py-1 bg-gray-100 rounded">
+																					{getStatusLabel(task.status)}
+																				</span>
+																				
+																				{task.isProtocol === 'active' && (
+																					<span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+																						Протокольное
+																					</span>
+																				)}
+																				
+																				<span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+																					Автор: {task.creator?.fullname}
+																				</span>
+																				
+																				<span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+																					Исполнитель: {task.assignee?.fullname}
+																				</span>
+																				
+																				<span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+																					Создано: {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																				</span>
+																				
+																				{task.deadline && (
+																					<span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+																						Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+																					</span>
+																				)}
+																			</div>
+																		</div>
+																	</div>
+																</motion.div>
+															);
+														})}
+												</div>
+												) : (
+													<div className="text-center py-8 text-gray-500">
+														Нет истории изменений
+													</div>
+												)
+											}
+										</AnimatePresence>
+               		</div>
                 </DialogContent>
               </Dialog>
             </div>
