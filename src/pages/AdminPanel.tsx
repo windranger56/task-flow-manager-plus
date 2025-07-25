@@ -30,7 +30,8 @@ const [departments, setDepartments] = useState([]);
 const [leaders, setLeaders] = useState([]);
 const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 const [showCreateDept, setShowCreateDept] = useState(false);
-const [newDept, setNewDept] = useState({ name: '', managerId: '' });
+const [newDept, setNewDept] = useState({ name: '', managerId: '', createdBy: session?.user?.id || '' });
+const [responsibles, setResponsibles] = useState([]);
 const [departmentsTab, setDepartmentsTab] = useState([]);
 const [editDept, setEditDept] = useState(null);
 const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
@@ -165,7 +166,7 @@ const handleEditUser = async () => {
 	useEffect(() => { console.log(deletingId) }, [deletingId])
 
   const handleCreateDept = async () => {
-    if (!newDept.name || !newDept.managerId) {
+    if (!newDept.name || !newDept.managerId || !newDept.createdBy) {
       toast.error('Заполните все поля');
       return;
     }
@@ -174,7 +175,8 @@ const handleEditUser = async () => {
       .from('departments')
       .insert({
         name: newDept.name,
-        managerId: newDept.managerId ? Number(newDept.managerId) : null
+        managerId: newDept.managerId ? Number(newDept.managerId) : null,
+        created_by: newDept.createdBy
       })
       .select()
       .single();
@@ -194,7 +196,7 @@ const handleEditUser = async () => {
       
       toast.success('Департамент создан');
       setShowCreateDept(false);
-      setNewDept({ name: '', managerId: '' });
+      setNewDept({ name: '', managerId: '', createdBy: session?.user?.id || '' });
       fetchDepartmentsWithUsers(); // Обновляем список департаментов
       fetchUsers(); // Обновляем список пользователей
     } else {
@@ -204,7 +206,11 @@ const handleEditUser = async () => {
 
   useEffect(() => {
     if (showCreateDept) {
-      supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
+      supabase.from('users').select('id, fullname').then(({ data }) => {
+        setLeaders(data || []);
+        setResponsibles(data || []);
+      });
+      setNewDept(d => ({ ...d, createdBy: session?.user?.id || '' }));
     }
   }, [showCreateDept]);
 
@@ -368,6 +374,16 @@ const handleEditUser = async () => {
                     <SelectContent>
                       {leaders.map(leader => (
                         <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={newDept.createdBy} onValueChange={val => setNewDept(d => ({ ...d, createdBy: val }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите ответственного" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {responsibles.map(user => (
+                        <SelectItem key={user.id} value={user.id}>{user.fullname}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
