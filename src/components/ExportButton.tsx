@@ -56,18 +56,18 @@ export default function ExportButton() {
   const [departmentUsers, setDepartmentUsers] = useState<{ [key: string]: User[] }>({});
   const [isLoadingExecutors, setIsLoadingExecutors] = useState(false);
 
-  React.useEffect(() => {
-    if (!isOpen || !activeInputRef.current) return;
+  // React.useEffect(() => {
+  //   if (!isOpen || !activeInputRef.current) return;
 
-    const timer = setTimeout(() => {
-      activeInputRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
-    }, 300);
+  //   const timer = setTimeout(() => {
+  //     activeInputRef.current?.scrollIntoView({
+  //       behavior: 'smooth',
+  //       block: 'center'
+  //     });
+  //   }, 300);
 
-    return () => clearTimeout(timer);
-  }, [isOpen, filters]);
+  //   return () => clearTimeout(timer);
+  // }, [isOpen, filters]);
 
   // Initialize default selections when dialog opens
   React.useEffect(() => {
@@ -829,7 +829,7 @@ export default function ExportButton() {
               />
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-background pb-2 pt-4">
+            <DialogFooter className="gap-2 sm:gap-0 sticky bottom-0 bg-transparent pb-2 pt-4">
               
               <div className="flex space-x-2">
                 <Button 
