@@ -471,8 +471,8 @@ const handleEditUser = async () => {
           {selectedSection === "пользователи" && (
             <>
               {/* Mobile Cards View */}
-              <div className="md:hidden space-y-4">
-                {[...users].sort((a, b) => {
+              <div className="md:hidden space-y-3">
+               {[...users].sort((a, b) => {
                   let aValue, bValue;
                   switch (sortUserField) {
                     case 'fullname':
