@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 const RegisterPage = ({session}) => {
@@ -24,11 +24,11 @@ const RegisterPage = ({session}) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-	useLayoutEffect(() => {
-	supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
-		if (data[0].privilege_level === null || data[0].privilege_level === "observer") navigate("/admin");
-	});
-}, []);
+  useLayoutEffect(() => {
+    supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
+      if (data[0].privilege_level === null || data[0].privilege_level === "observer") navigate("/admin");
+    });
+  }, []);
 
   const capitalizeFirstLetter = (str: string): string => {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -244,10 +244,22 @@ const RegisterPage = ({session}) => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Массовая регистрация пользователей</CardTitle>
-          <CardDescription>
-            Введите ФИО пользователей (каждое с новой строки) для создания учетных записей
-          </CardDescription>
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <CardTitle className="text-lg sm:text-xl">Массовая регистрация пользователей</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Введите ФИО пользователей (каждое с новой строки) для создания учетных записей
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {error && (
@@ -266,8 +278,9 @@ const RegisterPage = ({session}) => {
                 onChange={(e) => setFullnames(e.target.value)}
                 required
                 rows={5}
+                className="min-h-[120px]"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Введите Фамилию Имя Отчество полностью через пробел для каждого пользователя
               </p>
             </div>
@@ -279,20 +292,20 @@ const RegisterPage = ({session}) => {
 
           {generatedAccounts.length > 0 && (
             <div className="mt-6 space-y-4">
-              <h3 className="font-medium">Результаты регистрации:</h3>
-              <div className="border rounded-md divide-y">
+              <h3 className="font-medium text-sm sm:text-base">Результаты регистрации:</h3>
+              <div className="border rounded-md divide-y max-h-[400px] overflow-y-auto">
                 {generatedAccounts.map((account, index) => (
                   <div 
                     key={index} 
                     className={`p-3 ${account.status === 'success' ? 'bg-success/10' : 'bg-destructive/10'}`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">{account.fullname}</p>
-                        <p className="text-sm">Email: {account.email}</p>
-                        <p className="text-sm">Пароль: {account.password}</p>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm sm:text-base">{account.fullname}</p>
+                        <p className="text-xs sm:text-sm break-all">Email: {account.email}</p>
+                        <p className="text-xs sm:text-sm break-all">Пароль: {account.password}</p>
                       </div>
-                      <div className="text-sm">
+                      <div className="text-xs sm:text-sm">
                         {account.status === 'success' ? (
                           <span className="text-success">Успешно</span>
                         ) : (
