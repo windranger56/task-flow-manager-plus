@@ -5,7 +5,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Menu } from "lucide-react"
+import { Menu, ChevronDown, ChevronUp } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabase } from "@/supabase/client"
 import { toast } from "sonner"
@@ -40,6 +40,7 @@ const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 const [role, setRole] = useState(null)
 const [sortUserField, setSortUserField] = useState('fullname');
 const [sortUserDirection, setSortUserDirection] = useState<'asc' | 'desc'>('asc');
+const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
 useLayoutEffect(() => {
 	supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
@@ -282,8 +283,20 @@ const handleEditUser = async () => {
     }
   };
 
+  const toggleDeptExpansion = (deptId: string) => {
+    setExpandedDepts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(deptId)) {
+        newSet.delete(deptId);
+      } else {
+        newSet.add(deptId);
+      }
+      return newSet;
+    });
+  };
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r flex-col p-4">
         <div className="text-2xl font-bold mb-6">Панель управления</div>
@@ -315,274 +328,282 @@ const handleEditUser = async () => {
       {/* Main Section */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white shadow p-4 flex items-center justify-between">
+        <header className="bg-white shadow p-3 sm:p-4 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="md:hidden">
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] sm:w-[300px]">
+                  <div className="text-xl font-bold mb-6">Панель управления</div>
+                  <nav className="flex flex-col gap-3">
+                    <Button
+                      variant={selectedSection === "главная" ? "default" : "ghost"}
+                      onClick={() => handleSectionChange("главная")}
+                      className="justify-start h-11"
+                    >
+                      Главная
+                    </Button>
+                    <Button
+                      variant={selectedSection === "пользователи" ? "default" : "ghost"}
+                      onClick={() => handleSectionChange("пользователи")}
+                      className="justify-start h-11"
+                    >
+                      Пользователи
+                    </Button>
+                    <Button
+                      variant={selectedSection === "департаменты" ? "default" : "ghost"}
+                      onClick={() => handleSectionChange("департаменты")}
+                      className="justify-start h-11"
+                    >
+                      Департаменты
+                    </Button>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            <div className="text-lg sm:text-xl font-semibold capitalize">
+              {selectedSection}
+            </div>
+          </div>
+
+          {/* Mobile Action Menu */}
           <div className="md:hidden">
-            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu />
+                <Button variant="outline" size="sm">
+                  Действия
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left">
-                <div className="text-2xl font-bold mb-6">Панель управления</div>
-                <nav className="flex flex-col gap-2">
-                  <Button
-                    variant={selectedSection === "главная" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("главная")}
-                    className="justify-start"
+              <SheetContent side="right" className="w-[280px]">
+                <div className="flex flex-col gap-4 pt-6">
+                  <Button 
+                    onClick={() => role !== "observer" ? navigate('/register') : toast.error("Недостаточно привилегий для создания пользователя")} 
+                    variant="outline"
+                    className="w-full h-11"
                   >
-                    Главная
+                    Создать пользователя
                   </Button>
-                  <Button
-                    variant={selectedSection === "пользователи" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("пользователи")}
-                    className="justify-start"
+                  <Button 
+                    onClick={() => role !== "observer" ? setShowCreateDept(true) : toast.error("Недостаточно привилегий для создания департамента")} 
+                    variant="outline"
+                    className="w-full h-11"
                   >
-                    Пользователи
+                    Создать департамент
                   </Button>
-                  <Button
-                    variant={selectedSection === "департаменты" ? "default" : "ghost"}
-                    onClick={() => handleSectionChange("департаменты")}
-                    className="justify-start"
-                  >
-                    Департаменты
-                  </Button>
-                </nav>
+                </div>
               </SheetContent>
             </Sheet>
           </div>
 
-          <div className="text-xl font-semibold capitalize">
-            {selectedSection}
+          {/* Desktop Actions */}
+          <div className="hidden md:flex gap-2">
+            <Button 
+              onClick={() => role !== "observer" ? navigate('/register') : toast.error("Недостаточно привилегий для создания пользователя")} 
+              variant="outline"
+              size="sm"
+            >
+              Создать пользователя
+            </Button>
+            <Button 
+              onClick={() => role !== "observer" ? setShowCreateDept(true) : toast.error("Недостаточно привилегий для создания департамента")} 
+              variant="outline"
+              size="sm"
+            >
+              Создать департамент
+            </Button>
           </div>
-          <Button onClick={() => role !== "observer" ? navigate('/register') : toast.error("Недостаточно привилегий для создания пользователя")} variant="outline">
-            Создать пользователя
-          </Button>
-          <div className="flex gap-2">
-            <Button onClick={() => role !== "observer" ? setShowCreateDept(true) : toast.error("Недостаточно привилегий для создания департамента")} variant="outline">Создать департамент</Button>
-            <Dialog open={showCreateDept} onOpenChange={setShowCreateDept}>
-              <DialogContent onClick={e => e.stopPropagation()}>
-                <DialogHeader>
-                  <DialogTitle>Создать департамент</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input placeholder="Название департамента" value={newDept.name} onChange={e => setNewDept(d => ({ ...d, name: e.target.value }))} />
-                  <Select value={newDept.managerId} onValueChange={val => setNewDept(d => ({ ...d, managerId: val }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите руководителя" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leaders.map(leader => (
-                        <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={newDept.createdBy} onValueChange={val => setNewDept(d => ({ ...d, createdBy: val }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите ответственного" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {responsibles.map(user => (
-                        <SelectItem key={user.id} value={user.id}>{user.fullname}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleCreateDept}>Создать</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+
+          {/* Create Department Dialog */}
+          <Dialog open={showCreateDept} onOpenChange={setShowCreateDept}>
+            <DialogContent className="w-[95vw] max-w-md mx-auto">
+              <DialogHeader>
+                <DialogTitle className="text-lg">Создать департамент</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <Input 
+                  placeholder="Название департамента" 
+                  value={newDept.name} 
+                  onChange={e => setNewDept(d => ({ ...d, name: e.target.value }))}
+                  className="h-11"
+                />
+                <Select value={newDept.managerId} onValueChange={val => setNewDept(d => ({ ...d, managerId: val }))}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Выберите руководителя" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leaders.map(leader => (
+                      <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={newDept.createdBy} onValueChange={val => setNewDept(d => ({ ...d, createdBy: val }))}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Выберите ответственного" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {responsibles.map(user => (
+                      <SelectItem key={user.id} value={user.id}>{user.fullname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button onClick={handleCreateDept} className="h-11 flex-1 sm:flex-initial">
+                  Создать
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </header>
 
-        <main className="p-6">
+        <main className="p-3 sm:p-6">
           {selectedSection === "главная" && (
-            <div>Это главная страница со статистикой приложения. Она пока пустая.</div>
+            <div className="text-center text-muted-foreground py-8">
+              Это главная страница со статистикой приложения. Она пока пустая.
+            </div>
           )}
+          
           {selectedSection === "пользователи" && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Аватар</TableHead>
-                  <TableHead style={{ cursor: 'pointer' }} onClick={() => {
-                    if (sortUserField === 'fullname') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
-                    else { setSortUserField('fullname'); setSortUserDirection('asc'); }
-                  }}>
-                    ФИО {sortUserField === 'fullname' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
-                  </TableHead>
-                  <TableHead style={{ cursor: 'pointer' }} onClick={() => {
-                    if (sortUserField === 'email') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
-                    else { setSortUserField('email'); setSortUserDirection('asc'); }
-                  }}>
-                    Логин {sortUserField === 'email' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
-                  </TableHead>
-                  <TableHead style={{ cursor: 'pointer' }} onClick={() => {
-                    if (sortUserField === 'department') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
-                    else { setSortUserField('department'); setSortUserDirection('asc'); }
-                  }}>
-                    Департамент {sortUserField === 'department' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
-                  </TableHead>
-                  <TableHead style={{ cursor: 'pointer' }} onClick={() => {
-                    if (sortUserField === 'leader') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
-                    else { setSortUserField('leader'); setSortUserDirection('asc'); }
-                  }}>
-                    Руководитель {sortUserField === 'leader' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
-                  </TableHead>
-                  <TableHead style={{ cursor: 'pointer' }} onClick={() => {
-                    if (sortUserField === 'role') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
-                    else { setSortUserField('role'); setSortUserDirection('asc'); }
-                  }}>
-                    Должность {sortUserField === 'role' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
-                  </TableHead>
-                  <TableHead>Пароль</TableHead>
-                  { role === 'admin' && <TableHead>Действия</TableHead> }
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {
-                  [...users].sort((a, b) => {
-                    let aValue, bValue;
-                    switch (sortUserField) {
-                      case 'fullname':
-                        aValue = a.fullname || '';
-                        bValue = b.fullname || '';
-                        break;
-                      case 'email':
-                        aValue = a.email || '';
-                        bValue = b.email || '';
-                        break;
-                      case 'department': {
-                        let aDept = departments.find(dep => String(dep.managerId) === String(a.id)) || departments.find(dep => String(dep.id) === String(a.departmentId));
-                        let bDept = departments.find(dep => String(dep.managerId) === String(b.id)) || departments.find(dep => String(dep.id) === String(b.departmentId));
-                        aValue = aDept ? aDept.name : '';
-                        bValue = bDept ? bDept.name : '';
-                        break;
-                      }
-                      case 'leader':
-                        aValue = a.leader || '';
-                        bValue = b.leader || '';
-                        break;
-                      case 'role':
-                        aValue = a.role || '';
-                        bValue = b.role || '';
-                        break;
-                      default:
-                        aValue = '';
-                        bValue = '';
+            <>
+              {/* Mobile Cards View */}
+              <div className="md:hidden space-y-4">
+                {[...users].sort((a, b) => {
+                  let aValue, bValue;
+                  switch (sortUserField) {
+                    case 'fullname':
+                      aValue = a.fullname || '';
+                      bValue = b.fullname || '';
+                      break;
+                    case 'email':
+                      aValue = a.email || '';
+                      bValue = b.email || '';
+                      break;
+                    case 'department': {
+                      let aDept = departments.find(dep => String(dep.managerId) === String(a.id)) || departments.find(dep => String(dep.id) === String(a.departmentId));
+                      let bDept = departments.find(dep => String(dep.managerId) === String(b.id)) || departments.find(dep => String(dep.id) === String(b.departmentId));
+                      aValue = aDept ? aDept.name : '';
+                      bValue = bDept ? bDept.name : '';
+                      break;
                     }
-                    if (aValue < bValue) return sortUserDirection === 'asc' ? -1 : 1;
-                    if (aValue > bValue) return sortUserDirection === 'asc' ? 1 : -1;
-                    return 0;
-                  })
-                  .map(u => {
-                    let departmentName = "Не пренадлежит";
-                    let dept = departments.find(dep => String(dep.managerId) === String(u.id));
-                    if (!dept) {
-                      dept = departments.find(dep => String(dep.id) === String(u.departmentId));
-                    }
-                    if (dept) departmentName = dept.name;
-                    return (
-                      <TableRow
-                        key={u.id}
-                        className="cursor-pointer hover:bg-[#d7d7d7] transition-all duration-300"
-                        onClick={() => setEditUser(u)}
-                      >
-                        <TableCell>
-                          <Avatar>
-                            <AvatarImage
-                              src={u.image}
-                              alt={u.fullname}
-                            />
-                            <AvatarFallback>{u.fullname[0]}</AvatarFallback>
-                          </Avatar>
-                        </TableCell>
-                        <TableCell>{u.fullname}</TableCell>
-                        <TableCell>{u.email}</TableCell>
-                        <TableCell>{departmentName}</TableCell>
-                        <TableCell>{u.leader || "Нет руководителя"}</TableCell>
-                        <TableCell>{u.role === 'manager' ? "Руководитель" : u.role === 'admin' ? 'Админ' : "Сотрудник"}</TableCell>
-                        <TableCell>{u.password || ''}</TableCell>
-                        {
-                          role === 'admin' && (
-                            <TableCell className="space-x-2">
+                    case 'leader':
+                      aValue = a.leader || '';
+                      bValue = b.leader || '';
+                      break;
+                    case 'role':
+                      aValue = a.role || '';
+                      bValue = b.role || '';
+                      break;
+                    default:
+                      aValue = '';
+                      bValue = '';
+                  }
+                  if (aValue < bValue) return sortUserDirection === 'asc' ? -1 : 1;
+                  if (aValue > bValue) return sortUserDirection === 'asc' ? 1 : -1;
+                  return 0;
+                })
+                .map(u => {
+                  let departmentName = "Не принадлежит";
+                  let dept = departments.find(dep => String(dep.managerId) === String(u.id));
+                  if (!dept) {
+                    dept = departments.find(dep => String(dep.id) === String(u.departmentId));
+                  }
+                  if (dept) departmentName = dept.name;
+                  
+                  return (
+                    <div 
+                      key={u.id}
+                      className="bg-white rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setEditUser(u)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-12 w-12 flex-shrink-0">
+                          <AvatarImage src={u.image} alt={u.fullname} />
+                          <AvatarFallback className="text-sm">{u.fullname[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-lg truncate">{u.fullname}</h3>
+                          <p className="text-sm text-muted-foreground truncate">{u.email}</p>
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">Департамент:</span>
+                              <span className="truncate">{departmentName}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">Руководитель:</span>
+                              <span className="truncate">{u.leader || "Нет руководителя"}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">Должность:</span>
+                              <span className="truncate">
+                                {u.role === 'manager' ? "Руководитель" : u.role === 'admin' ? 'Админ' : "Сотрудник"}
+                              </span>
+                            </div>
+                            {u.password && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="text-muted-foreground">Пароль:</span>
+                                <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{u.password}</span>
+                              </div>
+                            )}
+                          </div>
+                          {role === 'admin' && (
+                            <div className="mt-3 pt-3 border-t">
                               <Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
                                 <DialogTrigger asChild>
-                                  <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
-                                    Удалить
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    className="w-full h-9"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    Удалить пользователя
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent onClick={e => e.stopPropagation()}>
+                                <DialogContent className="w-[95vw] max-w-md mx-auto" onClick={e => e.stopPropagation()}>
                                   <DialogHeader>
-                                    <DialogTitle>Удалить пользователя</DialogTitle>
-                                    <DialogDescription>
+                                    <DialogTitle className="text-lg">Удалить пользователя</DialogTitle>
+                                    <DialogDescription className="text-sm">
                                       Вы точно хотите удалить пользователя {u.fullname}? После удаления пользователя вернуть будет уже нельзя!
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <DialogFooter>
+                                  <DialogFooter className="gap-2 flex-col sm:flex-row">
                                     <DialogClose asChild>
-                                      <Button variant="ghost" onClick={() => setDeletingId(null)}>
+                                      <Button variant="ghost" onClick={() => setDeletingId(null)} className="h-11 flex-1">
                                         Отмена
                                       </Button>
                                     </DialogClose>
                                     <DialogClose asChild>
-                                      <Button variant="destructive" onClick={async () => {
-                                        // 0. Обновить все департаменты, где этот пользователь указан как created_by
-                                        await supabase
-                                          .from('departments')
-                                          .update({ created_by: null }) // или другой id, если нельзя null
-                                          .eq('created_by', u.id);
-                                        // 0.1. Обновить всех пользователей, у которых этот пользователь — руководитель
-                                        await supabase
-                                          .from('users')
-                                          .update({ leader_id: null }) // или другой id, если нельзя null
-                                          .eq('leader_id', u.id);
-                                        // 1. Снять пользователя с руководства департаментами
+                                      <Button variant="destructive" className="h-11 flex-1" onClick={async () => {
+                                        await supabase.from('departments').update({ created_by: null }).eq('created_by', u.id);
+                                        await supabase.from('users').update({ leader_id: null }).eq('leader_id', u.id);
+                                        
                                         const { data: departmentsManaged, error: depError } = await supabase
-                                          .from('departments')
-                                          .select('id')
-                                          .eq('managerId', u.id);
-                                        if (depError) {
-                                          toast.error('Ошибка при проверке руководства департаментами');
-                                          return;
+                                          .from('departments').select('id').eq('managerId', u.id);
+                                        if (!depError && departmentsManaged?.length > 0) {
+                                          await supabase.from('departments').update({ managerId: null }).in('id', departmentsManaged.map(dep => dep.id));
                                         }
-                                        if (departmentsManaged && departmentsManaged.length > 0) {
-                                          const depIds = departmentsManaged.map(dep => dep.id);
-                                          const { error: updateError } = await supabase
-                                            .from('departments')
-                                            .update({ managerId: null })
-                                            .in('id', depIds);
-                                          if (updateError) {
-                                            toast.error('Ошибка при обновлении департаментов');
-                                            return;
-                                          }
-                                        }
-                                        // 2. Удалить все задачи, где пользователь исполнитель или создатель
+                                        
                                         const { data: userTasks, error: tasksError } = await supabase
-                                          .from('tasks')
-                                          .select('id')
-                                          .or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
-                                        if (tasksError) {
-                                          toast.error('Ошибка при поиске задач пользователя');
-                                          return;
-                                        }
-                                        if (userTasks && userTasks.length > 0) {
-                                          const taskIds = userTasks.map(t => t.id); // Приводим к строке
-                                          // Удалить все сообщения по этим задачам
+                                          .from('tasks').select('id').or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
+                                        if (!tasksError && userTasks?.length > 0) {
+                                          const taskIds = userTasks.map(t => t.id);
                                           await supabase.from('messages').delete().in('task_id', taskIds);
-                                          // Удалить задачи
                                           await supabase.from('tasks').delete().in('id', taskIds);
                                         }
-                                        // 3. Удалить все сообщения, где пользователь автор
+                                        
                                         await supabase.from('messages').delete().eq('sent_by', u.id);
-                                        // 4. Удалить пользователя
+                                        
                                         const { error } = await supabase.from('users').delete().eq('id', u.id);
                                         if (!error) {
                                           toast.success(`Пользователь ${u.fullname} и все его данные успешно удалены!`);
                                           setUsers(p => p.filter(fu => fu.id != u.id));
-                                          return;
+                                        } else {
+                                          toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
                                         }
-                                        toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
                                       }}>
                                         Удалить
                                       </Button>
@@ -590,211 +611,575 @@ const handleEditUser = async () => {
                                   </DialogFooter>
                                 </DialogContent>
                               </Dialog>
-                            </TableCell>
-                          )
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Аватар</TableHead>
+                      <TableHead style={{ cursor: 'pointer' }} onClick={() => {
+                        if (sortUserField === 'fullname') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortUserField('fullname'); setSortUserDirection('asc'); }
+                      }}>
+                        ФИО {sortUserField === 'fullname' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead style={{ cursor: 'pointer' }} onClick={() => {
+                        if (sortUserField === 'email') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortUserField('email'); setSortUserDirection('asc'); }
+                      }}>
+                        Логин {sortUserField === 'email' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead style={{ cursor: 'pointer' }} onClick={() => {
+                        if (sortUserField === 'department') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortUserField('department'); setSortUserDirection('asc'); }
+                      }}>
+                        Департамент {sortUserField === 'department' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead style={{ cursor: 'pointer' }} onClick={() => {
+                        if (sortUserField === 'leader') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortUserField('leader'); setSortUserDirection('asc'); }
+                      }}>
+                        Руководитель {sortUserField === 'leader' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead style={{ cursor: 'pointer' }} onClick={() => {
+                        if (sortUserField === 'role') setSortUserDirection(sortUserDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortUserField('role'); setSortUserDirection('asc'); }
+                      }}>
+                        Должность {sortUserField === 'role' ? (sortUserDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead>Пароль</TableHead>
+                      { role === 'admin' && <TableHead>Действия</TableHead> }
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {
+                      [...users].sort((a, b) => {
+                        let aValue, bValue;
+                        switch (sortUserField) {
+                          case 'fullname':
+                            aValue = a.fullname || '';
+                            bValue = b.fullname || '';
+                            break;
+                          case 'email':
+                            aValue = a.email || '';
+                            bValue = b.email || '';
+                            break;
+                          case 'department': {
+                            let aDept = departments.find(dep => String(dep.managerId) === String(a.id)) || departments.find(dep => String(dep.id) === String(a.departmentId));
+                            let bDept = departments.find(dep => String(dep.managerId) === String(b.id)) || departments.find(dep => String(dep.id) === String(b.departmentId));
+                            aValue = aDept ? aDept.name : '';
+                            bValue = bDept ? bDept.name : '';
+                            break;
+                          }
+                          case 'leader':
+                            aValue = a.leader || '';
+                            bValue = b.leader || '';
+                            break;
+                          case 'role':
+                            aValue = a.role || '';
+                            bValue = b.role || '';
+                            break;
+                          default:
+                            aValue = '';
+                            bValue = '';
                         }
-                      </TableRow>
-                    )
-                  })
-                }
-              </TableBody>
-            </Table>
+                        if (aValue < bValue) return sortUserDirection === 'asc' ? -1 : 1;
+                        if (aValue > bValue) return sortUserDirection === 'asc' ? 1 : -1;
+                        return 0;
+                      })
+                      .map(u => {
+                        let departmentName = "Не принадлежит";
+                        let dept = departments.find(dep => String(dep.managerId) === String(u.id));
+                        if (!dept) {
+                          dept = departments.find(dep => String(dep.id) === String(u.departmentId));
+                        }
+                        if (dept) departmentName = dept.name;
+                        return (
+                          <TableRow
+                            key={u.id}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => setEditUser(u)}
+                          >
+                            <TableCell>
+                              <Avatar>
+                                <AvatarImage
+                                  src={u.image}
+                                  alt={u.fullname}
+                                />
+                                <AvatarFallback>{u.fullname[0]}</AvatarFallback>
+                              </Avatar>
+                            </TableCell>
+                            <TableCell>{u.fullname}</TableCell>
+                            <TableCell>{u.email}</TableCell>
+                            <TableCell>{departmentName}</TableCell>
+                            <TableCell>{u.leader || "Нет руководителя"}</TableCell>
+                            <TableCell>{u.role === 'manager' ? "Руководитель" : u.role === 'admin' ? 'Админ' : "Сотрудник"}</TableCell>
+                            <TableCell>{u.password || ''}</TableCell>
+                            {
+                              role === 'admin' && (
+                                <TableCell className="space-x-2">
+                                  <Dialog onOpenChange={() => setDeletingId(p => !p ? u.id : null)}>
+                                    <DialogTrigger asChild>
+                                      <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
+                                        Удалить
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent onClick={e => e.stopPropagation()}>
+                                      <DialogHeader>
+                                        <DialogTitle>Удалить пользователя</DialogTitle>
+                                        <DialogDescription>
+                                          Вы точно хотите удалить пользователя {u.fullname}? После удаления пользователя вернуть будет уже нельзя!
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <DialogFooter>
+                                        <DialogClose asChild>
+                                          <Button variant="ghost" onClick={() => setDeletingId(null)}>
+                                            Отмена
+                                          </Button>
+                                        </DialogClose>
+                                        <DialogClose asChild>
+                                          <Button variant="destructive" onClick={async () => {
+                                            await supabase.from('departments').update({ created_by: null }).eq('created_by', u.id);
+                                            await supabase.from('users').update({ leader_id: null }).eq('leader_id', u.id);
+                                            const { data: departmentsManaged, error: depError } = await supabase
+                                              .from('departments')
+                                              .select('id')
+                                              .eq('managerId', u.id);
+                                            if (depError) {
+                                              toast.error('Ошибка при проверке руководства департаментами');
+                                              return;
+                                            }
+                                            if (departmentsManaged && departmentsManaged.length > 0) {
+                                              const depIds = departmentsManaged.map(dep => dep.id);
+                                              const { error: updateError } = await supabase
+                                                .from('departments')
+                                                .update({ managerId: null })
+                                                .in('id', depIds);
+                                              if (updateError) {
+                                                toast.error('Ошибка при обновлении департаментов');
+                                                return;
+                                              }
+                                            }
+                                            const { data: userTasks, error: tasksError } = await supabase
+                                              .from('tasks')
+                                              .select('id')
+                                              .or(`assigned_to.eq.${u.id},created_by.eq.${u.id}`);
+                                            if (tasksError) {
+                                              toast.error('Ошибка при поиске задач пользователя');
+                                              return;
+                                            }
+                                            if (userTasks && userTasks.length > 0) {
+                                              const taskIds = userTasks.map(t => t.id);
+                                              await supabase.from('messages').delete().in('task_id', taskIds);
+                                              await supabase.from('tasks').delete().in('id', taskIds);
+                                            }
+                                            await supabase.from('messages').delete().eq('sent_by', u.id);
+                                            const { error } = await supabase.from('users').delete().eq('id', u.id);
+                                            if (!error) {
+                                              toast.success(`Пользователь ${u.fullname} и все его данные успешно удалены!`);
+                                              setUsers(p => p.filter(fu => fu.id != u.id));
+                                              return;
+                                            }
+                                            toast.error(`Что-то пошло не так... Попробуйте снова или свяжитесь с поддержкой`);
+                                          }}>
+                                            Удалить
+                                          </Button>
+                                        </DialogClose>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                </TableCell>
+                              )
+                            }
+                          </TableRow>
+                        )
+                      })
+                    }
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
+          
           {selectedSection === "департаменты" && (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        if (sortField === 'name') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortField('name');
-                          setSortDirection('asc');
-                        }
-                      }}
+              {/* Mobile Cards View for Departments */}
+              <div className="md:hidden space-y-4">
+                {[...departmentsTab]
+                  .sort((a, b) => {
+                    const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
+                    const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
+                    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                  })
+                  .map(dep => (
+                    <div 
+                      key={dep.id}
+                      className="bg-white rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow"
                     >
-                      Название {sortField === 'name' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </TableHead>
-                    <TableHead
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        if (sortField === 'manager') {
-                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortField('manager');
-                          setSortDirection('asc');
-                        }
-                      }}
-                    >
-                      Руководитель {sortField === 'manager' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </TableHead>
-                    <TableHead>Сотрудники</TableHead>
-                    {role === 'admin' && <TableHead>Действия</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...departmentsTab]
-                    .sort((a, b) => {
-                      const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
-                      const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
-                      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-                      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-                      return 0;
-                    })
-                    .map(dep => (
-                      <TableRow key={dep.id} className="cursor-pointer hover:bg-[#d7d7d7]">
-                        <TableCell onClick={() => {
+                      <div 
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => {
                           setEditDept(dep);
                           setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
-                        }}>{dep.name}</TableCell>
-                        <TableCell onClick={() => {
-                          setEditDept(dep);
-                          setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
-                        }}>{dep.manager?.fullname || '—'}</TableCell>
-                        <TableCell onClick={() => {
-                          setEditDept(dep);
-                          setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
-                        }}>
-                          {Array.isArray(dep.users) && dep.users.length > 0 ? (
-                            <ul className="list-disc ml-4">
-                              {[...dep.users]
-                                .filter(user => user && typeof user.fullname === 'string')
-                                .sort((a, b) => a.fullname.localeCompare(b.fullname, 'ru'))
-                                .map(user => {
-                                  const u = user as { id: string; fullname: string; email: string };
-                                  return <li key={u.id}>{u.fullname} ({u.email})</li>;
-                                })}
-                            </ul>
-                          ) : 'Нет сотрудников'}
-                        </TableCell>
-                        {role === 'admin' && (
-                          <TableCell>
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-lg truncate">{dep.name}</h3>
+                          <p className="text-sm text-muted-foreground truncate">
+                            Руководитель: {dep.manager?.fullname || '—'}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleDeptExpansion(dep.id);
+                          }}
+                          className="ml-2 h-8 w-8 p-0"
+                        >
+                          {expandedDepts.has(dep.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      
+                      {expandedDepts.has(dep.id) && (
+                        <div className="mt-3 pt-3 border-t">
+                          <div className="mb-3">
+                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Сотрудники:</h4>
+                            {Array.isArray(dep.users) && dep.users.length > 0 ? (
+                              <div className="space-y-1">
+                                {[...dep.users]
+                                  .filter(user => user && typeof user.fullname === 'string')
+                                  .sort((a, b) => a.fullname.localeCompare(b.fullname, 'ru'))
+                                  .map(user => {
+                                    const u = user as { id: string; fullname: string; email: string };
+                                    return (
+                                      <div key={u.id} className="text-sm bg-muted/50 p-2 rounded">
+                                        <div className="font-medium">{u.fullname}</div>
+                                        <div className="text-muted-foreground text-xs">{u.email}</div>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">Нет сотрудников</div>
+                            )}
+                          </div>
+                          
+                          {role === 'admin' && (
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
-                                  Удалить
+                                <Button variant="destructive" size="sm" className="w-full h-9">
+                                  Удалить департамент
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent onClick={e => e.stopPropagation()}>
+                              <DialogContent className="w-[95vw] max-w-md mx-auto" onClick={e => e.stopPropagation()}>
                                 <DialogHeader>
-                                  <DialogTitle>Удалить департамент</DialogTitle>
-                                  <DialogDescription>
+                                  <DialogTitle className="text-lg">Удалить департамент</DialogTitle>
+                                  <DialogDescription className="text-sm">
                                     Вы точно хотите удалить департамент '{dep.name}'? Все связанные задачи, сообщения и сотрудники будут отвязаны!
                                   </DialogDescription>
                                 </DialogHeader>
-                                <DialogFooter>
+                                <DialogFooter className="gap-2 flex-col sm:flex-row">
                                   <DialogClose asChild>
-                                    <Button variant="ghost">
+                                    <Button variant="ghost" className="h-11 flex-1">
                                       Отмена
                                     </Button>
                                   </DialogClose>
                                   <DialogClose asChild>
-                                    <Button variant="destructive" onClick={async () => await handleDeleteDept(dep)}>
+                                    <Button variant="destructive" className="h-11 flex-1" onClick={async () => await handleDeleteDept(dep)}>
                                       Удалить
                                     </Button>
                                   </DialogClose>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+
+              {/* Desktop Table View for Departments */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (sortField === 'name') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortField('name');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Название {sortField === 'name' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (sortField === 'manager') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortField('manager');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Руководитель {sortField === 'manager' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
+                      <TableHead>Сотрудники</TableHead>
+                      {role === 'admin' && <TableHead>Действия</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...departmentsTab]
+                      .sort((a, b) => {
+                        const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
+                        const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
+                        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                        return 0;
+                      })
+                      .map(dep => (
+                        <TableRow key={dep.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                          <TableCell onClick={() => {
+                            setEditDept(dep);
+                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                          }}>{dep.name}</TableCell>
+                          <TableCell onClick={() => {
+                            setEditDept(dep);
+                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                          }}>{dep.manager?.fullname || '—'}</TableCell>
+                          <TableCell onClick={() => {
+                            setEditDept(dep);
+                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                          }}>
+                            {Array.isArray(dep.users) && dep.users.length > 0 ? (
+                              <ul className="list-disc ml-4">
+                                {[...dep.users]
+                                  .filter(user => user && typeof user.fullname === 'string')
+                                  .sort((a, b) => a.fullname.localeCompare(b.fullname, 'ru'))
+                                  .map(user => {
+                                    const u = user as { id: string; fullname: string; email: string };
+                                    return <li key={u.id}>{u.fullname} ({u.email})</li>;
+                                  })}
+                              </ul>
+                            ) : 'Нет сотрудников'}
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-              <Dialog open={!!editDept} onOpenChange={open => { if (!open) { setEditDept(null); setEditDeptData({ name: '', managerId: '' }); } }}>
-                <DialogContent onClick={e => e.stopPropagation()}>
-                  <DialogHeader>
-                    <DialogTitle>Редактировать департамент</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input placeholder="Название департамента" value={editDeptData.name} onChange={e => setEditDeptData(d => ({ ...d, name: e.target.value }))} />
-                    <Select value={editDeptData.managerId} onValueChange={val => setEditDeptData(d => ({ ...d, managerId: val }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите руководителя" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {leaders.map(leader => (
-                          <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleEditDept}>Сохранить</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                          {role === 'admin' && (
+                            <TableCell>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="destructive" size="sm" onClick={e => e.stopPropagation()}>
+                                    Удалить
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent onClick={e => e.stopPropagation()}>
+                                  <DialogHeader>
+                                    <DialogTitle>Удалить департамент</DialogTitle>
+                                    <DialogDescription>
+                                      Вы точно хотите удалить департамент '{dep.name}'? Все связанные задачи, сообщения и сотрудники будут отвязаны!
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <DialogClose asChild>
+                                      <Button variant="ghost">
+                                        Отмена
+                                      </Button>
+                                    </DialogClose>
+                                    <DialogClose asChild>
+                                      <Button variant="destructive" onClick={async () => await handleDeleteDept(dep)}>
+                                        Удалить
+                                      </Button>
+                                    </DialogClose>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
             </>
           )}
         </main>
       </div>
-      <Dialog open={!!editUser} onOpenChange={open => { if (!open) { setEditUser(null); setEditUserData(null); setAvatarPreview(null); } }}>
-  <DialogContent onClick={e => e.stopPropagation()}>
-    <DialogHeader>
-      <DialogTitle>Редактировать пользователя</DialogTitle>
-    </DialogHeader>
-    {editUserData && (
-      <div className="space-y-4">
-        <Input placeholder="ФИО" value={editUserData.fullname} onChange={e => setEditUserData(d => ({ ...d, fullname: e.target.value }))} />
-        <Input placeholder="Логин (email)" value={editUserData.email} onChange={e => setEditUserData(d => ({ ...d, email: e.target.value }))} />
-        <Input type="password" placeholder="Пароль" value={editUserData.password} onChange={e => setEditUserData(d => ({ ...d, password: e.target.value }))} />
-        <Input type="file" accept="image/*" onChange={e => {
-          const file = e.target.files?.[0] || null;
-          setEditUserData(d => ({ ...d, avatar: file }));
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
-            reader.readAsDataURL(file);
-          } else {
-            setAvatarPreview(editUser.image || null);
-          }
-        }} />
-        {avatarPreview && (
-          <div className="h-16 w-16 rounded-full overflow-hidden border">
-            <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
-          </div>
-        )}
-        <Select value={editUserData.departmentId} onValueChange={val => setEditUserData(d => ({ ...d, departmentId: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите департамент" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map(dep => (
-              <SelectItem key={dep.id} value={dep.id}>{dep.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={editUserData.leaderId || ''} onValueChange={val => setEditUserData(d => ({ ...d, leaderId: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите руководителя" />
-          </SelectTrigger>
-          <SelectContent>
-            {leaders.map(leader => (
-              <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={editUserData.role} onValueChange={val => setEditUserData(d => ({ ...d, role: val }))}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите должность" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="employee">Сотрудник</SelectItem>
-            <SelectItem value="manager">Руководитель</SelectItem>
-            <SelectItem value="admin">Админ</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    )}
-    <DialogFooter>
-      <Button onClick={handleEditUser}>Сохранить</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+
+      {/* Edit User Dialog */}
+      {editUser && (
+        <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
+          <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg">Редактировать пользователя</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">ФИО</label>
+                  <Input
+                    value={editUserData?.fullname || ''}
+                    onChange={e => setEditUserData(prev => ({ ...prev, fullname: e.target.value }))}
+                    className="mt-1 h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Email</label>
+                  <Input
+                    value={editUserData?.email || ''}
+                    onChange={e => setEditUserData(prev => ({ ...prev, email: e.target.value }))}
+                    className="mt-1 h-11"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Пароль</label>
+                  <Input
+                    value={editUserData?.password || ''}
+                    onChange={e => setEditUserData(prev => ({ ...prev, password: e.target.value }))}
+                    className="mt-1 h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Роль</label>
+                  <Select value={editUserData?.role || ''} onValueChange={val => setEditUserData(prev => ({ ...prev, role: val }))}>
+                    <SelectTrigger className="mt-1 h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Сотрудник</SelectItem>
+                      <SelectItem value="manager">Руководитель</SelectItem>
+                      <SelectItem value="admin">Админ</SelectItem>
+                      <SelectItem value="observer">Наблюдатель</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Департамент</label>
+                  <Select value={editUserData?.departmentId || ''} onValueChange={val => setEditUserData(prev => ({ ...prev, departmentId: val }))}>
+                    <SelectTrigger className="mt-1 h-11">
+                      <SelectValue placeholder="Выберите департамент" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Без департамента</SelectItem>
+                      {departments.map(dept => (
+                        <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Руководитель</label>
+                  <Select value={editUserData?.leaderId || ''} onValueChange={val => setEditUserData(prev => ({ ...prev, leaderId: val }))}>
+                    <SelectTrigger className="mt-1 h-11">
+                      <SelectValue placeholder="Выберите руководителя" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Без руководителя</SelectItem>
+                      {leaders.map(leader => (
+                        <SelectItem key={leader.id} value={String(leader.id)}>{leader.fullname}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Аватар</label>
+                <div className="mt-1 flex items-center gap-4">
+                  {avatarPreview && (
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={avatarPreview} />
+                      <AvatarFallback>{editUserData?.fullname?.[0]}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setEditUserData(prev => ({ ...prev, avatar: file }));
+                        setAvatarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button variant="ghost" onClick={() => setEditUser(null)} className="h-11 flex-1 sm:flex-initial">
+                Отмена
+              </Button>
+              <Button onClick={handleEditUser} className="h-11 flex-1 sm:flex-initial">
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Department Dialog */}
+      {editDept && (
+        <Dialog open={!!editDept} onOpenChange={() => setEditDept(null)}>
+          <DialogContent className="w-[95vw] max-w-md mx-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg">Редактировать департамент</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium">Название</label>
+                <Input
+                  value={editDeptData.name}
+                  onChange={e => setEditDeptData(prev => ({ ...prev, name: e.target.value }))}
+                  className="mt-1 h-11"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Руководитель</label>
+                <Select value={editDeptData.managerId} onValueChange={val => setEditDeptData(prev => ({ ...prev, managerId: val }))}>
+                  <SelectTrigger className="mt-1 h-11">
+                    <SelectValue placeholder="Выберите руководителя" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leaders.map(leader => (
+                      <SelectItem key={leader.id} value={String(leader.id)}>{leader.fullname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button variant="ghost" onClick={() => setEditDept(null)} className="h-11 flex-1 sm:flex-initial">
+                Отмена
+              </Button>
+              <Button onClick={handleEditDept} className="h-11 flex-1 sm:flex-initial">
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
