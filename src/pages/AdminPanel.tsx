@@ -15,6 +15,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
+
 export default function AdminPanel({ session }) {
   const [selectedSection, setSelectedSection] = useState("главная");
 	const [users, setUsers] = useState([]);
@@ -30,17 +31,25 @@ const [departments, setDepartments] = useState([]);
 const [leaders, setLeaders] = useState([]);
 const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 const [showCreateDept, setShowCreateDept] = useState(false);
-const [newDept, setNewDept] = useState({ name: '', managerId: '', createdBy: session?.user?.id || '' });
+const [newDept, setNewDept] = useState({ name: '', managerId: '', created_by: '' });
 const [responsibles, setResponsibles] = useState([]);
 const [departmentsTab, setDepartmentsTab] = useState([]);
 const [editDept, setEditDept] = useState(null);
-const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '' });
-const [sortField, setSortField] = useState<'name' | 'manager'>('name');
+const [editDeptData, setEditDeptData] = useState({ name: '', managerId: '', created_by: '' });
+const [sortField, setSortField] = useState<'name' | 'manager' | 'created_by'>('name');
 const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 const [role, setRole] = useState(null)
 const [sortUserField, setSortUserField] = useState('fullname');
 const [sortUserDirection, setSortUserDirection] = useState<'asc' | 'desc'>('asc');
 const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+// --- Фильтры пользователей ---
+const [userSearch, setUserSearch] = useState('');
+const [userDeptFilter, setUserDeptFilter] = useState('all');
+const [userRoleFilter, setUserRoleFilter] = useState('all');
+// --- Фильтры департаментов ---
+const [deptSearch, setDeptSearch] = useState('');
+const [deptManagerFilter, setDeptManagerFilter] = useState('all');
+
 
 useLayoutEffect(() => {
 	supabase.from("users").select("privilege_level").eq('user_unique_id', session.user.id).then(({ data }) => {
@@ -73,14 +82,16 @@ useEffect(() => {
 useEffect(() => {
   if (selectedSection === "департаменты") {
     fetchDepartmentsWithUsers();
+    // Загружаем руководителей для фильтра
+    supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
   }
 }, [selectedSection]);
 
 const fetchDepartmentsWithUsers = async () => {
-  // Получаем департаменты с руководителями и сотрудниками
+  // Получаем департаменты с руководителями, ответственными и сотрудниками
   const { data: departments, error } = await supabase
     .from('departments')
-    .select('id, name, managerId, manager:managerId (id, fullname, email), users:users_departmentId_fkey (id, fullname, email)');
+    .select('id, name, managerId, created_by, manager:managerId (id, fullname, email), responsible:created_by (id, fullname, email), users:users_departmentId_fkey (id, fullname, email)');
   if (!error) {
     // Для каждого департамента добавляем руководителя в список сотрудников, если его там нет
     const departmentsWithManager = (departments || []).map(dep => {
@@ -134,6 +145,11 @@ const handleEditUser = async () => {
   const handleSectionChange = (section) => {
     setSelectedSection(section)
     setIsSheetOpen(false)
+    if (section === "пользователи") {
+      fetchUsers();
+      // Загружаем департаменты для фильтра
+      supabase.from('departments').select('id, name').then(({ data }) => setDepartments(data || []));
+    }
   }
 
 	const fetchUsers = async () => {
@@ -167,7 +183,7 @@ const handleEditUser = async () => {
 	useEffect(() => { console.log(deletingId) }, [deletingId])
 
   const handleCreateDept = async () => {
-    if (!newDept.name || !newDept.managerId || !newDept.createdBy) {
+    if (!newDept.name || !newDept.managerId || !newDept.created_by) {
       toast.error('Заполните все поля');
       return;
     }
@@ -177,7 +193,7 @@ const handleEditUser = async () => {
       .insert({
         name: newDept.name,
         managerId: newDept.managerId ? Number(newDept.managerId) : null,
-        created_by: newDept.createdBy
+        created_by: newDept.created_by
       })
       .select()
       .single();
@@ -197,7 +213,7 @@ const handleEditUser = async () => {
       
       toast.success('Департамент создан');
       setShowCreateDept(false);
-      setNewDept({ name: '', managerId: '', createdBy: session?.user?.id || '' });
+      setNewDept({ name: '', managerId: '', created_by: session?.user?.id || '' });
       fetchDepartmentsWithUsers(); // Обновляем список департаментов
       fetchUsers(); // Обновляем список пользователей
     } else {
@@ -211,7 +227,7 @@ const handleEditUser = async () => {
         setLeaders(data || []);
         setResponsibles(data || []);
       });
-      setNewDept(d => ({ ...d, createdBy: session?.user?.id || '' }));
+      setNewDept(d => ({ ...d }));
     }
   }, [showCreateDept]);
 
@@ -227,12 +243,13 @@ const handleEditUser = async () => {
     }
     const { error } = await supabase.from('departments').update({
       name: editDeptData.name,
-      managerId: editDeptData.managerId ? Number(editDeptData.managerId) : null
+      managerId: editDeptData.managerId ? Number(editDeptData.managerId) : null,
+      created_by: editDeptData.created_by ? Number(editDeptData.created_by) : null
     }).eq('id', editDept.id);
     if (!error) {
       toast.success('Департамент обновлен');
       setEditDept(null);
-      setEditDeptData({ name: '', managerId: '' });
+      setEditDeptData({ name: '', managerId: '', created_by: '' });
       fetchDepartmentsWithUsers();
     } else {
       toast.error('Ошибка при обновлении департамента');
@@ -242,6 +259,7 @@ const handleEditUser = async () => {
   useEffect(() => {
     if (editDept) {
       supabase.from('users').select('id, fullname').then(({ data }) => setLeaders(data || []));
+      supabase.from('users').select('id, fullname').then(({ data }) => setResponsibles(data || []));
     }
   }, [editDept]);
 
@@ -436,12 +454,13 @@ const handleEditUser = async () => {
                     <SelectValue placeholder="Выберите руководителя" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Все руководители</SelectItem>
                     {leaders.map(leader => (
                       <SelectItem key={leader.id} value={leader.id}>{leader.fullname}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={newDept.createdBy} onValueChange={val => setNewDept(d => ({ ...d, createdBy: val }))}>
+                <Select value={newDept.created_by} onValueChange={val => setNewDept(d => ({ ...d, created_by: val }))}>
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Выберите ответственного" />
                   </SelectTrigger>
@@ -470,9 +489,86 @@ const handleEditUser = async () => {
           
           {selectedSection === "пользователи" && (
             <>
+              {/* Filters for Users */}
+              <div className="mb-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Поиск по имени или email</label>
+                    <Input
+                      placeholder="Введите имя или email..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Фильтр по департаменту</label>
+                    <Select value={userDeptFilter} onValueChange={setUserDeptFilter}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Все департаменты" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все департаменты</SelectItem>
+                        {departments.map(dept => (
+                          <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Фильтр по роли</label>
+                    <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Все роли" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все роли</SelectItem>
+                        <SelectItem value="employee">Сотрудник</SelectItem>
+                        <SelectItem value="manager">Руководитель</SelectItem>
+                        <SelectItem value="admin">Админ</SelectItem>
+                        <SelectItem value="observer">Наблюдатель</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setUserSearch('');
+                        setUserDeptFilter('all');
+                        setUserRoleFilter('all');
+                      }}
+                      className="w-full"
+                    >
+                      Сбросить фильтры
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {/* Mobile Cards View */}
               <div className="md:hidden space-y-3">
-               {[...users].sort((a, b) => {
+               {[...users]
+                .filter(user => {
+                  // Фильтр по поиску
+                  const searchMatch = !userSearch || 
+                    user.fullname?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    user.email?.toLowerCase().includes(userSearch.toLowerCase());
+                  
+                  // Фильтр по департаменту
+                  let deptMatch = true;
+                  if (userDeptFilter !== 'all') {
+                    const userDept = departments.find(dep => String(dep.managerId) === String(user.id)) || 
+                                   departments.find(dep => String(dep.id) === String(user.departmentId));
+                    deptMatch = userDept && String(userDept.id) === userDeptFilter;
+                  }
+                  
+                  // Фильтр по роли
+                  const roleMatch = userRoleFilter === 'all' || user.role === userRoleFilter;
+                  
+                  return searchMatch && deptMatch && roleMatch;
+                })
+                .sort((a, b) => {
                   let aValue, bValue;
                   switch (sortUserField) {
                     case 'fullname':
@@ -659,43 +755,64 @@ const handleEditUser = async () => {
                       <TableHead>Пароль</TableHead>
                       { role === 'admin' && <TableHead>Действия</TableHead> }
                     </TableRow>
+                    
                   </TableHeader>
                   <TableBody>
-                    {
-                      [...users].sort((a, b) => {
-                        let aValue, bValue;
-                        switch (sortUserField) {
-                          case 'fullname':
-                            aValue = a.fullname || '';
-                            bValue = b.fullname || '';
-                            break;
-                          case 'email':
-                            aValue = a.email || '';
-                            bValue = b.email || '';
-                            break;
-                          case 'department': {
-                            let aDept = departments.find(dep => String(dep.managerId) === String(a.id)) || departments.find(dep => String(dep.id) === String(a.departmentId));
-                            let bDept = departments.find(dep => String(dep.managerId) === String(b.id)) || departments.find(dep => String(dep.id) === String(b.departmentId));
-                            aValue = aDept ? aDept.name : '';
-                            bValue = bDept ? bDept.name : '';
-                            break;
+                                          {
+                        [...users]
+                        .filter(user => {
+                          // Фильтр по поиску
+                          const searchMatch = !userSearch || 
+                            user.fullname?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                            user.email?.toLowerCase().includes(userSearch.toLowerCase());
+                          
+                          // Фильтр по департаменту
+                          let deptMatch = true;
+                          if (userDeptFilter !== 'all') {
+                            const userDept = departments.find(dep => String(dep.managerId) === String(user.id)) || 
+                                           departments.find(dep => String(dep.id) === String(user.departmentId));
+                            deptMatch = userDept && String(userDept.id) === userDeptFilter;
                           }
-                          case 'leader':
-                            aValue = a.leader || '';
-                            bValue = b.leader || '';
-                            break;
-                          case 'role':
-                            aValue = a.role || '';
-                            bValue = b.role || '';
-                            break;
-                          default:
-                            aValue = '';
-                            bValue = '';
-                        }
-                        if (aValue < bValue) return sortUserDirection === 'asc' ? -1 : 1;
-                        if (aValue > bValue) return sortUserDirection === 'asc' ? 1 : -1;
-                        return 0;
-                      })
+                          
+                          // Фильтр по роли
+                          const roleMatch = userRoleFilter === 'all' || user.role === userRoleFilter;
+                          
+                          return searchMatch && deptMatch && roleMatch;
+                        })
+                        .sort((a, b) => {
+                          let aValue, bValue;
+                          switch (sortUserField) {
+                            case 'fullname':
+                              aValue = a.fullname || '';
+                              bValue = b.fullname || '';
+                              break;
+                            case 'email':
+                              aValue = a.email || '';
+                              bValue = b.email || '';
+                              break;
+                            case 'department': {
+                              let aDept = departments.find(dep => String(dep.managerId) === String(a.id)) || departments.find(dep => String(dep.id) === String(a.departmentId));
+                              let bDept = departments.find(dep => String(dep.managerId) === String(b.id)) || departments.find(dep => String(dep.id) === String(b.departmentId));
+                              aValue = aDept ? aDept.name : '';
+                              bValue = bDept ? bDept.name : '';
+                              break;
+                            }
+                            case 'leader':
+                              aValue = a.leader || '';
+                              bValue = b.leader || '';
+                              break;
+                            case 'role':
+                              aValue = a.role || '';
+                              bValue = b.role || '';
+                              break;
+                            default:
+                              aValue = '';
+                              bValue = '';
+                          }
+                          if (aValue < bValue) return sortUserDirection === 'asc' ? -1 : 1;
+                          if (aValue > bValue) return sortUserDirection === 'asc' ? 1 : -1;
+                          return 0;
+                        })
                       .map(u => {
                         let departmentName = "Не принадлежит";
                         let dept = departments.find(dep => String(dep.managerId) === String(u.id));
@@ -812,9 +929,60 @@ const handleEditUser = async () => {
           
           {selectedSection === "департаменты" && (
             <>
+              {/* Filters for Departments */}
+              <div className="mb-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Поиск по названию</label>
+                    <Input
+                      placeholder="Введите название департамента..."
+                      value={deptSearch}
+                      onChange={(e) => setDeptSearch(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Фильтр по руководителю</label>
+                    <Select value={deptManagerFilter} onValueChange={setDeptManagerFilter}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Все руководители" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все руководители</SelectItem>
+                        {leaders.map(leader => (
+                          <SelectItem key={leader.id} value={String(leader.id)}>{leader.fullname}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setDeptSearch('');
+                        setDeptManagerFilter('all');
+                      }}
+                      className="w-full"
+                    >
+                      Сбросить фильтры
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {/* Mobile Cards View for Departments */}
               <div className="md:hidden space-y-4">
                 {[...departmentsTab]
+                  .filter(dept => {
+                    // Фильтр по поиску
+                    const searchMatch = !deptSearch || 
+                      dept.name?.toLowerCase().includes(deptSearch.toLowerCase());
+                    
+                    // Фильтр по руководителю
+                    const managerMatch = deptManagerFilter === 'all' || String(dept.managerId) === deptManagerFilter;
+                    
+                    return searchMatch && managerMatch;
+                  })
                   .sort((a, b) => {
                     const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
                     const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
@@ -831,13 +999,20 @@ const handleEditUser = async () => {
                         className="flex items-center justify-between cursor-pointer"
                         onClick={() => {
                           setEditDept(dep);
-                          setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                          setEditDeptData({
+                            name: dep.name,
+                            managerId: dep.managerId ? String(dep.managerId) : '',
+                            created_by: dep.created_by ? String(dep.created_by) : ''
+                          });
                         }}
                       >
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium text-lg truncate">{dep.name}</h3>
                           <p className="text-sm text-muted-foreground truncate">
                             Руководитель: {dep.manager?.fullname || '—'}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            Ответственный: {dep.responsible?.fullname || '—'}
                           </p>
                         </div>
                         <Button
@@ -943,12 +1118,35 @@ const handleEditUser = async () => {
                       >
                         Руководитель {sortField === 'manager' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
                       </TableHead>
+                      <TableHead
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          if (sortField === 'created_by') {
+                            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                          } else {
+                            setSortField('created_by');
+                            setSortDirection('asc');
+                          }
+                        }}
+                      >
+                        Ответственный {sortField === 'created_by' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </TableHead>
                       <TableHead>Сотрудники</TableHead>
                       {role === 'admin' && <TableHead>Действия</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {[...departmentsTab]
+                      .filter(dept => {
+                        // Фильтр по поиску
+                        const searchMatch = !deptSearch || 
+                          dept.name?.toLowerCase().includes(deptSearch.toLowerCase());
+                        
+                        // Фильтр по руководителю
+                        const managerMatch = deptManagerFilter === 'all' || String(dept.managerId) === deptManagerFilter;
+                        
+                        return searchMatch && managerMatch;
+                      })
                       .sort((a, b) => {
                         const aValue = sortField === 'name' ? a.name : (a.manager?.fullname || '');
                         const bValue = sortField === 'name' ? b.name : (b.manager?.fullname || '');
@@ -960,15 +1158,35 @@ const handleEditUser = async () => {
                         <TableRow key={dep.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
                           <TableCell onClick={() => {
                             setEditDept(dep);
-                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                            setEditDeptData({
+                              name: dep.name,
+                              managerId: dep.managerId ? String(dep.managerId) : '',
+                              created_by: dep.created_by ? String(dep.created_by) : ''
+                            });
                           }}>{dep.name}</TableCell>
                           <TableCell onClick={() => {
                             setEditDept(dep);
-                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                            setEditDeptData({
+                              name: dep.name,
+                              managerId: dep.managerId ? String(dep.managerId) : '',
+                              created_by: dep.created_by ? String(dep.created_by) : ''
+                            });
                           }}>{dep.manager?.fullname || '—'}</TableCell>
                           <TableCell onClick={() => {
                             setEditDept(dep);
-                            setEditDeptData({ name: dep.name, managerId: dep.managerId ? String(dep.managerId) : '' });
+                            setEditDeptData({
+                              name: dep.name,
+                              managerId: dep.managerId ? String(dep.managerId) : '',
+                              created_by: dep.created_by ? String(dep.created_by) : ''
+                            });
+                          }}>{dep.responsible?.fullname || '—'}</TableCell>
+                          <TableCell onClick={() => {
+                            setEditDept(dep);
+                            setEditDeptData({
+                              name: dep.name,
+                              managerId: dep.managerId ? String(dep.managerId) : '',
+                              created_by: dep.created_by ? String(dep.created_by) : ''
+                            });
                           }}>
                             {Array.isArray(dep.users) && dep.users.length > 0 ? (
                               <ul className="list-disc ml-4">
@@ -1157,13 +1375,28 @@ const handleEditUser = async () => {
               </div>
               <div>
                 <label className="text-sm font-medium">Руководитель</label>
-                <Select value={editDeptData.managerId} onValueChange={val => setEditDeptData(prev => ({ ...prev, managerId: val }))}>
+                <Select value={editDeptData.managerId || ''} onValueChange={val => setEditDeptData(prev => ({ ...prev, managerId: val }))}>
                   <SelectTrigger className="mt-1 h-11">
                     <SelectValue placeholder="Выберите руководителя" />
                   </SelectTrigger>
                   <SelectContent>
-                    {leaders.map(leader => (
-                      <SelectItem key={leader.id} value={String(leader.id)}>{leader.fullname}</SelectItem>
+                    <SelectItem value="no-manager">Без руководителя</SelectItem>
+                    {leaders.map(user => (
+                      <SelectItem key={user.id} value={String(user.id)}>{user.fullname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Ответственный</label>
+                <Select value={editDeptData.created_by || ''} onValueChange={val => setEditDeptData(prev => ({ ...prev, created_by: val }))}>
+                  <SelectTrigger className="mt-1 h-11">
+                    <SelectValue placeholder="Выберите ответственного" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="no-responsible">Без ответственного</SelectItem>
+                    {responsibles.map(user => (
+                      <SelectItem key={user.id} value={String(user.id)}>{user.fullname}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
