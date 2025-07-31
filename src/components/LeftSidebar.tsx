@@ -332,7 +332,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         
         {/* Action Buttons */}
         <div className={`${buttonGroupClass} mt-[25px]`}>
-          <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+          {/* <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
             <DialogTrigger asChild>
               <Button 
                 data-tooltip-id="tooltip" 
@@ -434,10 +434,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
 
-        {/* Диалог добавления пользователей (остаётся без изменений) */}
-        <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
+        {/* <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
@@ -496,7 +495,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
 
         <Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
           <DialogTrigger asChild>
