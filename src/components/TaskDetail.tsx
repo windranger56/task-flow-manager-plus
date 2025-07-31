@@ -639,7 +639,7 @@ export default function TaskDetail() {
                 selectedTask.status === 'completed' ? 'bg-green-500' :
                 selectedTask.status === 'new' ? 'bg-gray-400' :
                 selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-                selectedTask.status === 'on_verification' ? 'bg-yellow-400' :
+                selectedTask.status === 'on_verification' ? 'bg-green-300' :
                 selectedTask.status === 'overdue' ? 'bg-red-700' :
                 'bg-red-400'
               }`}
