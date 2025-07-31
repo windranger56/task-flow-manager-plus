@@ -1299,7 +1299,7 @@ const handleEditUser = async () => {
                       <SelectValue placeholder="Выберите департамент" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Без департамента</SelectItem>
+                      <SelectItem value="no-department">Без департамента</SelectItem>
                       {departments.map(dept => (
                         <SelectItem key={dept.id} value={String(dept.id)}>{dept.name}</SelectItem>
                       ))}
@@ -1308,12 +1308,12 @@ const handleEditUser = async () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Руководитель</label>
-                  <Select value={editUserData?.leaderId || ''} onValueChange={val => setEditUserData(prev => ({ ...prev, leaderId: val }))}>
+                  <Select value={editUserData?.leader_id || ''} onValueChange={val => setEditUserData(prev => ({ ...prev, leader_id: val }))}>
                     <SelectTrigger className="mt-1 h-11">
                       <SelectValue placeholder="Выберите руководителя" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Без руководителя</SelectItem>
+                      <SelectItem value="no-leader">Без руководителя</SelectItem>
                       {leaders.map(leader => (
                         <SelectItem key={leader.id} value={String(leader.id)}>{leader.fullname}</SelectItem>
                       ))}
