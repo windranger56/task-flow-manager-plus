@@ -628,7 +628,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                         <li 
                           key={task.id}
                           className={cn(
-                            "pl-[35px] pr-[30px] py-[20px] cursor-pointer hover:bg-gray-50 border-t border-b border-gray-200 relative",
+                            "pl-[35px] pr-[30px] py-[20px] cursor-pointer hover:bg-gray-50 relative",
                             selectedTask?.id === task.id && "bg-gray-50",
                           )}
                           onClick={() => {
@@ -640,10 +640,13 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                             });
                           }}
                         >
+                          {/* Верхняя граница с отступом для индикатора */}
+                          <div className="absolute top-0 left-[30px] right-0 h-[1px] bg-gray-200"></div>
+                          
                           {/* Цветовой индикатор с шириной 5px */}
                           <div 
                             className={cn(
-                              "absolute left-[30px] top-0 bottom-0 w-[5px]", // Индикатор начинается на 30px от края
+                              "absolute left-[30px] top-0 bottom-0 w-[5px]",
                               {
                                 'bg-green-500': task.status === 'completed',
                                 'bg-blue-400': task.status === 'in_progress',
@@ -654,7 +657,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                               }
                             )}
                           />
-                          <div className="flex justify-between items-center gap-2 pl-[10px]"> {/* Добавил pl-[10px] для отступа от индикатора */}
+                          
+                          {/* Нижняя граница с отступом для индикатора */}
+                          <div className="absolute bottom-0 left-[30px] right-0 h-[1px] bg-gray-200"></div>
+
+                          <div className="flex justify-between items-center gap-2 pl-[10px]">
                             {/* Левая часть - Название задачи */}
                             <div className="flex-1 min-w-0 break-words">
                               <div className="flex items-center gap-2">
