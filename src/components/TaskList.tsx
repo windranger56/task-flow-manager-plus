@@ -654,76 +654,31 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                             });
                           }}
                         >
-                          <div className="flex justify-between">
-                            <div className="flex items-center gap-[10px]">
-                              {/* <div 
-                                className={`flex-shrink-0 flex justify-center items-center ${getTaskStatusColor(task.status)} rounded-full h-[24px] w-[24px] cursor-pointer`}
-                              >
-                                <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
-                              </div> */}
-                              <div>
-                                <div className="flex items-center">
-                                  <h3 className="text-sm font-medium mb-1">{task.title}</h3>
-                                  {tasksWithNewMessages.has(task.id) && (
-                                    <span className="ml-2 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                                  )}
-                                </div>
-                                {/* <h3 className="text-sm font-medium mb-1">{task.title}</h3> */}
-                                <p className={task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}>
-                                  {formatTaskDate(task.deadline)}
-                                </p>
-                                {/* Добавляем информацию о роли */}
-                                <div className="flex gap-2 mt-1">
-                                  {isAuthor && (
-                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                                      Автор
-                                    </span>
-                                  )}
-                                  {isAssignee && (
-                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                                      Исполнитель
-                                    </span>
-                                  )}
-                                </div>
+                          <div className="flex justify-between items-start gap-2">
+                            {/* Левая часть - Название задачи (с переносом) */}
+                            <div className="flex-1 min-w-0 break-words"> {/* Разрешаем перенос слов */}
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-medium">{task.title}</h3>
+                                {tasksWithNewMessages.has(task.id) && (
+                                  <span className="flex-shrink-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                )}
                               </div>
                             </div>
-                            <div className="flex items-center mr-3 ">
-                              {/* Аватар автора */}
-                              {/* <div className="relative h-[32px] w-[32px]">
-                                <Avatar className="h-full w-full">
+
+                            {/* Правая часть - Дата и аватар (остаются справа) */}
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              {/* Дата */}
+                              <p className={`text-sm whitespace-nowrap ${task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}`}>
+                                {formatTaskDate(task.deadline)}
+                              </p>
+
+                              {/* Аватар */}
+                              <div className="h-8 w-8 flex-shrink-0">
+                                <Avatar>
                                   <AvatarImage 
-                                    className='rounded-full' 
-                                    src={task?.creator?.image} 
-                                    alt={task?.creator?.name} 
-                                  />
-                                  <AvatarFallback>
-                                    {task?.creator?.name?.charAt(0) || 'A'}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </div>
-                              
-                              <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                width="24" 
-                                height="24" 
-                                viewBox="0 0 24 24" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                strokeWidth="2" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                                className="text-gray-400 mx-2"
-                              >
-                                <path d="M5 12h14M12 5l7 7-7 7"></path>
-                              </svg> */}
-                              
-                              {/* Аватар исполнителя */}
-                              <div className="relative h-[32px] w-[32px]">
-                                <Avatar className="h-full w-full">
-                                  <AvatarImage 
-                                    className='rounded-full' 
                                     src={task?.assignee?.image} 
                                     alt={task?.assignee?.name} 
+                                    className="rounded-full"
                                   />
                                   <AvatarFallback>
                                     {task?.assignee?.name?.charAt(0) || 'I'}
