@@ -689,7 +689,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                             </div>
                             <div className="flex items-center mr-3 ">
                               {/* Аватар автора */}
-                              <div className="relative h-[32px] w-[32px]">
+                              {/* <div className="relative h-[32px] w-[32px]">
                                 <Avatar className="h-full w-full">
                                   <AvatarImage 
                                     className='rounded-full' 
@@ -715,7 +715,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                                 className="text-gray-400 mx-2"
                               >
                                 <path d="M5 12h14M12 5l7 7-7 7"></path>
-                              </svg>
+                              </svg> */}
                               
                               {/* Аватар исполнителя */}
                               <div className="relative h-[32px] w-[32px]">
