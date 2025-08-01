@@ -43,7 +43,7 @@ export default function Index() {
 					{/* Main Content */}
 					<div className="flex flex-col flex-1 min-w-0">
 						{/* Search Bar */}
-						<div className="p-4 border-b border-gray-200 flex items-center">
+						<div className="p-1 border-b border-gray-200 flex items-center">
 							{isMobile && (
 								<button 
 									className="mr-3 p-1 rounded-md hover:bg-gray-100"
@@ -54,12 +54,15 @@ export default function Index() {
 									</svg>
 								</button>
 							)}
-							<div className="flex-1 flex items-center gap-4">
-								<div className={isMobile ? "flex-1" : "w-1/3 min-w-0"}>
+							<div className="flex-1 flex items-center gap-4 justify-left">
+								<div className={isMobile ? "flex-1" : "w-1/3 min-w-0 "}>
 									<SearchBar />
 								</div>
 								<div className="flex-1 flex justify-center">
-									<div className="text-sm font-medium text-gray-600">
+									<div className="text-sm font-medium text-gray-600 mr-2">
+										<p>Сегодня </p> 
+									</div>
+									<div className="text-sm font-medium text-black">
 										{new Date().toLocaleDateString('ru-RU', { 
 											weekday: 'long',
 											day: 'numeric', 

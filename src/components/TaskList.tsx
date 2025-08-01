@@ -70,6 +70,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [selectedExecutorsForDuplication, setSelectedExecutorsForDuplication] = useState<string[]>([]);
   const [availableExecutors, setAvailableExecutors] = useState<{id: string, fullname: string, departmentId: string}[]>([]);
   const [lastMessageCheck, setLastMessageCheck] = useState<{[key: string]: string}>({});
+
+  
   
   // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
   useEffect(() => {
@@ -611,7 +613,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
               <div className="flex items-center w-full">
-                <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} />
+                {/* <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} /> */}
                 <span className='font-semibold text-[16px] flex-grow text-left '>{department.name}</span>
                 {/* Показываем количество задач в этом департаменте */}
                 <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
@@ -619,7 +621,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
               </AccordionTrigger>
               <AccordionContent>
                 {tasks.length > 0 ? (
-                  <ul className="divide-y divide-gray-200">
+                  <ul className="space-y-2">
                     {tasks.map((task) => {
                       // Проверяем, является ли текущий пользователь автором или исполнителем
                       const isAuthor = user?.id === task.createdBy;
@@ -629,10 +631,18 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                         <li 
                           key={task.id}
                           className={cn(
-                            "p-[20px] cursor-pointer hover:bg-gray-50",
+                            "p-[20px] cursor-pointer hover:bg-gray-50 border-l-4",
                             selectedTask?.id === task.id && "bg-gray-50",
-                            isAuthor && "border-l-4 border-l-blue-500", // Подсветка для автора
-                            isAssignee && "bg-blue-50" // Подсветка для исполнителя
+                            {
+                              'border-l-green-500': task.status === 'completed',
+                              'border-l-blue-400': task.status === 'in_progress',
+                              'border-l-gray-400': task.status === 'new',
+                              'border-l-red-700': task.status === 'overdue',
+                              'border-l-red-400': task.status === 'canceled',
+                              'border-l-green-300': task.status === 'on_verification',
+
+
+                            }
                           )}
                           onClick={() => {
                             handleTaskClick(task.id);
@@ -646,11 +656,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                         >
                           <div className="flex justify-between">
                             <div className="flex items-center gap-[10px]">
-                              <div 
+                              {/* <div 
                                 className={`flex-shrink-0 flex justify-center items-center ${getTaskStatusColor(task.status)} rounded-full h-[24px] w-[24px] cursor-pointer`}
                               >
                                 <Check className={`h-3 w-3 ${task.status === 'completed' ? 'text-white' : 'text-transparent'}`} />
-                              </div>
+                              </div> */}
                               <div>
                                 <div className="flex items-center">
                                   <h3 className="text-sm font-medium mb-1">{task.title}</h3>

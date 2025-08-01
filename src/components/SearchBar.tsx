@@ -44,7 +44,7 @@ export default function SearchBar() {
   };
   
   return (
-    <div className="relative">
+    <div className="relative ">
       <Input
         type="search"
         placeholder="Поиск ваших поручений по названию, описанию или статусу..."
