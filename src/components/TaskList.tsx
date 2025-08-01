@@ -612,18 +612,15 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           {tasksByDepartment.map(({ department, tasks }) => (
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
-              <div className="flex items-center w-full">
-                {/* <div className="w-[4px] h-full rounded-sm absolute left-0" style={{ backgroundColor: department.color }} /> */}
-                <span className='font-semibold text-[16px] flex-grow text-left '>{department.name}</span>
-                {/* Показываем количество задач в этом департаменте */}
-                <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
-              </div>
+                <div className="flex items-center w-full">
+                  <span className='font-semibold text-[16px] flex-grow text-left '>{department.name}</span>
+                  <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 {tasks.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-0"> {/* Убрали отступы между задачами */}
                     {tasks.map((task) => {
-                      // Проверяем, является ли текущий пользователь автором или исполнителем
                       const isAuthor = user?.id === task.createdBy;
                       const isAssignee = user?.id === task.assignedTo;
                       
@@ -631,22 +628,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                         <li 
                           key={task.id}
                           className={cn(
-                            "p-[20px] cursor-pointer hover:bg-gray-50 border-l-4",
+                            "pl-[35px] pr-[30px] py-[20px] cursor-pointer hover:bg-gray-50 border-t border-b border-gray-200 relative",
                             selectedTask?.id === task.id && "bg-gray-50",
-                            {
-                              'border-l-green-500': task.status === 'completed',
-                              'border-l-blue-400': task.status === 'in_progress',
-                              'border-l-gray-400': task.status === 'new',
-                              'border-l-red-700': task.status === 'overdue',
-                              'border-l-red-400': task.status === 'canceled',
-                              'border-l-green-300': task.status === 'on_verification',
-
-
-                            }
                           )}
                           onClick={() => {
                             handleTaskClick(task.id);
-                            // При открытии задачи убираем индикатор новых сообщений
                             setTasksWithNewMessages(prev => {
                               const newSet = new Set(prev);
                               newSet.delete(task.id);
@@ -654,9 +640,23 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                             });
                           }}
                         >
-                          <div className="flex justify-between items-start gap-2">
-                            {/* Левая часть - Название задачи (с переносом) */}
-                            <div className="flex-1 min-w-0 break-words"> {/* Разрешаем перенос слов */}
+                          {/* Цветовой индикатор с шириной 5px */}
+                          <div 
+                            className={cn(
+                              "absolute left-[30px] top-0 bottom-0 w-[5px]", // Индикатор начинается на 30px от края
+                              {
+                                'bg-green-500': task.status === 'completed',
+                                'bg-blue-400': task.status === 'in_progress',
+                                'bg-gray-400': task.status === 'new',
+                                'bg-red-700': task.status === 'overdue',
+                                'bg-red-400': task.status === 'canceled',
+                                'bg-green-300': task.status === 'on_verification',
+                              }
+                            )}
+                          />
+                          <div className="flex justify-between items-center gap-2 pl-[10px]"> {/* Добавил pl-[10px] для отступа от индикатора */}
+                            {/* Левая часть - Название задачи */}
+                            <div className="flex-1 min-w-0 break-words">
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-medium">{task.title}</h3>
                                 {tasksWithNewMessages.has(task.id) && (
@@ -665,14 +665,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                               </div>
                             </div>
 
-                            {/* Правая часть - Дата и аватар (остаются справа) */}
+                            {/* Правая часть - Дата и аватар */}
                             <div className="flex items-center gap-3 flex-shrink-0">
-                              {/* Дата */}
                               <p className={`text-sm whitespace-nowrap ${task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}`}>
                                 {formatTaskDate(task.deadline)}
                               </p>
-
-                              {/* Аватар */}
                               <div className="h-8 w-8 flex-shrink-0">
                                 <Avatar>
                                   <AvatarImage 
