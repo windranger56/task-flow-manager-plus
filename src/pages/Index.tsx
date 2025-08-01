@@ -55,16 +55,18 @@ export default function Index() {
 								</button>
 							)}
 							<div className="flex-1 flex items-center gap-4">
-								<div className="flex-1">
+								<div className={isMobile ? "flex-1" : "w-1/3 min-w-0"}>
 									<SearchBar />
 								</div>
-								<div className="flex-shrink-0 text-sm font-medium text-gray-600">
-									{new Date().toLocaleDateString('ru-RU', { 
-										weekday: 'long',
-										day: 'numeric', 
-										month: 'long', 
-										year: 'numeric' 
-									}).replace(/^./, str => str.toUpperCase())}
+								<div className="flex-1 flex justify-center">
+									<div className="text-sm font-medium text-gray-600">
+										{new Date().toLocaleDateString('ru-RU', { 
+											weekday: 'long',
+											day: 'numeric', 
+											month: 'long', 
+											year: 'numeric' 
+										}).replace(/^./, str => str.toUpperCase())}
+									</div>
 								</div>
 								<div className="flex items-center gap-2">
 									<ArchiveButton 
