@@ -18,6 +18,11 @@ import { toast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ExportFilters, User, TaskStatus } from '@/types';
+
+// Extended User type for internal use
+interface UserWithDepartment extends User {
+  departmentId?: string;
+}
 import { Packer } from 'docx';
 import { saveAs } from 'file-saver';
 import {
@@ -52,8 +57,8 @@ export default function ExportButton() {
   const activeInputRef = useRef<HTMLInputElement>(null);
 
   // New state for department and executor management
-  const [availableExecutors, setAvailableExecutors] = useState<User[]>([]);
-  const [departmentUsers, setDepartmentUsers] = useState<{ [key: string]: User[] }>({});
+  const [availableExecutors, setAvailableExecutors] = useState<UserWithDepartment[]>([]);
+  const [departmentUsers, setDepartmentUsers] = useState<{ [key: string]: UserWithDepartment[] }>({});
   const [isLoadingExecutors, setIsLoadingExecutors] = useState(false);
 
   // React.useEffect(() => {
@@ -101,7 +106,7 @@ export default function ExportButton() {
   const loadExecutorsForDepartments = async (departmentIds: string[]) => {
     setIsLoadingExecutors(true);
     try {
-      const allExecutors: User[] = [];
+      const allExecutors: UserWithDepartment[] = [];
       const newDepartmentUsers = { ...departmentUsers };
 
       for (const deptId of departmentIds) {
@@ -130,7 +135,7 @@ export default function ExportButton() {
           }
 
           // Combine employees and manager
-          const deptUsers: User[] = [];
+          const deptUsers: UserWithDepartment[] = [];
           
           // Add department employees
           if (departmentEmployees) {
@@ -141,7 +146,8 @@ export default function ExportButton() {
                   fullname: emp.fullname,
                   email: emp.email || '',
                   image: emp.image || '',
-                  role: emp.role || deptId
+                  role: emp.role,
+                  departmentId: deptId // Store the actual department ID
                 });
               }
             });
@@ -151,7 +157,7 @@ export default function ExportButton() {
           if (manager && manager.fullname && !deptUsers.find(u => u.id === manager.id)) {
             deptUsers.push({
               ...manager,
-              role: deptId // Set role to department ID for consistency
+              departmentId: deptId // Store the actual department ID
             });
           }
 
@@ -802,7 +808,7 @@ export default function ExportButton() {
                 executors={availableExecutors.map(u => ({ 
                   id: u.id, 
                   fullname: u.fullname, 
-                  departmentId: typeof u.role === 'string' ? u.role : '' // Use role field which contains department info
+                  departmentId: u.departmentId || '' // Use departmentId field
                 }))}
                 selectedExecutors={filters.selectedExecutors || []}
                 onExecutorToggle={handleExecutorToggle}

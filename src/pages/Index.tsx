@@ -54,15 +54,25 @@ export default function Index() {
 									</svg>
 								</button>
 							)}
-							<div className="flex-1 flex items-center gap-3">
+							<div className="flex-1 flex items-center gap-4">
 								<div className="flex-1">
 									<SearchBar />
 								</div>
-								<ArchiveButton 
-									showArchive={showArchive}
-									onToggle={() => setShowArchive(!showArchive)}
-								/>
-								<ExportButton />
+								<div className="flex-shrink-0 text-sm font-medium text-gray-600">
+									{new Date().toLocaleDateString('ru-RU', { 
+										weekday: 'long',
+										day: 'numeric', 
+										month: 'long', 
+										year: 'numeric' 
+									}).replace(/^./, str => str.toUpperCase())}
+								</div>
+								<div className="flex items-center gap-2">
+									<ArchiveButton 
+										showArchive={showArchive}
+										onToggle={() => setShowArchive(!showArchive)}
+									/>
+									<ExportButton />
+								</div>
 							</div>
 						</div>
 						
