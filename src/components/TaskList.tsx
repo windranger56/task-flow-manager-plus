@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,49 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [selectedExecutorsForDuplication, setSelectedExecutorsForDuplication] = useState<string[]>([]);
   const [availableExecutors, setAvailableExecutors] = useState<{id: string, fullname: string, departmentId: string}[]>([]);
   const [lastMessageCheck, setLastMessageCheck] = useState<{[key: string]: string}>({});
+
+  
+  // В начале компонента, после других ref
+  const taskRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+
+  const [accordionValue, setAccordionValue] = useState<string[]>([]);
+
+  const handleAccordionChange = (value: string[]) => {
+    // Находим только что открытый департамент
+  const newlyOpened = value.find(id => !accordionValue.includes(id));
+  
+    setAccordionValue(value);
+    
+    if (newlyOpened && taskRefs.current[newlyOpened]) {
+      // Используем setTimeout для корректной работы анимации аккордеона
+      setTimeout(() => {
+        const element = taskRefs.current[newlyOpened];
+        if (element) {
+          // Прокручиваем с небольшим отступом сверху
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+          
+          // Альтернатива - ручной расчет позиции для более точного контроля
+          /*
+          const container = tasksContainerRef.current;
+          const element = taskRefs.current[newlyOpened];
+          if (container && element) {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            const offset = 20; // Отступ сверху в пикселях
+            
+            container.scrollTo({
+              top: elementRect.top - containerRect.top + container.scrollTop - offset,
+              behavior: 'smooth'
+            });
+          }
+          */
+        }
+      }, 100); // Небольшая задержка для завершения анимации аккордеона
+    }
+  };
 
   
   
@@ -613,7 +656,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       
       {/* Task List by Departments */}
       <div className="flex-1 overflow-auto pb-4"> {/* Уменьшим высоту списка задач */}
-        <Accordion type="multiple" className="w-full">
+        <Accordion type="multiple" className="w-full"  value={accordionValue} onValueChange={handleAccordionChange}>
           {tasksByDepartment.map(({ department, tasks }) => (
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
@@ -622,7 +665,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                   <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent ref={(el) => taskRefs.current[department.id] = el}>
                 {tasks.length > 0 ? (
                   <ul className="space-y-0"> {/* Убрали отступы между задачами */}
                     {tasks.map((task) => {

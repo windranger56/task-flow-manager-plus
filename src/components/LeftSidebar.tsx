@@ -708,7 +708,15 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                         Срок: {new Date(task.deadline).toLocaleDateString()}
                       </span>
                       <span className="text-xs text-blue-500">
-                        Статус: {task.status}
+                        Статус: {
+                          task.status === 'overdue' ? 'просрочено' :
+                          task.status === 'in_progress' ? 'в работе' :
+                          task.status === 'new' ? 'новое' :
+                          task.status === 'completed' ? 'завершена' :
+                          task.status === 'canceled' ? 'отменена' :
+                          task.status === 'on_verification' ? 'на проверке' :
+                          task.status
+                        }
                       </span>
                     </div>
                   </div>

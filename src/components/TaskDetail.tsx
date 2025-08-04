@@ -61,6 +61,20 @@ export default function TaskDetail() {
   const [showOnlySystemMessages, setShowOnlySystemMessages] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [hasTaskChain, setHasTaskChain] = useState(false);
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
+
+  const focusRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusRef.current && focusedTaskId) {
+      focusRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Можно добавить временное выделение
+      const timer = setTimeout(() => setFocusedTaskId(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [focusedTaskId]);
+
+  
 
   useEffect(() => {
     const fetchData = async () => {
