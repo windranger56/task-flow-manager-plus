@@ -30,7 +30,8 @@ export default function TaskDetail() {
     users, // оставляем для других нужд
     selectTask,
     fetchTasks,
-    getSubordinates // добавляем функцию получения сотрудников
+    getSubordinates, // добавляем функцию получения сотрудников
+    updateTaskIsNew
   } = useTaskContext();
 
   const [viewerFile, setViewerFile] = useState<any | null>(null);
@@ -120,6 +121,11 @@ export default function TaskDetail() {
       };
 
       await loadData();
+
+      // Reset is_new flag when task is opened
+      if (selectedTask.is_new) {
+        await updateTaskIsNew(selectedTask.id, false);
+      }
 
       // Загружаем сотрудников для селектора переназначения
       const loadSubordinates = async () => {
@@ -249,6 +255,9 @@ export default function TaskDetail() {
             is_system: 0,
           }]);
       }
+
+      // Set is_new flag for status changes (except for the user who made the change)
+      await updateTaskIsNew(taskId, true);
 
       // Получаем обновлённую задачу и обновляем selectedTask
       const { data: updatedTask, error: fetchError } = await supabase

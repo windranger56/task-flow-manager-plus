@@ -42,6 +42,7 @@ export interface Task {
   createdAt: Date;
   deadline: Date;
   status: TaskStatus; // Используем кастомный тип вместо boolean
+  is_new?: boolean; // Поле для отслеживания новых статусов
 }
 
 export interface Message {
@@ -50,6 +51,7 @@ export interface Message {
   userId: string;
   content: string;
   timestamp: Date;
+  hasNewMessages?: boolean; // Поле для отслеживания новых сообщений
 }
 
 export interface TaskAction {

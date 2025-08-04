@@ -144,6 +144,71 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [filteredTasks, setFilteredTasks] = useState([]);
   
+  // New states for new messages and status notifications
+  const [tasksWithNewMessages, setTasksWithNewMessages] = useState([]);
+  const [tasksWithNewStatus, setTasksWithNewStatus] = useState([]);
+  const [showNewMessagesDialog, setShowNewMessagesDialog] = useState(false);
+  const [showNewStatusDialog, setShowNewStatusDialog] = useState(false);
+  
+  // Function to fetch tasks with new messages
+  const fetchTasksWithNewMessages = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch tasks where user has unread messages
+      const { data: messagesData, error } = await supabase
+        .from('messages')
+        .select(`
+          task_id,
+          tasks!inner(
+            id,
+            title,
+            description,
+            deadline,
+            priority,
+            assigned_to,
+            created_by
+          )
+        `)
+        .neq('sent_by', user.id) // Messages not sent by current user
+        .eq('is_read', false) // Unread messages
+        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
+
+      if (error) throw error;
+
+      // Group by task and format data
+      const tasksMap = new Map();
+      messagesData?.forEach(msg => {
+        if (msg.tasks && !tasksMap.has(msg.task_id)) {
+          tasksMap.set(msg.task_id, msg.tasks);
+        }
+      });
+
+      setTasksWithNewMessages(Array.from(tasksMap.values()));
+    } catch (error) {
+      console.error("Ошибка при загрузке задач с новыми сообщениями:", error);
+    }
+  };
+
+  // Function to fetch tasks with new status
+  const fetchTasksWithNewStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('is_new', true)
+        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`);
+
+      if (error) throw error;
+
+      setTasksWithNewStatus(tasksData || []);
+    } catch (error) {
+      console.error("Ошибка при загрузке задач с новым статусом:", error);
+    }
+  };
+  
   useEffect(() => {
     getProfile();
     const loadSubordinates = async () => {
@@ -169,8 +234,24 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       setNewTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
       setinworkTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []));
       setverifyTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []));
+      
+      // Fetch new messages and status notifications
+      fetchTasksWithNewMessages();
+      fetchTasksWithNewStatus();
     }
   }, [tasks, user]);
+
+  // Effect to periodically refresh new messages and statuses
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      fetchTasksWithNewMessages();
+      fetchTasksWithNewStatus();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   
 
@@ -537,37 +618,35 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </DialogContent>
         </Dialog> */}
 
-        <Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
+        {/* New Messages Dialog */}
+        <Dialog open={showNewMessagesDialog} onOpenChange={setShowNewMessagesDialog}>
           <DialogTrigger asChild>
             <Button 
               data-tooltip-id="tooltip" 
-              data-tooltip-content="Новые поручения"
+              data-tooltip-content="Новые сообщения"
               className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                <path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
-                <path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
-              </svg>
-              {newTasks.length > 0 && (
+              <Mail className="h-4 w-4" />
+              {tasksWithNewMessages.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {newTasks.length}
+                  {tasksWithNewMessages.length}
                 </span>
               )}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Новые поручения</DialogTitle>
+              <DialogTitle>Поручения с новыми сообщениями</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {newTasks.length > 0 ? (
-                newTasks.map(task => (
+              {tasksWithNewMessages.length > 0 ? (
+                tasksWithNewMessages.map(task => (
                   <div 
                     key={task.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
                     onClick={() => {
                       handleTaskClick(task.id);
-                      setShowNewNotifications(false);
+                      setShowNewMessagesDialog(false);
                     }}
                   >
                     <p className="font-medium">{task.title}</p>
@@ -585,60 +664,57 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-4">Новых поручений нет</p>
+                <p className="text-gray-500 text-center py-4">Нет новых сообщений</p>
               )}
             </div>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
+        {/* New Status Dialog */}
+        <Dialog open={showNewStatusDialog} onOpenChange={setShowNewStatusDialog}>
           <DialogTrigger asChild>
             <Button 
               data-tooltip-id="tooltip" 
-              data-tooltip-content="Просроченные поручения"
+              data-tooltip-content="Новые статусы"
               className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                <path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
-              </svg>
-              {overdueTasks.length > 0 && (
+              <Bell className="h-4 w-4" />
+              {tasksWithNewStatus.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {overdueTasks.length}
+                  {tasksWithNewStatus.length}
                 </span>
               )}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Просроченные поручения</DialogTitle>
+              <DialogTitle>Поручения с новым статусом</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {overdueTasks.length > 0 ? (
-                overdueTasks.map(task => (
+              {tasksWithNewStatus.length > 0 ? (
+                tasksWithNewStatus.map(task => (
                   <div 
                     key={task.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
                     onClick={() => {
                       handleTaskClick(task.id);
-                      setShowOverdueNotifications(false);
+                      setShowNewStatusDialog(false);
                     }}
                   >
                     <p className="font-medium">{task.title}</p>
                     <p className="text-sm text-gray-500">{task.description}</p>
                     <div className="flex justify-between mt-2">
-                      <span className="text-xs text-red-500">
-                        Просрочено: {new Date(task.deadline).toLocaleDateString()}
+                      <span className="text-xs text-gray-500">
+                        Срок: {new Date(task.deadline).toLocaleDateString()}
                       </span>
-                      {task.priority === 'high' && (
-                        <span className="text-xs text-gray-500">
-                          Приоритет: Высокий
-                        </span>
-                      )}
+                      <span className="text-xs text-blue-500">
+                        Статус: {task.status}
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-4">Просроченных поручений нет</p>
+                <p className="text-gray-500 text-center py-4">Нет обновлений статуса</p>
               )}
             </div>
           </DialogContent>
