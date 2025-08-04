@@ -428,6 +428,27 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const statsClass = isMobile ? "flex justify-center gap-6" : "flex justify-between";
   const subordinateAvatarSize = isMobile ? "h-8 w-8" : "h-10 w-10";
 
+  // --- ДОБАВИТЬ состояния для выбранного сотрудника и его задач ---
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  const [selectedEmployeeTasks, setSelectedEmployeeTasks] = useState<any[]>([]);
+  const [showEmployeeTasksDialog, setShowEmployeeTasksDialog] = useState(false);
+
+  // --- ДОБАВИТЬ функцию для загрузки задач сотрудника ---
+  const handleShowEmployeeTasks = async (employee: User) => {
+    setSelectedEmployee(employee);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .or(`assigned_to.eq.${employee.id},created_by.eq.${employee.id}`);
+    if (!error) {
+      setSelectedEmployeeTasks(data || []);
+      setShowEmployeeTasksDialog(true);
+    } else {
+      setSelectedEmployeeTasks([]);
+      setShowEmployeeTasksDialog(true);
+    }
+  };
+
   return (
     <div className={sidebarClass}>
       {isMobile ? (
@@ -827,13 +848,17 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className={`flex ${isMobile ? 'justify-center' : 'flex-wrap'} gap-2`}>
           {subordinates.length > 0 ? (
             subordinates.map((user) => (
-              <div key={user.id} className="relative group flex flex-col items-center">
+              <div
+                key={user.id}
+                className="relative group flex flex-col items-center cursor-pointer"
+                onClick={() => handleShowEmployeeTasks(user)}
+              >
                 <Avatar className={subordinateAvatarSize}>
                   <AvatarImage src={user.image} alt={user.fullname} />
                   <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                 </Avatar>
                 <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.fullname}</span>
-                <Button
+                {/* <Button
                   size="icon"
                   variant="destructive"
                   className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 p-0 text-xs"
@@ -841,9 +866,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   title="Удалить сотрудника"
                 >
                   ×
-                </Button>
+                </Button> */}
                 {/* Диалог подтверждения удаления */}
-                <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
+                {/* <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Удалить сотрудника</DialogTitle>
@@ -887,7 +912,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                       </Button>
                     </div>
                   </DialogContent>
-                </Dialog>
+                </Dialog> */}
               </div>
             ))
           ) : (
@@ -948,6 +973,35 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               ))
             ) : (
               <p className="text-gray-500 text-center py-4">Нет задач с выбранным статусом</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог для задач выбранного сотрудника */}
+      <Dialog open={showEmployeeTasksDialog} onOpenChange={setShowEmployeeTasksDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Поручения: {selectedEmployee?.fullname}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {selectedEmployeeTasks.length > 0 ? (
+              selectedEmployeeTasks.map(task => (
+                <div key={task.id} className="p-3 border rounded-md">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-sm text-gray-500">{task.description}</p>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-xs text-gray-500">
+                      Срок: {task.deadline ? new Date(task.deadline).toLocaleDateString() : '—'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Статус: {task.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">Нет поручений</p>
             )}
           </div>
         </DialogContent>

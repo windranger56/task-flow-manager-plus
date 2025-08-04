@@ -651,6 +651,12 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     }
   }
   
+  useEffect(() => {
+    if (isMobile && selectedTask) {
+      setShowTaskDetail(true);
+    }
+  }, [isMobile, selectedTask]);
+  
   return (
     <div className="h-full flex flex-col relative pb-4"> {/* Добавим padding-bottom для места под кнопку */}
       
