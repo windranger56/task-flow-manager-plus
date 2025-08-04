@@ -109,10 +109,15 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           : isAuthorOrAssignee && task.status !== 'completed';
       });
       
+      // Сортируем задачи по дедлайну (от ближайшего к дальнему)
+      const sortedTasks = [...filteredTasks].sort((a, b) => {
+        return a.deadline.getTime() - b.deadline.getTime();
+      });
+      
       setTasksByDepartment(departments.map(department => {
         return {
           department,
-          tasks: filteredTasks.filter(task => task.departmentId === department.id)
+          tasks: sortedTasks.filter(task => task.departmentId === department.id)
         };
       }));
     })();

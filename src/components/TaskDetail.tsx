@@ -1297,11 +1297,11 @@ export default function TaskDetail() {
               <Paperclip size={20} />
             </label>
             
-            <Input 
+            <Input
               value={chatMessage}
               onChange={(e) => setChatMessage(e.target.value)}
               placeholder="Напишите сообщение..."
-              className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
+              className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none focus:outline-none !important focus:ring-0 focus:border-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleSendChatMessage();

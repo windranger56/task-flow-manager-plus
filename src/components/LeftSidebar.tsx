@@ -85,6 +85,43 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     }
   }
 
+  // Функция для фильтрации задач по статусу
+  const handleStatusClick = (status: string) => {
+    setSelectedStatus(status);
+    let tasksToShow = [];
+    
+    switch(status) {
+      case 'new':
+        tasksToShow = newTasks;
+        break;
+      case 'in_progress':
+        tasksToShow = inworkTasks;
+        break;
+      case 'on_verification':
+        tasksToShow = verifyTasks;
+        break;
+      case 'overdue':
+        tasksToShow = overdueTasks;
+        break;
+      default:
+        tasksToShow = [];
+    }
+    
+    setFilteredTasks(tasksToShow);
+    setShowTasksDialog(true);
+  };
+
+  // Получите правильные названия статусов
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'new': return 'Новые';
+      case 'in_progress': return 'В работе';
+      case 'on_verification': return 'На проверке';
+      case 'overdue': return 'Просрочено';
+      default: return '';
+    }
+  };
+
   const [showNewDepartment, setShowNewDepartment] = useState(false);
   const [showAddUsersToDepartment, setShowAddUsersToDepartment] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
@@ -103,6 +140,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [newTasks, setNewTasks] = useState([]);
   const [subordinates, setSubordinates] = useState<User[]>([]);
   const [deletingSubordinateId, setDeletingSubordinateId] = useState<string | null>(null);
+  const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [filteredTasks, setFilteredTasks] = useState([]);
   
   useEffect(() => {
     getProfile();
@@ -319,7 +359,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
       )}
       
-      <div className={`px-[40px] py-[25px] ${isMobile ? 'text-center' : ''}`}>
+      <div className={`px-[40px] py-[5px] ${isMobile ? 'text-center' : ''}`}>
         {/* User Info */}
         <div className="flex flex-col items-center">
           <Avatar className={`${avatarSize} mb-2`}>
@@ -626,18 +666,37 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[5px] relative overflow-hidden'>
           <div className='bg-[#4d76fd] h-full rounded-full transition-all duration-300' style={{ width: doneTasks.length / tasks.length * 100 + "%" }} />
         </div>
-        <div className={`p-4 ${borderClass} ${statsClass}`}>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{inworkTasks.length}</p>
-            <p className="text-xs text-gray-500">В работе</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{verifyTasks.length}</p>
-            <p className="text-xs text-gray-500">На проверке</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{doneTasks.length}</p>
-            <p className="text-xs text-gray-500">Завершено</p>
+
+        <div className={`p-4 ${borderClass}`}>
+          <div className="flex justify-between">
+            <div 
+              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
+              onClick={() => handleStatusClick('new')}
+            >
+              <p className="text-l font-bold">{newTasks.length}</p>
+              <p className="text-xs text-gray-500">Новые</p>
+            </div>
+            <div 
+              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
+              onClick={() => handleStatusClick('in_progress')}
+            >
+              <p className="text-l font-bold">{inworkTasks.length}</p>
+              <p className="text-xs text-gray-500">В работе</p>
+            </div>
+            <div 
+              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
+              onClick={() => handleStatusClick('on_verification')}
+            >
+              <p className="text-l font-bold">{verifyTasks.length}</p>
+              <p className="text-xs text-gray-500">На проверке</p>
+            </div>
+            <div 
+              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
+              onClick={() => handleStatusClick('overdue')}
+            >
+              <p className="text-l font-bold">{overdueTasks.length}</p>
+              <p className="text-xs text-gray-500">Просрочено</p>
+            </div>
           </div>
         </div>
       </div>
@@ -770,6 +829,45 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       ) : null}
       
       <Tooltip id="tooltip" />
+
+      <Dialog open={showTasksDialog} onOpenChange={setShowTasksDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getStatusLabel(selectedStatus)} ({filteredTasks.length})</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {filteredTasks.length > 0 ? (
+              filteredTasks.map(task => (
+                <div 
+                  key={task.id} 
+                  className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                  onClick={() => {
+                    handleTaskClick(task.id);
+                    setShowTasksDialog(false);
+                  }}
+                >
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-sm text-gray-500">{task.description}</p>
+                  <div className="flex justify-between mt-2">
+                    <span className={`text-xs ${
+                      task.status === 'overdue' ? 'text-red-500' : 'text-gray-500'
+                    }`}>
+                      {task.status === 'overdue' ? 'Просрочено' : 'Срок'}: {new Date(task.deadline).toLocaleDateString()}
+                    </span>
+                    {task.priority === 'high' && (
+                      <span className="text-xs text-gray-500">
+                        Приоритет: Высокий
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">Нет задач с выбранным статусом</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
