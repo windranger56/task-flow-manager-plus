@@ -45,7 +45,7 @@ const App = () => {
     <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Измененные стили для адаптивности */}
-        <div className="flex-1 px-4 sm:px-6 md:px-10 w-full max-w-screen">
+        <div className="flex-1 px-4 sm:px-6 md:px-10 w-full max-w-screen pt-11">
           {children}
         </div>
       </div>

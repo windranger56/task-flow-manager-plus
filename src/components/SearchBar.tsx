@@ -108,7 +108,7 @@ export default function SearchBar() {
       </div>
 
       {/* Mobile version - icon and fullscreen search */}
-      <div className="md:hidden">
+      <div className="md:hidden w-6">
         <button 
           onClick={handleMobileSearchToggle}
           className="p-2 text-gray-600 hover:text-gray-900"
