@@ -765,49 +765,101 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
         
         {/* Stats */}
-        <div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
+        {/* <div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
           {doneTasks.length}/{tasks.length}
+        </div> */}
+        <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[50px] relative overflow-hidden'>
+          {/* Просроченные - красный */}
+          <div 
+            className='bg-red-500 border-b h-full absolute left-0 transition-all duration-300' 
+            style={{ width: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%` }}
+          />
+          
+          {/* Новые - голубой */}
+          <div 
+            className='bg-blue-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(newTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
+          
+          {/* На проверке - фиолетовый */}
+          <div 
+            className='bg-purple-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(verifyTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${((overdueTasks.length + newTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
+          
+          {/* В работе - желтый */}
+          <div 
+            className='bg-yellow-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(inworkTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${((overdueTasks.length + newTasks.length + verifyTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
         </div>
-        <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[5px] relative overflow-hidden'>
-          <div className='bg-[#4d76fd] h-full rounded-full transition-all duration-300' style={{ width: doneTasks.length / tasks.length * 100 + "%" }} />
-        </div>
-
-        <div className={`p-4 ${borderClass}`}>
-          <div className="flex justify-between">
-            <div 
-              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
-              onClick={() => handleStatusClick('new')}
-            >
-              <p className="text-l font-bold">{newTasks.length}</p>
-              <p className="text-xs text-gray-500">Новые</p>
+        
+        <div className="p-4">
+          <div className="flex flex-col space-y-3">
+            {/* Первая строка */}
+            <div className="flex justify-between space-x-3">
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[140px]
+                  ${selectedStatus === 'overdue' ? 'bg-red-50 border-red-300' : 'border-gray-200 hover:border-red-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('overdue')}
+              >
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <p className="text-xs font-bold">{overdueTasks.length}</p>
+                <p className="text-xs text-gray-500">Просрочено</p>
+              </div>
+              
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[100px]
+                  ${selectedStatus === 'in_progress' ? 'bg-yellow-50 border-yellow-300' : 'border-gray-200 hover:border-yellow-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('in_progress')}
+              >
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <p className="text-xs font-bold">{inworkTasks.length}</p>
+                <p className="text-xs text-gray-500">В работе</p>
+              </div>
             </div>
-            <div 
-              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
-              onClick={() => handleStatusClick('in_progress')}
-            >
-              <p className="text-l font-bold">{inworkTasks.length}</p>
-              <p className="text-xs text-gray-500">В работе</p>
-            </div>
-            <div 
-              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
-              onClick={() => handleStatusClick('on_verification')}
-            >
-              <p className="text-l font-bold">{verifyTasks.length}</p>
-              <p className="text-xs text-gray-500">На проверке</p>
-            </div>
-            <div 
-              className="text-center p-2 rounded-md cursor-pointer hover:bg-gray-100 flex-1 mx-1"
-              onClick={() => handleStatusClick('overdue')}
-            >
-              <p className="text-l font-bold">{overdueTasks.length}</p>
-              <p className="text-xs text-gray-500">Просрочено</p>
+            
+            {/* Вторая строка */}
+            <div className="flex justify-between space-x-3">
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[90px] max-w-[100px]
+                  ${selectedStatus === 'new' ? 'bg-blue-50 border-blue-300' : 'border-gray-200 hover:border-blue-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('new')}
+              >
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <p className="text-xs font-bold">{newTasks.length}</p>
+                <p className="text-xs text-gray-500">Новые</p>
+              </div>
+              
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[120px]
+                  ${selectedStatus === 'on_verification' ? 'bg-purple-50 border-purple-300' : 'border-gray-200 hover:border-purple-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('on_verification')}
+              >
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <p className="text-xs font-bold">{verifyTasks.length}</p>
+                <p className="text-xs text-gray-500">На проверке</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
       
       {/* Departments */}
-      <div className={borderClass}>
+      {/* <div className={borderClass}>
         <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center px-4">
           ПОДРАЗДЕЛЕНИЯ
           <div className="flex space-x-2"></div>       
@@ -840,24 +892,33 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             </Collapsible>
           ))}
         </ul>
-      </div>
+      </div> */}
       
       {/* Subordinates */}
       <div className="p-4">
-        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4>
-        <div className={`flex ${isMobile ? 'justify-center' : 'flex-wrap'} gap-2`}>
+        {/* <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4> */}
+        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto max-h-[400px] gap-3`}>
           {subordinates.length > 0 ? (
             subordinates.map((user) => (
               <div
                 key={user.id}
-                className="relative group flex flex-col items-center cursor-pointer"
+                className="relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full"
                 onClick={() => handleShowEmployeeTasks(user)}
               >
-                <Avatar className={subordinateAvatarSize}>
+                <Avatar className="h-10 w-10 mr-3">
                   <AvatarImage src={user.image} alt={user.fullname} />
                   <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                 </Avatar>
-                <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.fullname}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{user.fullname}</span>
+                  {/* <span className="text-xs text-gray-500">{ || 'Не указан отдел'}</span> */}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500">Нет подчиненных</div>
+          )}
+        </div>
                 {/* <Button
                   size="icon"
                   variant="destructive"
@@ -913,12 +974,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                     </div>
                   </DialogContent>
                 </Dialog> */}
-              </div>
+              {/* </div>
             ))
           ) : (
             <p className="text-sm text-gray-500 w-full text-center">У вас нет подчинённых сотрудников</p>
           )}
-        </div>
+        </div> */}
       </div>
       
       {/* Logout button at the bottom */}
