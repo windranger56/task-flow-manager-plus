@@ -768,10 +768,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
           <DrawerContent className="h-[100vh] max-h-[100vh]">
             <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50 mt-20">
+              <DrawerClose className="absolute right-4 top-4 z-50">
                 <X className="h-6 w-6" />
               </DrawerClose>
-              <div className="px-4 py-2 h-full overflow-auto mt-20">
+              <div className="px-4 py-2 h-full overflow-auto">
                 <TaskDetail />
               </div>
             </div>
