@@ -1073,7 +1073,7 @@ export default function TaskDetail() {
         </div>
       </div>
               {/* Основное содержимое поручения */}
-      <div className="flex flex-col flex-1 overflow-auto p-[30px]">
+      <div className="flex flex-col flex-1 overflow-auto pt-[30px] pb-[30px]">
         {/* Заголовок и статус */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-[15px] mb-6 text-center sm:text-left">
           <div className={cn(
