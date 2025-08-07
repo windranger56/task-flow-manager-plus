@@ -29,21 +29,21 @@ export default function Index() {
 						<LeftSidebar />
 					) : (
 						<Drawer open={showMobileDrawer} onOpenChange={setShowMobileDrawer}>
-							<DrawerContent className="h-[100vh] p-0">
-								<div className="relative">
-									<DrawerClose className="absolute right-4 mt-20 z-50">
-										<X className="h-6 w-6" />
-									</DrawerClose>
-									<LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
+							<DrawerContent className="max-h-[100vh] p-0 flex flex-col">
+								<div className="relative pt-11 flex-1 overflow-y-auto"> {/* Основной контент с прокруткой */}
+								<DrawerClose className="absolute right-4 top-4 z-50">
+									<X className="h-6 w-6" />
+								</DrawerClose>
+								<LeftSidebar onItemClick={() => setShowMobileDrawer(false)} />
 								</div>
 							</DrawerContent>
-						</Drawer>
+							</Drawer>
 					)}
 					
 					{/* Main Content */}
 					<div className="flex flex-col flex-1 min-w-0">
 						{/* Search Bar */}
-						<div className="p-1 border-b border-gray-200 flex items-center">
+						<div className="md:static sticky top-7 bg-white z-10 p-1 border-b border-gray-200 flex items-center">
 							{isMobile && (
 								<button 
 									className="mr-3 p-1 rounded-md hover:bg-gray-100"
@@ -55,7 +55,7 @@ export default function Index() {
 								</button>
 							)}
 							<div className="flex-1 flex items-center gap-4 justify-left">
-								<div className={isMobile ? "flex-1" : "w-1/3 min-w-0 "}>
+								<div className={isMobile ? "flex" : "w-1/3 min-w-0 "}>
 									<SearchBar />
 								</div>
 								<div className="flex-1 flex justify-center">
@@ -84,7 +84,7 @@ export default function Index() {
 						{/* Task Content */}
 						{isMobile ? (
 							/* Mobile layout */
-							<div className="flex-1 overflow-auto">
+							<div className="flex-1 overflow-auto pt-7">
 								<TaskList showArchive={showArchive} />
 							</div>
 						) : (

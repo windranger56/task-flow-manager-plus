@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,49 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [lastMessageCheck, setLastMessageCheck] = useState<{[key: string]: string}>({});
 
   
+  // В начале компонента, после других ref
+  const taskRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
+
+  const [accordionValue, setAccordionValue] = useState<string[]>([]);
+
+  const handleAccordionChange = (value: string[]) => {
+    // Находим только что открытый департамент
+  const newlyOpened = value.find(id => !accordionValue.includes(id));
+  
+    setAccordionValue(value);
+    
+    if (newlyOpened && taskRefs.current[newlyOpened]) {
+      // Используем setTimeout для корректной работы анимации аккордеона
+      setTimeout(() => {
+        const element = taskRefs.current[newlyOpened];
+        if (element) {
+          // Прокручиваем с небольшим отступом сверху
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+          
+          // Альтернатива - ручной расчет позиции для более точного контроля
+          /*
+          const container = tasksContainerRef.current;
+          const element = taskRefs.current[newlyOpened];
+          if (container && element) {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            const offset = 20; // Отступ сверху в пикселях
+            
+            container.scrollTo({
+              top: elementRect.top - containerRect.top + container.scrollTop - offset,
+              behavior: 'smooth'
+            });
+          }
+          */
+        }
+      }, 100); // Небольшая задержка для завершения анимации аккордеона
+    }
+  };
+
+  
   
   // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
   useEffect(() => {
@@ -109,10 +152,15 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           : isAuthorOrAssignee && task.status !== 'completed';
       });
       
+      // Сортируем задачи по дедлайну (от ближайшего к дальнему)
+      const sortedTasks = [...filteredTasks].sort((a, b) => {
+        return a.deadline.getTime() - b.deadline.getTime();
+      });
+      
       setTasksByDepartment(departments.map(department => {
         return {
           department,
-          tasks: filteredTasks.filter(task => task.departmentId === department.id)
+          tasks: sortedTasks.filter(task => task.departmentId === department.id)
         };
       }));
     })();
@@ -603,12 +651,18 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     }
   }
   
+  useEffect(() => {
+    if (isMobile && selectedTask) {
+      setShowTaskDetail(true);
+    }
+  }, [isMobile, selectedTask]);
+  
   return (
     <div className="h-full flex flex-col relative pb-4"> {/* Добавим padding-bottom для места под кнопку */}
       
       {/* Task List by Departments */}
       <div className="flex-1 overflow-auto pb-4"> {/* Уменьшим высоту списка задач */}
-        <Accordion type="multiple" className="w-full">
+        <Accordion type="multiple" className="w-full"  value={accordionValue} onValueChange={handleAccordionChange}>
           {tasksByDepartment.map(({ department, tasks }) => (
             <AccordionItem key={department.id} value={department.id}>
               <AccordionTrigger className="px-[25px] py-[20px] bg-[#f9f9fb] hover:bg-white hover:no-underline relative">
@@ -617,7 +671,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                   <span className="ml-2 text-sm text-gray-500">({tasks.length})</span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent ref={(el) => taskRefs.current[department.id] = el}>
                 {tasks.length > 0 ? (
                   <ul className="space-y-0"> {/* Убрали отступы между задачами */}
                     {tasks.map((task) => {
@@ -714,10 +768,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
           <DrawerContent className="h-[100vh] max-h-[100vh]">
             <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50 mt-20">
+              <DrawerClose className="absolute right-4 top-4 z-50 mt-0.2">
                 <X className="h-6 w-6" />
               </DrawerClose>
-              <div className="px-4 py-2 h-full overflow-auto mt-20">
+              <div className="lg:px-4 py-2 h-full overflow-auto mt-0.5">
                 <TaskDetail />
               </div>
             </div>

@@ -31,7 +31,8 @@ export default function TaskDetail() {
     users, // оставляем для других нужд
     selectTask,
     fetchTasks,
-    getSubordinates // добавляем функцию получения сотрудников
+    getSubordinates, // добавляем функцию получения сотрудников
+    updateTaskIsNew
   } = useTaskContext();
 
 
@@ -130,6 +131,11 @@ export default function TaskDetail() {
       };
 
       await loadData();
+
+      // Reset is_new flag when task is opened
+      if (selectedTask.is_new) {
+        await updateTaskIsNew(selectedTask.id, false);
+      }
 
       // Загружаем сотрудников для селектора переназначения
       const loadSubordinates = async () => {
@@ -259,6 +265,9 @@ export default function TaskDetail() {
             is_system: 0,
           }]);
       }
+
+      // Set is_new flag for status changes (except for the user who made the change)
+      await updateTaskIsNew(taskId, true);
 
       // Получаем обновлённую задачу и обновляем selectedTask
       const { data: updatedTask, error: fetchError } = await supabase
@@ -596,380 +605,11 @@ export default function TaskDetail() {
     );
   }
 
-	const hat = () => (
-		/* Шапка с информацией о задаче */
-		<div className="py-[16px] pl-[20px] pr-[30px] border-b border-gray-200">
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center justify-center md:justify-start gap-2">
-					{creator && assignee && (
-						<>
-							<div className="flex flex-col items-center">
-								<span className="text-xs text-black-500 mb-1">Автор</span>
-								<Avatar className="h-10 w-10">
-									<AvatarImage src={creator.image} alt={creator.fullname} />
-									<AvatarFallback>{creator.fullname?.slice(0,2)}</AvatarFallback>
-								</Avatar>
-								<span className="text-xs mt-1">{creator.fullname}</span>
-							</div>
-						
-							<svg 
-								xmlns="http://www.w3.org/2000/svg" 
-								width="24" 
-								height="24" 
-								viewBox="0 0 24 24" 
-								fill="none" 
-								stroke="currentColor" 
-								strokeWidth="2" 
-								strokeLinecap="round" 
-								strokeLinejoin="round"
-								className="text-gray-400 mx-2"
-							>
-								<path d="M5 12h14M12 5l7 7-7 7"></path>
-							</svg>
-						
-							<div className="flex flex-col items-center">
-								<span className="text-xs text-black-500 mb-1">Исполнитель</span>
-								<Avatar className="h-10 w-10">
-									<AvatarImage src={assignee.image} alt={assignee.fullname} />
-									<AvatarFallback>{assignee.fullname?.slice(0,2)}</AvatarFallback>
-								</Avatar>
-								<span className="text-xs mt-1">{assignee.fullname}</span>
-							</div>
-						</>
-					)}
-				</div>
-			
-				{/* Кнопки управления задачей */}
-				<div className={`flex items-center ${isMobile ? 'justify-center' : 'justify-end'} gap-2 flex-wrap`}>
-
-					{/* Кнопка для открытия модального окна смены статуса */}
-					<Button
-						className={`rounded-full h-[36px] px-4 ${
-							selectedTask.status === 'completed' ? 'bg-green-500' :
-							selectedTask.status === 'new' ? 'bg-gray-400' :
-							selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-							selectedTask.status === 'on_verification' ? 'bg-green-300' :
-							selectedTask.status === 'overdue' ? 'bg-red-700' :
-							'bg-red-400'
-						}`}
-						onClick={() => {
-							setIsStatusConfirmOpen(true);
-							setNextStatus(null);
-							setStatusComment('');
-						}}
-					>
-						{selectedTask.status === 'completed' ? 'Завершено' :
-							selectedTask.status === 'new' ? 'Новое' :
-							selectedTask.status === 'on_verification' ? 'На проверке' :
-							selectedTask.status === 'in_progress' ? 'В работе' :
-							selectedTask.status === 'overdue' ? 'Просрочено' :
-							selectedTask.status}
-					</Button>
-					<Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Смена статуса поручения</DialogTitle>
-							</DialogHeader>
-							<div className="py-4">
-								<div className="mb-4">
-									<Label>Доступные статусы:</Label>
-									<div className="flex flex-col gap-2 mt-2">
-										{getAvailableStatuses().map(opt => (
-											<label key={opt.value} className="flex items-center gap-2">
-												<input
-													type="radio"
-													name="status"
-													value={opt.value}
-													checked={nextStatus === opt.value}
-													onChange={() => setNextStatus(opt.value)}
-												/>
-												{opt.label}
-											</label>
-										))}
-										{getAvailableStatuses().length === 0 && (
-											<span className="text-gray-500 text-sm">Нет доступных статусов для смены</span>
-										)}
-									</div>
-								</div>
-								{/* Изменение дедлайна — только для создателя */}
-								{user.id === selectedTask.createdBy && (
-									<div className="mb-4">
-										<Label>Новый дедлайн (опционально)</Label>
-										<Input
-											type="date"
-											value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
-											onChange={e => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
-											min={format(new Date(), 'yyyy-MM-dd')}
-										/>
-									</div>
-								)}
-								{/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
-								{selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
-									<div className="mb-2">
-										<Label>Комментарий для исполнителя <span className="text-red-500">*</span></Label>
-										<Textarea
-											value={statusComment}
-											onChange={e => setStatusComment(e.target.value)}
-											placeholder="Опишите, что нужно доработать..."
-											className="min-h-[80px]"
-										/>
-									</div>
-								)}
-							</div>
-							<div className="flex justify-end gap-2">
-								<Button variant="outline" onClick={() => setIsStatusConfirmOpen(false)}>
-									Отмена
-								</Button>
-								<Button
-									onClick={async () => {
-										if (!nextStatus) return;
-										if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim()) {
-											return;
-										}
-										// Если возвращаем на доработку, добавить комментарий
-										if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
-											await updateTaskStatus(selectedTask.id, nextStatus, statusComment, newDeadline);
-										} else {
-											await updateTaskStatus(selectedTask.id, nextStatus, undefined, newDeadline);
-										}
-										setIsStatusConfirmOpen(false);
-									}}
-									disabled={
-										!nextStatus ||
-										(selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim())
-									}
-								>
-									Подтвердить
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
-
-					{/* Диалог указания причины отклонения */}
-					<Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Причина отклонения</DialogTitle>
-								<DialogDescription>
-									Пожалуйста, укажите причину отклонения этого поручения
-								</DialogDescription>
-							</DialogHeader>
-							<div className="py-4">
-								<Textarea
-									value={rejectReason}
-									onChange={(e) => setRejectReason(e.target.value)}
-									placeholder="Введите причину отклонения..."
-									className="min-h-[100px]"
-								/>
-							</div>
-							<div className="flex justify-end gap-2">
-								<Button 
-									variant="outline" 
-									onClick={() => setShowRejectDialog(false)}
-								>
-									Отмена
-								</Button>
-								<Button 
-									onClick={handleRejectTask}
-									disabled={!rejectReason.trim()}
-								>
-									Подтвердить отклонение
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
-
-					{/* Кнопка истории поручения */}
-					{hasTaskChain && (
-						<div className="relative group">
-							<Button 
-								className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-								onClick={handleOpenHistory}
-							>
-								<svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-									<circle cx="12" cy="12" r="10"></circle>
-									<line x1="12" y1="16" x2="12" y2="12"></line>
-									<line x1="12" y1="8" x2="12.01" y2="8"></line>
-								</svg>
-							</Button>
-							<div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-								История поручения
-							</div>
-
-							
-					</div>
-				)}
-
-					{/* Кнопка переназначения */}
-					<Dialog open={showReassign} onOpenChange={setShowReassign}>
-						<DialogTrigger asChild>
-							<div className="relative group">
-								<Button className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'>
-									<svg className='text-[#7a7e9d] h-[36px] w-[36px] font-bold' xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-										<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
-										<circle cx="12" cy="7" r="4"></circle>
-									</svg>
-								</Button>
-								<div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-									Переназначить поручение
-								</div>
-							</div>
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Переназначить поручение</DialogTitle>
-							</DialogHeader>
-							<div className="space-y-4 py-4">
-								<div className="space-y-2">
-									<Label htmlFor="reassign-to">Переназначить <span className="text-red-500">*</span> </Label>
-									<Select value={reassignTo} onValueChange={setReassignTo}>
-										<SelectTrigger>
-											<SelectValue placeholder="Выберите сотрудника" />
-										</SelectTrigger>
-										<SelectContent>
-											{subordinates
-												.filter(user => user.id !== selectedTask.assignedTo)
-												.map((user) => (
-													<SelectItem key={user.id} value={user.id}>
-														{user.name || user.fullname}
-													</SelectItem>
-												))
-											}
-										</SelectContent>
-									</Select>
-								</div>
-								
-								<div className="space-y-2">
-									<Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
-									<Input 
-										id="new-title" 
-										placeholder={selectedTask.title}
-										value={newTitle}
-										onChange={(e) => setNewTitle(e.target.value)}
-									/>
-								</div>
-								
-								<div className="space-y-2">
-									<Label htmlFor="new-description">Новое описание (Опционально)</Label>
-									<Textarea 
-										id="new-description" 
-										placeholder={selectedTask.description}
-										value={newDescription}
-										onChange={(e) => setNewDescription(e.target.value)}
-									/>
-								</div>
-								
-								<div className="space-y-2">
-									<Label>Новый дедлайн (Опционально)</Label>
-									<Input 
-										type="date"
-										value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
-										onChange={(e) => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
-										className="w-full"
-										min={format(new Date(), 'yyyy-MM-dd')}
-									/>
-								</div>
-								
-								<Button onClick={handleReassign} className="w-full">
-									Переназначить поручение
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
-
-					{/* Кнопка протокола */}
-					<div className="relative group">
-						<Button 
-							onClick={() => {
-								// Определяем новое состояние ДО вызова API
-								const newProtocolState = selectedTask.isProtocol === 'active' ? 'inactive' : 'active';
-								
-								// Сразу применяем локальные изменения (оптимистичное обновление)
-								selectTask({
-									...selectedTask,
-									isProtocol: newProtocolState
-								});
-								
-								// Затем вызываем API
-								Promise.resolve(toggleProtocol(selectedTask.id, newProtocolState)).catch(() => {
-									// В случае ошибки - возвращаем предыдущее состояние
-									selectTask({
-										...selectedTask,
-										isProtocol: selectedTask.isProtocol // исходное значение
-									});
-								});
-							}}
-							className={`rounded-full h-[36px] w-[36px] ${
-								selectedTask.isProtocol === 'active' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-[#f1f4fd] hover:bg-gray-200'
-							}`}
-						>
-							<svg 
-								className={`h-[36px] w-[36px] font-bold ${
-									selectedTask.isProtocol === 'active' ? 'text-white' : 'text-[#7a7e9d]'
-								}`} 
-								xmlns="http://www.w3.org/2000/svg" 
-								width="24" 
-								height="24" 
-								viewBox="0 0 24 24" 
-								fill="none" 
-								stroke="currentColor" 
-								strokeWidth="2" 
-								strokeLinecap="round" 
-								strokeLinejoin="round"
-							>
-								<path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path>
-							</svg>
-						</Button>
-						<div className="absolute z-10 top-full left-0 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-							{selectedTask.isProtocol === 'active' ? 'Протокол активен' : 'Протокол неактивен'}
-						</div>
-					</div>
-					
-					{/* Кнопка удаления (только для создателя и завершенных задач) */}
-					{selectedTask.createdBy === user.id && selectedTask.status === 'completed' && (
-						<>
-							<div className="relative group">
-								<Button 
-									className='bg-[#f1f4fd] rounded-full h-[36px] w-[36px]'
-									onClick={() => setShowDeleteDialog(true)}
-								>
-									<svg className='text-[#7a7e9d] h-[36px] w-[36px]' xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-										<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"></path>
-									</svg>
-								</Button>
-								<div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-2 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-									Удалить
-								</div>
-							</div>
-							<Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-								<DialogContent>
-									<DialogHeader>
-										<DialogTitle>Удалить поручение?</DialogTitle>
-										<DialogDescription>Вы уверены, что хотите удалить это поручение? Это действие необратимо.</DialogDescription>
-									</DialogHeader>
-									<div className="flex justify-end gap-2 mt-4">
-										<Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-											Отмена
-										</Button>
-										<Button variant="destructive" onClick={async () => { await deleteTask(selectedTask.id); await fetchTasks(); setShowDeleteDialog(false); }}>
-											Удалить
-										</Button>
-									</div>
-								</DialogContent>
-							</Dialog>
-						</>
-					)}
-				</div>
-			</div>
-		</div>
-	)
-
-
   return (
     <div className="w-full h-full flex flex-col">
 			<div className='grid grid-cols-7 h-full'>
 				{/* Основное содержимое поручения */}
-				<div className="col-span-5 flex flex-col flex-1 overflow-auto p-8 border-r-2 border-[#E1E3E6] h-full relative">
+				<div className="col-span-7 md:col-span-5 flex flex-col flex-1 overflow-auto p-8 border-r-2 border-[#E1E3E6] h-full relative">
 					{/* Заголовок и статус */}
 					<div className="flex flex-row lg:flex-col gap-2 mb-6">
 						<p className='text-xl text-[#757D8A]'>Тема</p>
@@ -1232,8 +872,6 @@ export default function TaskDetail() {
 								</Button>
 							</div>
 						</div>
-								
-						
 
 						{/* Отображение выбранных файлов */}
 						{selectedFiles.length > 0 && (
@@ -1262,9 +900,8 @@ export default function TaskDetail() {
 					/>
 				)}
 				</div>
-
 				{/* Раздел дополнительной информации о задаче */}
-				<div className='col-span-2 flex flex-col px-4 py-8 gap-12'>
+				<div className='hidden md:flex col-span-2 flex-col px-4 py-8 gap-12'>
 					<div className='w-full flex flex-col gap-2 items-center'>
 						<p className='text-xl text-[#757D8A]'>Исполнитель</p>
 						<Avatar className="h-[100px] w-[100px]">

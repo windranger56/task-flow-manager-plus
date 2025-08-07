@@ -85,6 +85,43 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     }
   }
 
+  // Функция для фильтрации задач по статусу
+  const handleStatusClick = (status: string) => {
+    setSelectedStatus(status);
+    let tasksToShow = [];
+    
+    switch(status) {
+      case 'new':
+        tasksToShow = newTasks;
+        break;
+      case 'in_progress':
+        tasksToShow = inworkTasks;
+        break;
+      case 'on_verification':
+        tasksToShow = verifyTasks;
+        break;
+      case 'overdue':
+        tasksToShow = overdueTasks;
+        break;
+      default:
+        tasksToShow = [];
+    }
+    
+    setFilteredTasks(tasksToShow);
+    setShowTasksDialog(true);
+  };
+
+  // Получите правильные названия статусов
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'new': return 'Новые';
+      case 'in_progress': return 'В работе';
+      case 'on_verification': return 'На проверке';
+      case 'overdue': return 'Просрочено';
+      default: return '';
+    }
+  };
+
   const [showNewDepartment, setShowNewDepartment] = useState(false);
   const [showAddUsersToDepartment, setShowAddUsersToDepartment] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
@@ -103,6 +140,74 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [newTasks, setNewTasks] = useState([]);
   const [subordinates, setSubordinates] = useState<User[]>([]);
   const [deletingSubordinateId, setDeletingSubordinateId] = useState<string | null>(null);
+  const [showTasksDialog, setShowTasksDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  
+  // New states for new messages and status notifications
+  const [tasksWithNewMessages, setTasksWithNewMessages] = useState([]);
+  const [tasksWithNewStatus, setTasksWithNewStatus] = useState([]);
+  const [showNewMessagesDialog, setShowNewMessagesDialog] = useState(false);
+  const [showNewStatusDialog, setShowNewStatusDialog] = useState(false);
+  
+  // Function to fetch tasks with new messages
+  const fetchTasksWithNewMessages = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch tasks where user has unread messages
+      const { data: messagesData, error } = await supabase
+        .from('messages')
+        .select(`
+          task_id,
+          tasks!inner(
+            id,
+            title,
+            description,
+            deadline,
+            priority,
+            assigned_to,
+            created_by
+          )
+        `)
+        .neq('sent_by', user.id) // Messages not sent by current user
+        .eq('is_read', false) // Unread messages
+        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
+
+      if (error) throw error;
+
+      // Group by task and format data
+      const tasksMap = new Map();
+      messagesData?.forEach(msg => {
+        if (msg.tasks && !tasksMap.has(msg.task_id)) {
+          tasksMap.set(msg.task_id, msg.tasks);
+        }
+      });
+
+      setTasksWithNewMessages(Array.from(tasksMap.values()));
+    } catch (error) {
+      console.error("Ошибка при загрузке задач с новыми сообщениями:", error);
+    }
+  };
+
+  // Function to fetch tasks with new status
+  const fetchTasksWithNewStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('is_new', true)
+        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`);
+
+      if (error) throw error;
+
+      setTasksWithNewStatus(tasksData || []);
+    } catch (error) {
+      console.error("Ошибка при загрузке задач с новым статусом:", error);
+    }
+  };
   
   useEffect(() => {
     getProfile();
@@ -129,8 +234,24 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       setNewTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
       setinworkTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []));
       setverifyTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []));
+      
+      // Fetch new messages and status notifications
+      fetchTasksWithNewMessages();
+      fetchTasksWithNewStatus();
     }
   }, [tasks, user]);
+
+  // Effect to periodically refresh new messages and statuses
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      fetchTasksWithNewMessages();
+      fetchTasksWithNewStatus();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   
 
@@ -307,6 +428,27 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const statsClass = isMobile ? "flex justify-center gap-6" : "flex justify-between";
   const subordinateAvatarSize = isMobile ? "h-8 w-8" : "h-10 w-10";
 
+  // --- ДОБАВИТЬ состояния для выбранного сотрудника и его задач ---
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  const [selectedEmployeeTasks, setSelectedEmployeeTasks] = useState<any[]>([]);
+  const [showEmployeeTasksDialog, setShowEmployeeTasksDialog] = useState(false);
+
+  // --- ДОБАВИТЬ функцию для загрузки задач сотрудника ---
+  const handleShowEmployeeTasks = async (employee: User) => {
+    setSelectedEmployee(employee);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .or(`assigned_to.eq.${employee.id},created_by.eq.${employee.id}`);
+    if (!error) {
+      setSelectedEmployeeTasks(data || []);
+      setShowEmployeeTasksDialog(true);
+    } else {
+      setSelectedEmployeeTasks([]);
+      setShowEmployeeTasksDialog(true);
+    }
+  };
+
   return (
     <div className={sidebarClass}>
       {isMobile ? (
@@ -319,7 +461,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
       )}
       
-      <div className={`px-[40px] py-[25px] ${isMobile ? 'text-center' : ''}`}>
+      <div className={`px-[40px] py-[5px] ${isMobile ? 'text-center' : ''}`}>
         {/* User Info */}
         <div className="flex flex-col items-center">
           <Avatar className={`${avatarSize} mb-2`}>
@@ -497,37 +639,35 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </DialogContent>
         </Dialog> */}
 
-        <Dialog open={showNewNotifications} onOpenChange={setShowNewNotifications}>
+        {/* New Messages Dialog */}
+        <Dialog open={showNewMessagesDialog} onOpenChange={setShowNewMessagesDialog}>
           <DialogTrigger asChild>
             <Button 
               data-tooltip-id="tooltip" 
-              data-tooltip-content="Новые поручения"
+              data-tooltip-content="Новые сообщения"
               className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                <path d="M10.688 95.156C80.958 154.667 204.26 259.365 240.5 292.01c4.865 4.406 10.083 6.646 15.5 6.646 5.406 0 10.615-2.219 15.469-6.604 36.271-32.677 159.573-137.385 229.844-196.896 4.375-3.698 5.042-10.198 1.5-14.719C494.625 69.99 482.417 64 469.333 64H42.667c-13.083 0-25.292 5.99-33.479 16.438-3.542 4.52-2.875 11.02 1.5 14.718z"></path>
-                <path d="M505.813 127.406a10.618 10.618 0 00-11.375 1.542C416.51 195.01 317.052 279.688 285.76 307.885c-17.563 15.854-41.938 15.854-59.542-.021-33.354-30.052-145.042-125-208.656-178.917a10.674 10.674 0 00-11.375-1.542A10.674 10.674 0 000 137.083v268.25C0 428.865 19.135 448 42.667 448h426.667C492.865 448 512 428.865 512 405.333v-268.25a10.66 10.66 0 00-6.187-9.677z"></path>
-              </svg>
-              {newTasks.length > 0 && (
+              <Mail className="h-4 w-4" />
+              {tasksWithNewMessages.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {newTasks.length}
+                  {tasksWithNewMessages.length}
                 </span>
               )}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Новые поручения</DialogTitle>
+              <DialogTitle>Поручения с новыми сообщениями</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {newTasks.length > 0 ? (
-                newTasks.map(task => (
+              {tasksWithNewMessages.length > 0 ? (
+                tasksWithNewMessages.map(task => (
                   <div 
                     key={task.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
                     onClick={() => {
                       handleTaskClick(task.id);
-                      setShowNewNotifications(false);
+                      setShowNewMessagesDialog(false);
                     }}
                   >
                     <p className="font-medium">{task.title}</p>
@@ -545,60 +685,65 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-4">Новых поручений нет</p>
+                <p className="text-gray-500 text-center py-4">Нет новых сообщений</p>
               )}
             </div>
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showOverdueNotifications} onOpenChange={setShowOverdueNotifications}>
+        {/* New Status Dialog */}
+        <Dialog open={showNewStatusDialog} onOpenChange={setShowNewStatusDialog}>
           <DialogTrigger asChild>
             <Button 
               data-tooltip-id="tooltip" 
-              data-tooltip-content="Просроченные поручения"
+              data-tooltip-content="Новые статусы"
               className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor">
-                <path d="M467.812 431.851l-36.629-61.056a181.363 181.363 0 01-25.856-93.312V224c0-67.52-45.056-124.629-106.667-143.04V42.667C298.66 19.136 279.524 0 255.993 0s-42.667 19.136-42.667 42.667V80.96C151.716 99.371 106.66 156.48 106.66 224v53.483c0 32.853-8.939 65.109-25.835 93.291L44.196 431.83a10.653 10.653 0 00-.128 10.752c1.899 3.349 5.419 5.419 9.259 5.419H458.66c3.84 0 7.381-2.069 9.28-5.397 1.899-3.329 1.835-7.468-.128-10.753zM188.815 469.333C200.847 494.464 226.319 512 255.993 512s55.147-17.536 67.179-42.667H188.815z"></path>
-              </svg>
-              {overdueTasks.length > 0 && (
+              <Bell className="h-4 w-4" />
+              {tasksWithNewStatus.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {overdueTasks.length}
+                  {tasksWithNewStatus.length}
                 </span>
               )}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Просроченные поручения</DialogTitle>
+              <DialogTitle>Поручения с новым статусом</DialogTitle>
             </DialogHeader>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {overdueTasks.length > 0 ? (
-                overdueTasks.map(task => (
+              {tasksWithNewStatus.length > 0 ? (
+                tasksWithNewStatus.map(task => (
                   <div 
                     key={task.id} 
                     className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
                     onClick={() => {
                       handleTaskClick(task.id);
-                      setShowOverdueNotifications(false);
+                      setShowNewStatusDialog(false);
                     }}
                   >
                     <p className="font-medium">{task.title}</p>
                     <p className="text-sm text-gray-500">{task.description}</p>
                     <div className="flex justify-between mt-2">
-                      <span className="text-xs text-red-500">
-                        Просрочено: {new Date(task.deadline).toLocaleDateString()}
+                      <span className="text-xs text-gray-500">
+                        Срок: {new Date(task.deadline).toLocaleDateString()}
                       </span>
-                      {task.priority === 'high' && (
-                        <span className="text-xs text-gray-500">
-                          Приоритет: Высокий
-                        </span>
-                      )}
+                      <span className="text-xs text-blue-500">
+                        Статус: {
+                          task.status === 'overdue' ? 'просрочено' :
+                          task.status === 'in_progress' ? 'в работе' :
+                          task.status === 'new' ? 'новое' :
+                          task.status === 'completed' ? 'завершена' :
+                          task.status === 'canceled' ? 'отменена' :
+                          task.status === 'on_verification' ? 'на проверке' :
+                          task.status
+                        }
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-center py-4">Просроченных поручений нет</p>
+                <p className="text-gray-500 text-center py-4">Нет обновлений статуса</p>
               )}
             </div>
           </DialogContent>
@@ -620,30 +765,101 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
         
         {/* Stats */}
-        <div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
+        {/* <div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
           {doneTasks.length}/{tasks.length}
+        </div> */}
+        <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[50px] relative overflow-hidden'>
+          {/* Просроченные - красный */}
+          <div 
+            className='bg-red-500 border-b h-full absolute left-0 transition-all duration-300' 
+            style={{ width: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%` }}
+          />
+          
+          {/* Новые - голубой */}
+          <div 
+            className='bg-blue-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(newTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
+          
+          {/* На проверке - фиолетовый */}
+          <div 
+            className='bg-purple-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(verifyTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${((overdueTasks.length + newTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
+          
+          {/* В работе - желтый */}
+          <div 
+            className='bg-yellow-500 h-full absolute transition-all duration-300' 
+            style={{ 
+              width: `${(inworkTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
+              left: `${((overdueTasks.length + newTasks.length + verifyTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+            }}
+          />
         </div>
-        <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[5px] relative overflow-hidden'>
-          <div className='bg-[#4d76fd] h-full rounded-full transition-all duration-300' style={{ width: doneTasks.length / tasks.length * 100 + "%" }} />
-        </div>
-        <div className={`p-4 ${borderClass} ${statsClass}`}>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{inworkTasks.length}</p>
-            <p className="text-xs text-gray-500">В работе</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{verifyTasks.length}</p>
-            <p className="text-xs text-gray-500">На проверке</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold">{doneTasks.length}</p>
-            <p className="text-xs text-gray-500">Завершено</p>
+        
+        <div className="p-4">
+          <div className="flex flex-col space-y-3">
+            {/* Первая строка */}
+            <div className="flex justify-between space-x-3">
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[140px]
+                  ${selectedStatus === 'overdue' ? 'bg-red-50 border-red-300' : 'border-gray-200 hover:border-red-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('overdue')}
+              >
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <p className="text-xs font-bold">{overdueTasks.length}</p>
+                <p className="text-xs text-gray-500">Просрочено</p>
+              </div>
+              
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[100px]
+                  ${selectedStatus === 'in_progress' ? 'bg-yellow-50 border-yellow-300' : 'border-gray-200 hover:border-yellow-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('in_progress')}
+              >
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <p className="text-xs font-bold">{inworkTasks.length}</p>
+                <p className="text-xs text-gray-500">В работе</p>
+              </div>
+            </div>
+            
+            {/* Вторая строка */}
+            <div className="flex justify-between space-x-3">
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[90px] max-w-[100px]
+                  ${selectedStatus === 'new' ? 'bg-blue-50 border-blue-300' : 'border-gray-200 hover:border-blue-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('new')}
+              >
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <p className="text-xs font-bold">{newTasks.length}</p>
+                <p className="text-xs text-gray-500">Новые</p>
+              </div>
+              
+              <div 
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[120px]
+                  ${selectedStatus === 'on_verification' ? 'bg-purple-50 border-purple-300' : 'border-gray-200 hover:border-purple-200 hover:border-2'}
+                  flex items-center space-x-2 justify-center`}
+                onClick={() => handleStatusClick('on_verification')}
+              >
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <p className="text-xs font-bold">{verifyTasks.length}</p>
+                <p className="text-xs text-gray-500">На проверке</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
       {/* Departments */}
-      <div className={borderClass}>
+      {/* <div className={borderClass}>
         <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center px-4">
           ПОДРАЗДЕЛЕНИЯ
           <div className="flex space-x-2"></div>       
@@ -676,21 +892,34 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             </Collapsible>
           ))}
         </ul>
-      </div>
+      </div> */}
       
       {/* Subordinates */}
       <div className="p-4">
-        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4>
-        <div className={`flex ${isMobile ? 'justify-center' : 'flex-wrap'} gap-2`}>
+        {/* <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4> */}
+        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto max-h-[400px] gap-3`}>
           {subordinates.length > 0 ? (
             subordinates.map((user) => (
-              <div key={user.id} className="relative group flex flex-col items-center">
-                <Avatar className={subordinateAvatarSize}>
+              <div
+                key={user.id}
+                className="relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full"
+                onClick={() => handleShowEmployeeTasks(user)}
+              >
+                <Avatar className="h-10 w-10 mr-3">
                   <AvatarImage src={user.image} alt={user.fullname} />
                   <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                 </Avatar>
-                <span className="text-xs mt-1 text-center max-w-[70px] truncate">{user.fullname}</span>
-                <Button
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{user.fullname}</span>
+                  {/* <span className="text-xs text-gray-500">{ || 'Не указан отдел'}</span> */}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500">Нет подчиненных</div>
+          )}
+        </div>
+                {/* <Button
                   size="icon"
                   variant="destructive"
                   className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 p-0 text-xs"
@@ -698,9 +927,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   title="Удалить сотрудника"
                 >
                   ×
-                </Button>
+                </Button> */}
                 {/* Диалог подтверждения удаления */}
-                <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
+                {/* <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Удалить сотрудника</DialogTitle>
@@ -744,13 +973,13 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                       </Button>
                     </div>
                   </DialogContent>
-                </Dialog>
-              </div>
+                </Dialog> */}
+              {/* </div>
             ))
           ) : (
             <p className="text-sm text-gray-500 w-full text-center">У вас нет подчинённых сотрудников</p>
           )}
-        </div>
+        </div> */}
       </div>
       
       {/* Logout button at the bottom */}
@@ -770,6 +999,74 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       ) : null}
       
       <Tooltip id="tooltip" />
+
+      <Dialog open={showTasksDialog} onOpenChange={setShowTasksDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{getStatusLabel(selectedStatus)} ({filteredTasks.length})</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {filteredTasks.length > 0 ? (
+              filteredTasks.map(task => (
+                <div 
+                  key={task.id} 
+                  className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                  onClick={() => {
+                    handleTaskClick(task.id);
+                    setShowTasksDialog(false);
+                  }}
+                >
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-sm text-gray-500">{task.description}</p>
+                  <div className="flex justify-between mt-2">
+                    <span className={`text-xs ${
+                      task.status === 'overdue' ? 'text-red-500' : 'text-gray-500'
+                    }`}>
+                      {task.status === 'overdue' ? 'Просрочено' : 'Срок'}: {new Date(task.deadline).toLocaleDateString()}
+                    </span>
+                    {task.priority === 'high' && (
+                      <span className="text-xs text-gray-500">
+                        Приоритет: Высокий
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">Нет задач с выбранным статусом</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог для задач выбранного сотрудника */}
+      <Dialog open={showEmployeeTasksDialog} onOpenChange={setShowEmployeeTasksDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Поручения: {selectedEmployee?.fullname}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {selectedEmployeeTasks.length > 0 ? (
+              selectedEmployeeTasks.map(task => (
+                <div key={task.id} className="p-3 border rounded-md">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-sm text-gray-500">{task.description}</p>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-xs text-gray-500">
+                      Срок: {task.deadline ? new Date(task.deadline).toLocaleDateString() : '—'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Статус: {task.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">Нет поручений</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

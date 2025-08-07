@@ -52,6 +52,8 @@ const App = () => {
     </div>
   );
 
+  
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

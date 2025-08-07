@@ -55,6 +55,7 @@ interface TaskContextType {
   toggleProtocol: (taskId: string, newProtocolState?: 'active' | 'inactive') => void;
   addMessage: (taskId: string, content: string) => void;
   searchTasks: (query: string) => Task[];
+  updateTaskIsNew: (taskId: string, isNew: boolean) => Promise<void>;
   
   // Helper functions
   getUserById: (id: string) => Promise<any>;
@@ -278,7 +279,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             isProtocol: task.is_protocol as ProtocolStatus,
             createdAt: new Date(task.created_at),
             deadline: new Date(task.deadline),
-            status: task.status as TaskStatus
+            status: task.status as TaskStatus,
+            is_new: task.is_new || false
           }));
           
           setTasks(formattedTasks);
@@ -1237,7 +1239,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
           isProtocol: task.is_protocol as ProtocolStatus,
           createdAt: new Date(task.created_at),
           deadline: new Date(task.deadline),
-          status: task.status as TaskStatus
+          status: task.status as TaskStatus,
+          is_new: task.is_new || false
         }));
         
         setTasks(formattedTasks);
@@ -1252,6 +1255,35 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         description: "Не удалось загрузить поручения", 
         variant: "destructive" 
       });
+    }
+  };
+
+  // Function to update is_new field for a task
+  const updateTaskIsNew = async (taskId: string, isNew: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ is_new: isNew })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error("Ошибка при обновлении поля is_new:", error);
+        return;
+      }
+
+      // Update local state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, is_new: isNew } : task
+        )
+      );
+
+      // Update selected task if it's the one being updated
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask({ ...selectedTask, is_new: isNew });
+      }
+    } catch (error) {
+      console.error("Ошибка при обновлении поля is_new:", error);
     }
   };
 
@@ -1278,6 +1310,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       toggleProtocol,
       addMessage,
       searchTasks,
+      updateTaskIsNew,
       getUserById,
       getDepartmentById,
       getDepartmentByUserId,
