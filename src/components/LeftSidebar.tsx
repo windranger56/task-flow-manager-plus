@@ -418,7 +418,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           {userDepartment && (
             <p className="text-xs text-[#BCBCBC] mt-1">{userDepartment}</p>
           )}
-          <Avatar className={`h-24 w-24 mb-2 mt-4`}>
+          <Avatar className={`h-[90px] w-[90px] mb-2 mt-4`}>
             <AvatarImage src={profile.image} alt={profile.fullname} />
             <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
           </Avatar>
@@ -681,7 +681,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
         
         {/* Stats */}
-        <div className='bg-transperent w-full h-[8px] rounded-full mt-[50px] relative overflow-hidden'>
+        <div className='bg-transperent w-full h-[8px] rounded-full mt-[20px] relative overflow-hidden'>
           {/* Просроченные */}
           <div 
             className='bg-[#DA100B] h-full absolute left-0 transition-all duration-300 rounded-full' 
@@ -724,7 +724,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             {/* Первая строка */}
             <div className="flex justify-between space-x-3">
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[140px]
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[140px]
                    'border-gray-200'}
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('overdue')}
@@ -735,7 +735,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </div>
               
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[100px]
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[100px]
                    'border-gray-200'}
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('in_progress')}
@@ -749,7 +749,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             {/* Вторая строка */}
             <div className="flex justify-between space-x-3">
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[90px] max-w-[100px]
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[90px] max-w-[100px]
                    'border-gray-200'}
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('new')}
@@ -760,7 +760,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               </div>
               
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[120px]
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[120px]
                   'border-gray-200'}
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('on_verification')}
