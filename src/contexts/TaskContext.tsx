@@ -60,6 +60,7 @@ interface TaskContextType {
   // Task filter
   taskFilter: 'all' | 'author' | 'assignee';
   setTaskFilter: (filter: 'all' | 'author' | 'assignee') => void;
+  getFilteredTasks: () => Task[];
   
   // Helper functions
   getUserById: (id: string) => Promise<any>;
@@ -1292,6 +1293,23 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Function to get filtered tasks based on current filter
+  const getFilteredTasks = (): Task[] => {
+    if (!user) return [];
+    
+    switch(taskFilter) {
+      case 'author':
+        return tasks.filter(task => task.createdBy === user.id);
+      case 'assignee':
+        return tasks.filter(task => task.assignedTo === user.id);
+      case 'all':
+      default:
+        return tasks.filter(task => 
+          task.createdBy === user.id || task.assignedTo === user.id
+        );
+    }
+  };
+
   return (
     <TaskContext.Provider value={{
 			user,
@@ -1325,7 +1343,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       updateSelectedDepartmentId,
       fetchTasks,
       taskFilter,
-      setTaskFilter
+      setTaskFilter,
+      getFilteredTasks
     }}>
       {children}
     </TaskContext.Provider>

@@ -38,7 +38,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     getDepartmentByUserId,
     addUsersToDepartment,
     selectTask,
-    tasks
+    tasks,
+    taskFilter,
+    setTaskFilter
   } = useTaskContext();
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
@@ -189,7 +191,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           )
         `)
         .neq('sent_by', user.id)
-        .eq('is_read', false)
+        .eq('is_new', true)
         .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
 
       if (error) throw error;
@@ -235,9 +237,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         // Mark messages as read
         const { error } = await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ is_new: false })
           .neq('sent_by', user.id)
-          .eq('is_read', false)
+          .eq('is_new', true)
           .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
           
         if (error) throw error;
@@ -286,15 +288,52 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       }
     };
     
-    loadSubordinates();
+    const loadSubordinateDepartments = async () => {
+      if (subordinates.length > 0) {
+        try {
+          const deptPromises = subordinates.map(async (sub) => {
+            const dept = await getDepartmentByUserId(sub.id);
+            return { userId: sub.id, departmentName: dept?.name || 'Не назначен' };
+          });
+          
+          const deptResults = await Promise.all(deptPromises);
+          const deptMap = deptResults.reduce((acc, curr) => {
+            acc[curr.userId] = curr.departmentName;
+            return acc;
+          }, {} as {[userId: string]: string});
+          
+          setSubordinateDepartments(deptMap);
+        } catch (error) {
+          console.error("Ошибка при загрузке департаментов подчиненных:", error);
+        }
+      }
+    };
+    
+    loadSubordinates().then(() => {
+      loadSubordinateDepartments();
+    });
     loadUserDepartment();
   }, [user]);
 
   useEffect(() => {
     if (user) {
-      const filteredTasks = tasks.filter(task => 
-        task.createdBy === user.id || task.assignedTo === user.id
-      );
+      let filteredTasks = [];
+      
+      // Filter tasks based on selected filter
+      switch(taskFilter) {
+        case 'author':
+          filteredTasks = tasks.filter(task => task.createdBy === user.id);
+          break;
+        case 'assignee':
+          filteredTasks = tasks.filter(task => task.assignedTo === user.id);
+          break;
+        case 'all':
+        default:
+          filteredTasks = tasks.filter(task => 
+            task.createdBy === user.id || task.assignedTo === user.id
+          );
+          break;
+      }
       
       setDoneTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
       setOverdueTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
@@ -306,7 +345,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       fetchTasksWithNewMessages();
       fetchTasksWithNewStatus();
     }
-  }, [tasks, user]);
+  }, [tasks, user, taskFilter]);
 
   // Effect to periodically refresh new messages and statuses
   useEffect(() => {
@@ -338,7 +377,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   
   // States for department and task filter
   const [userDepartment, setUserDepartment] = useState<string>('');
-  const [taskFilter, setTaskFilter] = useState<'all' | 'author' | 'assignee'>('all');
+  const [subordinateDepartments, setSubordinateDepartments] = useState<{[userId: string]: string}>({});
 
   const handleShowEmployeeTasks = async (employee: User) => {
     setSelectedEmployee(employee);
@@ -755,6 +794,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">{user.fullname}</span>
+                  <span className="text-xs text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
                 </div>
               </div>
             ))

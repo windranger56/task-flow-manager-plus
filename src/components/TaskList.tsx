@@ -46,7 +46,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     addTask,
 		getUserById,
     user,
-    taskFilter
+    taskFilter,
+    getFilteredTasks
   } = useTaskContext();
   
   const [showNewTask, setShowNewTask] = useState(false);
