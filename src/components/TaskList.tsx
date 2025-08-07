@@ -717,11 +717,11 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
                               "absolute left-[30px] top-0 bottom-0 w-[5px]",
                               {
                                 'bg-green-500': task.status === 'completed',
-                                'bg-blue-400': task.status === 'in_progress',
-                                'bg-gray-400': task.status === 'new',
-                                'bg-red-700': task.status === 'overdue',
+                                'bg-[#3F79FF]': task.status === 'in_progress',
+                                'bg-[#BCBCBC]': task.status === 'new',
+                                'bg-[#DA100B]': task.status === 'overdue',
                                 'bg-red-400': task.status === 'canceled',
-                                'bg-green-300': task.status === 'on_verification',
+                                'bg-[#EEF4C7]': task.status === 'on_verification',
                               }
                             )}
                           />

@@ -412,43 +412,39 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       <div className={`px-[40px] py-[5px] ${isMobile ? 'text-center' : ''}`}>
         {/* User Info */}
         <div className="flex flex-col items-center">
-          <Avatar className={`${avatarSize} mb-2`}>
-            <AvatarImage src={profile.image} alt={profile.fullname} />
-            <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
-          </Avatar>
+
           <h3 className="text-center font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
           <p className="text-sm text-gray-500">{profile.email}</p>
           {userDepartment && (
-            <p className="text-xs text-gray-400 mt-1">{userDepartment}</p>
+            <p className="text-xs text-[#BCBCBC] mt-1">{userDepartment}</p>
           )}
+          <Avatar className={`h-24 w-24 mb-2 mt-4`}>
+            <AvatarImage src={profile.image} alt={profile.fullname} />
+            <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
+          </Avatar>
+          
         </div>
         
         {/* Task Filter Buttons */}
-        <div className="flex justify-center gap-2 mt-[20px] mb-[15px]">
-          <Button
-            variant={taskFilter === 'all' ? 'default' : 'outline'}
-            size="sm"
+        <div className="flex justify-center gap-4 mt-[20px] mb-[15px]">
+          <button
             onClick={() => setTaskFilter('all')}
-            className="text-xs"
+            className={`text-xs pb-1 ${taskFilter === 'all' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             Все
-          </Button>
-          <Button
-            variant={taskFilter === 'author' ? 'default' : 'outline'}
-            size="sm"
+          </button>
+          <button
             onClick={() => setTaskFilter('author')}
-            className="text-xs"
+            className={`text-xs pb-1 ${taskFilter === 'author' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Автор
-          </Button>
-          <Button
-            variant={taskFilter === 'assignee' ? 'default' : 'outline'}
-            size="sm"
+          </button>
+          <button
             onClick={() => setTaskFilter('assignee')}
-            className="text-xs"
+            className={`text-xs pb-1 ${taskFilter === 'assignee' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Исполнитель
-          </Button>
+          </button>
         </div>
         
         {/* Action Buttons */}
@@ -688,7 +684,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className='bg-transperent w-full h-[8px] rounded-full mt-[50px] relative overflow-hidden'>
           {/* Просроченные */}
           <div 
-            className='bg-red-700 h-full absolute left-0 transition-all duration-300 rounded-full' 
+            className='bg-[#DA100B] h-full absolute left-0 transition-all duration-300 rounded-full' 
             style={{ 
               width: `calc(${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 3.75px)`,
               marginRight: '5px'
@@ -697,7 +693,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           
           {/* Новые */}
           <div 
-            className='bg-gray-400 h-full absolute transition-all duration-300 rounded-full' 
+            className='bg-[#BCBCBC] h-full absolute transition-all duration-300 rounded-full' 
             style={{ 
               width: `calc(${(newTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 7.5px)`,
               left: `calc(${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% + 1.25px)`
@@ -706,7 +702,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           
           {/* На проверке */}
           <div 
-            className='bg-green-300 h-full absolute transition-all duration-300 rounded-full' 
+            className='bg-[#EEF4C7] h-full absolute transition-all duration-300 rounded-full' 
             style={{ 
               width: `calc(${(verifyTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 7.5px)`,
               left: `calc(${(overdueTasks.length + newTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length) * 100}% + 1.25px)`
@@ -715,7 +711,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           
           {/* В работе */}
           <div 
-            className='bg-blue-400 h-full absolute transition-all duration-300 rounded-full' 
+            className='bg-[#3F79FF] h-full absolute transition-all duration-300 rounded-full' 
             style={{ 
               width: `calc(${(inworkTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 3.75px)`,
               left: `calc(${(overdueTasks.length + newTasks.length + verifyTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length) * 100}% + 1.25px)`
@@ -733,7 +729,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('overdue')}
               >
-                <div className="w-2 h-2 rounded-full bg-red-700"></div>
+                <div className="w-2 h-2 rounded-full bg-[#DA100B]"></div>
                 <p className="text-xs font-bold">{overdueTasks.length}</p>
                 <p className="text-xs text-gray-500">Просрочено</p>
               </div>
@@ -744,7 +740,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('in_progress')}
               >
-                <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                <div className="w-2 h-2 rounded-full bg-[#3F79FF]"></div>
                 <p className="text-xs font-bold">{inworkTasks.length}</p>
                 <p className="text-xs text-gray-500">В работе</p>
               </div>
@@ -758,7 +754,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('new')}
               >
-                <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                <div className="w-2 h-2 rounded-full bg-[#BCBCBC]"></div>
                 <p className="text-xs font-bold">{newTasks.length}</p>
                 <p className="text-xs text-gray-500">Новые</p>
               </div>
@@ -769,7 +765,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('on_verification')}
               >
-                <div className="w-2 h-2 rounded-full bg-green-300"></div>
+                <div className="w-2 h-2 rounded-full bg-[#EEF4C7]"></div>
                 <p className="text-xs font-bold">{verifyTasks.length}</p>
                 <p className="text-xs text-gray-500">На проверке</p>
               </div>

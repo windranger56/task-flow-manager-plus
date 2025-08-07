@@ -636,7 +636,7 @@ export default function TaskDetail() {
                   strokeWidth="2" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
-                  className="text-gray-400 mx-2"
+                  className="text-[#BCBCBC] mx-2"
                 >
                   <path d="M5 12h14M12 5l7 7-7 7"></path>
                 </svg>
@@ -660,9 +660,9 @@ export default function TaskDetail() {
             <Button
               className={`rounded-full h-[36px] px-4 ${
                 selectedTask.status === 'completed' ? 'bg-green-500' :
-                selectedTask.status === 'new' ? 'bg-gray-400' :
-                selectedTask.status === 'in_progress' ? 'bg-blue-400' :
-                selectedTask.status === 'on_verification' ? 'bg-green-300' :
+                selectedTask.status === 'new' ? 'bg-[#BCBCBC]' :
+                selectedTask.status === 'in_progress' ? 'bg-[#3F79FF]' :
+                selectedTask.status === 'on_verification' ? 'bg-[#EEF4C7]' :
                 selectedTask.status === 'overdue' ? 'bg-red-700' :
                 'bg-red-400'
               }`}
