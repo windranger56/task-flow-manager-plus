@@ -275,8 +275,20 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       }
     };
     
+    const loadUserDepartment = async () => {
+      if (user) {
+        try {
+          const department = await getDepartmentByUserId(user.id);
+          setUserDepartment(department?.name || '');
+        } catch (error) {
+          console.error("Ошибка при загрузке департамента пользователя:", error);
+        }
+      }
+    };
+    
     loadSubordinates();
-  }, []);
+    loadUserDepartment();
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -323,6 +335,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
   const [selectedEmployeeTasks, setSelectedEmployeeTasks] = useState<any[]>([]);
   const [showEmployeeTasksDialog, setShowEmployeeTasksDialog] = useState(false);
+  
+  // States for department and task filter
+  const [userDepartment, setUserDepartment] = useState<string>('');
+  const [taskFilter, setTaskFilter] = useState<'all' | 'author' | 'assignee'>('all');
 
   const handleShowEmployeeTasks = async (employee: User) => {
     setSelectedEmployee(employee);
@@ -363,10 +379,41 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           </Avatar>
           <h3 className="text-center font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
           <p className="text-sm text-gray-500">{profile.email}</p>
+          {userDepartment && (
+            <p className="text-xs text-gray-400 mt-1">{userDepartment}</p>
+          )}
+        </div>
+        
+        {/* Task Filter Buttons */}
+        <div className="flex justify-center gap-2 mt-[20px] mb-[15px]">
+          <Button
+            variant={taskFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTaskFilter('all')}
+            className="text-xs"
+          >
+            Все
+          </Button>
+          <Button
+            variant={taskFilter === 'author' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTaskFilter('author')}
+            className="text-xs"
+          >
+            я Автор
+          </Button>
+          <Button
+            variant={taskFilter === 'assignee' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTaskFilter('assignee')}
+            className="text-xs"
+          >
+            я Исполнитель
+          </Button>
         </div>
         
         {/* Action Buttons */}
-        <div className={`${buttonGroupClass} mt-[25px]`}>
+        <div className={`${buttonGroupClass} mt-[15px]`}>
           {/* Combined Notifications Button */}
           <Dialog open={showNotificationsDialog} onOpenChange={setShowNotificationsDialog}>
             <DialogTrigger asChild>

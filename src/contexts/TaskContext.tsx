@@ -57,6 +57,10 @@ interface TaskContextType {
   searchTasks: (query: string) => Task[];
   updateTaskIsNew: (taskId: string, isNew: boolean) => Promise<void>;
   
+  // Task filter
+  taskFilter: 'all' | 'author' | 'assignee';
+  setTaskFilter: (filter: 'all' | 'author' | 'assignee') => void;
+  
   // Helper functions
   getUserById: (id: string) => Promise<any>;
   getDepartmentById: (id: string) => Promise<Department | undefined>;
@@ -75,6 +79,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'author' | 'assignee'>('all');
   const [userDepartments, setUserDepartments] = useState<{userId: string, departmentId: string}[]>([
     { userId: '2', departmentId: '1' },
     { userId: '3', departmentId: '2' },
@@ -1318,7 +1323,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getMessagesByTask,
       getSubordinates,
       updateSelectedDepartmentId,
-      fetchTasks
+      fetchTasks,
+      taskFilter,
+      setTaskFilter
     }}>
       {children}
     </TaskContext.Provider>

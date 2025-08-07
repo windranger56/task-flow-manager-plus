@@ -45,7 +45,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     selectedTask,
     addTask,
 		getUserById,
-    user
+    user,
+    taskFilter
   } = useTaskContext();
   
   const [showNewTask, setShowNewTask] = useState(false);
@@ -143,13 +144,25 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       
       // Фильтруем задачи в зависимости от состояния архива И роли пользователя
       const filteredTasks = tasksWithUsers.filter(task => {
-        // Проверяем, является ли пользователь автором или исполнителем
-        const isAuthorOrAssignee = user?.id === task.createdBy || user?.id === task.assignedTo;
+        // Применяем фильтр по роли
+        let roleFilter = false;
+        switch (taskFilter) {
+          case 'author':
+            roleFilter = user?.id === task.createdBy;
+            break;
+          case 'assignee':
+            roleFilter = user?.id === task.assignedTo;
+            break;
+          case 'all':
+          default:
+            roleFilter = user?.id === task.createdBy || user?.id === task.assignedTo;
+            break;
+        }
         
         // В зависимости от showArchive применяем дополнительный фильтр
         return showArchive 
-          ? isAuthorOrAssignee && task.status === 'completed'
-          : isAuthorOrAssignee && task.status !== 'completed';
+          ? roleFilter && task.status === 'completed'
+          : roleFilter && task.status !== 'completed';
       });
       
       // Сортируем задачи по дедлайну (от ближайшего к дальнему)
@@ -164,7 +177,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         };
       }));
     })();
-  }, [tasks, showArchive, user?.id]);
+  }, [tasks, showArchive, user?.id, taskFilter]);
   
   
   useEffect(() => {
@@ -728,9 +741,18 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
 
                             {/* Правая часть - Дата и аватар */}
                             <div className="flex items-center gap-3 flex-shrink-0">
-                              <p className={`text-sm whitespace-nowrap ${task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}`}>
-                                {formatTaskDate(task.deadline)}
-                              </p>
+                              <div className="flex flex-col items-end">
+                                {task.priority === 'high' && (
+                                  <div className="mb-1">
+                                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-600 rounded-full">
+                                      !
+                                    </span>
+                                  </div>
+                                )}
+                                <p className={`text-sm whitespace-nowrap ${task.status === 'overdue' ? 'text-red-500' : 'text-[#a1a4b9]'}`}>
+                                  {formatTaskDate(task.deadline)}
+                                </p>
+                              </div>
                               <div className="h-8 w-8 flex-shrink-0">
                                 <Avatar>
                                   <AvatarImage 
