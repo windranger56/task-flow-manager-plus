@@ -43,7 +43,7 @@ export default function Index() {
 					{/* Main Content */}
 					<div className="flex flex-col flex-1 min-w-0">
 						{/* Search Bar */}
-						<div className="md:static sticky top-0 bg-white z-10 p-1 border-b border-gray-200 flex items-center">
+						<div className="md:static sticky top-0 bg-white z-10 p-1 border-b border-gray-200 flex items-center h-12">
 							{isMobile && (
 								<button 
 									className="mr-3 p-1 rounded-md hover:bg-gray-100"

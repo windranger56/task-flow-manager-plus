@@ -404,7 +404,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
         </div>
       ) : (
-        <div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>
+        <div className=' h-12 w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>
           УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
         </div>
       )}
