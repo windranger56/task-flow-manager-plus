@@ -413,8 +413,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         {/* User Info */}
         <div className="flex flex-col items-center">
 
-          <h3 className="text-center font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
-          <p className="text-sm text-gray-500">{profile.email}</p>
+          <h3 className="text-center text-xl font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
+          <p className="text-l text-gray-500">{profile.email}</p>
           {userDepartment && (
             <p className="text-xs text-[#BCBCBC] mt-1">{userDepartment}</p>
           )}
@@ -426,22 +426,22 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
         
         {/* Task Filter Buttons */}
-        <div className="flex justify-center gap-4 mt-[20px] mb-[15px]">
+        <div className="flex justify-center gap-4 mt-[20px] mb-[15px] ">
           <button
             onClick={() => setTaskFilter('all')}
-            className={`text-xs pb-1 ${taskFilter === 'all' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'all' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             Все
           </button>
           <button
             onClick={() => setTaskFilter('author')}
-            className={`text-xs pb-1 ${taskFilter === 'author' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'author' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Автор
           </button>
           <button
             onClick={() => setTaskFilter('assignee')}
-            className={`text-xs pb-1 ${taskFilter === 'assignee' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'assignee' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Исполнитель
           </button>
@@ -776,12 +776,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       
       {/* Subordinates */}
       <div className="p-4">
-        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto max-h-[400px] gap-3`}>
+        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto ${subordinates.length > 4 ? 'max-h-[200px]' : ''} gap-3`}>
           {subordinates.length > 0 ? (
-            subordinates.map((user) => (
+            subordinates.map((user, index) => (
               <div
                 key={user.id}
-                className="relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full"
+                className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full ${index >= 4 ? '' : ''}`}
                 onClick={() => handleShowEmployeeTasks(user)}
               >
                 <Avatar className="h-10 w-10 mr-3">
@@ -789,8 +789,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                   <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{user.fullname}</span>
-                  <span className="text-xs text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
+                  <span className="text-m font-medium">{user.fullname}</span>
+                  <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
                 </div>
               </div>
             ))
