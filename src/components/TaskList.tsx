@@ -57,7 +57,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [taskAssignee, setTaskAssignee] = useState("");
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [taskProtocol, setTaskProtocol] = useState<ProtocolStatus>('inactive');
-  const [taskDeadline, setTaskDeadline] = useState<Date>(new Date());
+  const [taskDeadline, setTaskDeadline] = useState<Date>(new Date(new Date().setHours(23, 59, 59, 999)));
 	const [tasksByDepartment, setTasksByDepartment] = useState<any>([]);
   
   // Состояние для хранения списка пользователей из БД
@@ -464,13 +464,19 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const handleTaskStatusToggle = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation(); // Prevent task selection
     const task = tasks.find(t => t.id === taskId);
-		console.log(task)
   };
   
   // Обработчик изменения даты с использованием нативного датапикера
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const date = e.target.value ? new Date(e.target.value) : new Date();
-    setTaskDeadline(date);
+    if (!e.target.value) return;
+    
+    // Создаем дату с временем 23:59:59 выбранного дня
+    const selectedDate = new Date(e.target.value);
+    const deadlineDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59, 59, 999);
+    
+
+    
+    setTaskDeadline(deadlineDate);
   };
   
   // Функция для загрузки исполнителей из выбранных департаментов

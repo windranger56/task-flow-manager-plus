@@ -197,7 +197,12 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const tasksToUpdate = tasksToCheck.filter(task => {
       const deadline = new Date(task.deadline);
-      return deadline < now && task.status !== 'completed' && task.status !== 'overdue';
+ 
+      // Задача просрочена только если текущее время больше дедлайна
+      // Поскольку дедлайн установлен на 23:59:59, задача станет просроченной только после этого времени
+      const isOverdue = now > deadline && task.status !== 'completed' && task.status !== 'overdue';
+     
+      return isOverdue;
     });
     
     if (tasksToUpdate.length > 0) {
