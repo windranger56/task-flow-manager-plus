@@ -606,70 +606,818 @@ export default function TaskDetail() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
-			<div className='grid grid-cols-7 h-full'>
-				{/* Основное содержимое поручения */}
-				<div className="col-span-7 md:col-span-5 flex flex-col flex-1 overflow-auto p-8 border-r-2 border-[#E1E3E6] h-full relative">
-					{/* Заголовок и статус */}
-					<div className="flex flex-row lg:flex-col gap-2 mb-6">
-						<p className='text-xl text-[#757D8A]'>Тема</p>
-						<h1 className='text-2xl text-[#020817] font-bold'>{selectedTask.title}</h1>
-						{/* <div className={cn(
-							"h-[46px] w-[46px] rounded-full flex items-center justify-center mx-auto sm:mx-0",
-							getTaskStatusColor(selectedTask.status)
-						)}>
-							{selectedTask.status === "completed" ? (
-								<Check className="h-6 w-6 text-white" />
-							) : (
-								<Check className="h-6 w-6 text-transparent" />
-							)}
+		<div className='w-full h-full'>
+			{/* Десктопная версия */}
+			<div className="hidden md:flex w-full h-full flex-col">
+				<div className='grid grid-cols-7 h-full'>
+					{/* Основное содержимое поручения */}
+					<div className="col-span-7 md:col-span-5 flex flex-col flex-1 overflow-auto p-8 border-r-2 border-[#E1E3E6] h-full relative">
+						{/* Заголовок и статус */}
+						<div className="flex flex-row lg:flex-col gap-2 mb-6">
+							<p className='text-xl text-[#757D8A]'>Тема</p>
+							<h1 className='text-2xl text-[#020817] font-bold'>{selectedTask.title}</h1>
 						</div>
-						<div>
-							<h1 className="text-2xl font-bold">{selectedTask.title}</h1>
-						</div> */}
-					</div>
-
-					{/* Дата и метки
-					<div className="mb-6 ml-0 sm:ml-[65px] flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-4">
-						{/* Дата создания 
-						<span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm ${
-							selectedTask.status === 'overdue' 
-								? 'text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200' 
-								: 'text-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200'
-						}`}>
-							{format(new Date(selectedTask.createdAt), 'dd MMM, yyyy', { locale: ru })}
-						</span>
-
-						{/* Приоритет 
-						{selectedTask.priority === 'high' && (
-							<span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm 
-								text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200`}>
-								Приоритет: высокий
-							</span>
-						)}
+						{/* Описание поручения */}
+						<div className="flex flex-col gap-3 mt-7">
+							<p className='text-xl text-[#757D8A]'>Описание</p>
+							<p className="text-xl text-[#020817]">
+								{selectedTask.description}
+							</p>
+						</div>
 						
-						{/* Дедлайн 
-						{selectedTask.deadline && (
-							<span className={`inline-block px-3 py-1 text-sm rounded-full shadow-sm ${
-								selectedTask.status === 'overdue'
-									? 'text-red-800 bg-gradient-to-r from-red-50 to-red-100 border border-red-200'
-									: 'text-purple-800 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200'
-							}`}>
-								{calculateDeadlineDays(selectedTask.deadline)}
-							</span>
-						)}
-					</div> */}
-					
-					{/* Описание поручения */}
-					<div className="flex flex-col gap-3 mt-7">
-						<p className='text-xl text-[#757D8A]'>Описание</p>
-						<p className="text-xl text-[#020817]">
-							{selectedTask.description}
-						</p>
+						{/* Чат поручения */}
+						<div className="w-full mt-8 pt-4 pb-16">
+						{/* Кнопка переключения между обычными и системными сообщениями */}
+						<div className="flex justify-end mb-2 px-4 text-[#757D8A] font-thin">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setShowOnlySystemMessages(!showOnlySystemMessages)}
+								className="text-sm gap-2 flex items-center"
+							>
+								{showOnlySystemMessages ? (
+									<>
+										<EyeOff size={14} className="flex-shrink-0" />
+										<span className="whitespace-nowrap">Показать обычные сообщения</span>
+									</>
+								) : (
+									<>
+										<Eye size={14} className="flex-shrink-0" />
+										<span className="whitespace-nowrap">Показать системные сообщения</span>
+									</>
+								)}
+							</Button>
+						</div>
+						
+						<div className="h-full overflow-y-auto mb-4 rounded-md pb-16">
+							{filteredMessages.map(msg => (
+								<div 
+								key={msg.id} 
+								className={`mb-2 p-2 rounded-md relative pr-12 ${
+									msg.sent_by === user.id 
+										? 'ml-auto bg-blue-100 max-w-[80%]' 
+										: 'mr-auto bg-gray-100 max-w-[80%] sm:mr-0 sm:ml-0'
+								} ${
+									msg.is_deleted ? 'opacity-50' : ''
+								}`}
+							>
+								{msg.is_deleted ? (
+									<div className="text-gray-500 italic">Сообщение удалено</div>
+								) : (
+									<>
+										<div className={`break-all whitespace-pre-wrap ${msg.is_system ? 'w-full text-center' : ''}`}>
+											{msg.content}
+											
+											{msg.files && msg.files.map((file: { name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode>; type: string; url: string | URL | Request; }, index: React.Key) => (
+												<div key={index} className="mt-2 p-2 border border-gray-200 rounded bg-blue-100">
+													<div className="flex items-center justify-between">
+														<div className="flex items-center">
+															<FileIcon size={16} className="mr-2" />
+															<span>{file.name}</span>
+														</div>
+														<div className="flex gap-2 items-center">
+															{(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+																<div className="relative group">
+																	<button 
+																		onClick={() => setViewerFile(file)}
+																		className="text-blue-500 hover:text-blue-700 p-1 flex items-center justify-center"
+																	>
+																		<Eye className="w-4 h-4" />
+																	</button>
+																	<div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+																		Просмотреть
+																	</div>
+																</div>
+															)}
+															<div className="relative group">
+																<a 
+																	href="#" 
+																	className="text-blue-500 hover:text-blue-700 p-1 flex items-center justify-center"
+																	onClick={async (e) => {
+																		e.preventDefault();
+																		try {
+																			const response = await fetch(file.url);
+																			const blob = await response.blob();
+																			const url = window.URL.createObjectURL(blob);
+																			const link = document.createElement('a');
+																			link.href = url;
+																			link.download = file.name;
+																			document.body.appendChild(link);
+																			link.click();
+																			document.body.removeChild(link);
+																			window.URL.revokeObjectURL(url);
+																		} catch (error) {
+																			console.error('Download error:', error);
+																		}
+																	}}
+																>
+																	<Download size={14} />
+																</a>
+																<div className="absolute z-10 top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+																	Скачать
+																</div>
+															</div>
+														</div>
+														
+													</div>
+													
+													{file.type.startsWith('image/') && (
+														<img 
+															src={file.url} 
+															alt={file.name}
+															className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
+															onClick={() => setViewerFile(file)}
+														/>
+													)}
+												</div>
+											))}
+										</div>
+										
+										{/* Кнопка скачивания и удаления (только для своих сообщений) */}
+										{msg.sent_by === user.id && !msg.is_system && !msg.is_deleted && (
+											<div className="absolute top-1 right-2 flex gap-1">
+											<div className="relative group overflow-visible">
+												<button 
+													onClick={() => handleDeleteMessage(msg.id)}
+													className="text-gray-500 hover:text-red-500"
+												>
+													<Trash2 size={14} />
+												</button>
+												
+											</div>
+										</div>
+										)}
+									</>
+								)}
+								
+								<span className={`text-xs absolute bottom-1 right-2 ${
+									msg.sent_by === user.id ? 'text-blue-600' : 'text-gray-600'
+								}`}>
+									{format(new Date(msg.created_at), 'dd.MM HH:mm')}
+								</span>
+							</div>
+							))}
+
+							{/* Модальное окно для просмотра изображений */}
+							<Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+								<DialogContent className="max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+									<img 
+										src={selectedImage || ''} 
+										alt="Увеличенное изображение"
+										className="max-w-full max-h-[80vh] object-contain"
+									/>
+								</DialogContent>
+							</Dialog>
+							</div>
+						</div>
+				
+							{/* Поле ввода сообщения */}
+							{/* Поле ввода сообщения - исправленная версия */}
+							<div className="fixed sm:absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+								{/* Отображение выбранных файлов */}
+								{selectedFiles.length > 0 && (
+									<div className="bg-white p-2 max-h-[200px] overflow-y-auto">
+										{selectedFiles.map((file, index) => (
+											<div key={index} className="flex items-center justify-between p-1">
+												<div className="flex items-center truncate">
+													<FileIcon size={16} className="mr-2 text-gray-500" />
+													<span className="truncate text-sm">{file.name}</span>
+													<span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+												</div>
+												<button 
+													onClick={() => removeFile(index)}
+													className="text-red-500 hover:text-red-700"
+												>
+													<X size={16} />
+												</button>
+											</div>
+										))}
+									</div>
+								)}
+								
+								<div className="flex w-full h-[57px]">
+									{/* Кнопка загрузки файла */}
+									<label className="flex items-center justify-center px-3 cursor-pointer text-gray-500 hover:text-gray-700">
+										<input 
+											type="file" 
+											ref={fileInputRef}
+											className="hidden" 
+											onChange={handleFileSelect}
+											multiple
+											accept="*/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+										/>
+										<Paperclip size={20} />
+									</label>
+									
+									<Input 
+										value={chatMessage}
+										onChange={(e) => setChatMessage(e.target.value)}
+										placeholder="Напишите сообщение..."
+										className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
+										onKeyDown={(e) => {
+											if (e.key === 'Enter') {
+												handleSendChatMessage();
+											}
+										}}
+									/>
+									<Button 
+										onClick={handleSendChatMessage} 
+										className='w-[55px] h-full bg-[#4d76fd] rounded-none'
+										disabled={!chatMessage.trim() && !selectedFiles.length}
+									>
+										<Send size={30} />
+									</Button>
+								</div>
+							</div>
+
+							{/* Отображение выбранных файлов */}
+							{selectedFiles.length > 0 && (
+								<div className="absolute bottom-[57px] left-0 right-0 bg-white border-t border-gray-200 p-2 max-h-[200px] overflow-y-auto">
+									{selectedFiles.map((file, index) => (
+										<div key={index} className="flex items-center justify-between p-1">
+											<div className="flex items-center truncate">
+												<FileIcon size={16} className="mr-2 text-gray-500" />
+												<span className="truncate text-sm">{file.name}</span>
+												<span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+											</div>
+											<button 
+												onClick={() => removeFile(index)}
+												className="text-red-500 hover:text-red-700"
+											>
+												<X size={16} />
+											</button>
+										</div>
+									))}
+								</div>
+							)}
+					{viewerFile && (
+						<FileViewer 
+						file={viewerFile} 
+						onClose={() => setViewerFile(null)}
+						/>
+					)}
 					</div>
-					
-					{/* Чат поручения */}
-					<div className="w-full mt-8 pt-4 pb-16">
+					{/* Раздел дополнительной информации о задаче */}
+					<div className='hidden md:flex col-span-2 flex-col px-4 py-8 gap-12'>
+						<div className='w-full flex flex-col gap-2 items-center'>
+							<p className='text-xl text-[#757D8A]'>Исполнитель</p>
+							<Avatar className="h-[100px] w-[100px]">
+								<AvatarImage src={assignee?.image} alt={assignee?.fullname} />
+								<AvatarFallback>{assignee?.fullname?.slice(0,2)}</AvatarFallback>
+							</Avatar>
+							<p className='max-w-[70%] text-center text-[#020817] text-xl line-height-[140%] font-normal uppercase'>{assignee?.fullname}</p>
+							<p className='text-[#757D8A] text-base'>{department}</p>
+						</div>
+						<div className='w-full flex flex-col gap-4 items-center'>
+							<div
+								className={`flex gap-3 ${selectedTask.priority == "high" ? "text-[#F05D5E]" : "text-[#757D8A]"}`}
+							>
+								<PriorityIcon />
+								{selectedTask.priority == "high" ? "Высокий приоритет" : "Стандартный приоритет"}
+							</div>
+							<div className='text-[#757D8A] flex gap-3 text-sm'>
+								<CalendarIcon />
+								{new Date(selectedTask.createdAt).toLocaleDateString('ru-RU', { 
+									day: 'numeric', 
+									month: 'short', 
+									year: 'numeric' 
+								})} - {new Date(selectedTask.deadline).toLocaleDateString('ru-RU', { 
+									day: 'numeric', 
+									month: 'short', 
+									year: 'numeric' 
+								})}
+							</div>
+							<div className='hidden bg-[#0DA678] bg-[#D3E0FF] bg-[#BCBCBC] bg-[#EEF4C7] bg-[#FFDFDF] bg-[#FFF2DA] text-[#DA100B] text-[#FFFFFF] text-[#3F79FF] text-[#414141] text-[#0DA678]' /> 
+							<button
+								className={`flex justify-center gap-4 text-xl font-bold w-full py-4 rounded-[21px] bg-[${bgFromStatus[selectedTask.status]}] text-[${textFromStatus[selectedTask.status]}]`}
+								onClick={() => {
+									setIsStatusConfirmOpen(true);
+									setNextStatus(null);
+									setStatusComment('');
+								}}
+							>
+								{iconFromStatus[selectedTask.status]}
+								{getStatusLabel(selectedTask.status)}
+							</button>
+							<Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Смена статуса поручения</DialogTitle>
+								</DialogHeader>
+								<div className="py-4">
+									<div className="mb-4">
+										<Label>Доступные статусы:</Label>
+										<div className="flex flex-col gap-2 mt-2">
+											{getAvailableStatuses().map(opt => (
+												<label key={opt.value} className="flex items-center gap-2">
+													<input
+														type="radio"
+														name="status"
+														value={opt.value}
+														checked={nextStatus === opt.value}
+														onChange={() => setNextStatus(opt.value)}
+													/>
+													{opt.label}
+												</label>
+											))}
+											{getAvailableStatuses().length === 0 && (
+												<span className="text-gray-500 text-sm">Нет доступных статусов для смены</span>
+											)}
+										</div>
+									</div>
+									{/* Изменение дедлайна — только для создателя */}
+									{user.id === selectedTask.createdBy && (
+										<div className="mb-4">
+											<Label>Новый дедлайн (опционально)</Label>
+											<Input
+												type="date"
+												value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+												onChange={e => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
+												min={format(new Date(), 'yyyy-MM-dd')}
+											/>
+										</div>
+									)}
+									{/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
+									{selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
+										<div className="mb-2">
+											<Label>Комментарий для исполнителя <span className="text-red-500">*</span></Label>
+											<Textarea
+												value={statusComment}
+												onChange={e => setStatusComment(e.target.value)}
+												placeholder="Опишите, что нужно доработать..."
+												className="min-h-[80px]"
+											/>
+										</div>
+									)}
+								</div>
+								<div className="flex justify-end gap-2">
+									<Button variant="outline" onClick={() => setIsStatusConfirmOpen(false)}>
+										Отмена
+									</Button>
+									<Button
+										onClick={async () => {
+											if (!nextStatus) return;
+											if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim()) {
+												return;
+											}
+											// Если возвращаем на доработку, добавить комментарий
+											if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
+												await updateTaskStatus(selectedTask.id, nextStatus, statusComment, newDeadline);
+											} else {
+												await updateTaskStatus(selectedTask.id, nextStatus, undefined, newDeadline);
+											}
+											setIsStatusConfirmOpen(false);
+										}}
+										disabled={
+											!nextStatus ||
+											(selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim())
+										}
+									>
+										Подтвердить
+									</Button>
+								</div>
+							</DialogContent>
+						</Dialog>
+						</div>
+						<div className='w-full flex flex-col gap-4 items-center'>
+							<button
+								className={`flex gap-3 ${selectedTask.isProtocol == "active" ? "text-[#3F79FF]" : "text-[#757D8A]"}`}
+								onClick={() => {
+									// Определяем новое состояние ДО вызова API
+									const newProtocolState = selectedTask.isProtocol === 'active' ? 'inactive' : 'active';
+									
+									// Сразу применяем локальные изменения (оптимистичное обновление)
+									selectTask({
+										...selectedTask,
+										isProtocol: newProtocolState
+									});
+									
+									// Затем вызываем API
+									Promise.resolve(toggleProtocol(selectedTask.id, newProtocolState)).catch(() => {
+										// В случае ошибки - возвращаем предыдущее состояние
+										selectTask({
+											...selectedTask,
+											isProtocol: selectedTask.isProtocol // исходное значение
+										});
+									});
+								}}
+							>
+								<ProtocolIcon />
+								{selectedTask.isProtocol === "active" ? "Протокол активен" : "Протокол не активен"}
+							</button>
+							<button className="flex gap-3 text-[#757D8A]" onClick={() => setHistoryOpen(true)}>
+								<HistoryIcon />
+								История поручения
+							</button>
+							{/* Диалог для истории */}
+							<Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+								<DialogContent className={cn(
+									"h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r",
+									"w-full max-w-full", // 100% ширины на мобильных
+									"sm:w-[40%] sm:max-w-[40%]", // 40% ширины на десктопе
+									"mx-0" // Убираем margin
+								)} style={{ margin: 0 }}>
+									<DialogHeader>
+										<DialogTitle className="text-xl">История поручения</DialogTitle>
+									</DialogHeader>
+									
+									<div className="overflow-y-auto h-[calc(100vh-100px)]">
+										<AnimatePresence>
+											{
+												isLoadingHistory ? (
+													<div className="flex justify-center py-8">
+														<Loader2 className="h-8 w-8 animate-spin" />
+													</div>
+												) : taskHistory.length > 0 ? (
+												<div className="space-y-4 pr-4">
+														{taskHistory.map((task, index) => {
+															const isCurrentTask = task.id === selectedTask.id;
+															return (
+																<motion.div
+																	layout
+																	key={task.id}
+																	initial={{ opacity: 0, y: 20 }}
+																	animate={{ opacity: 1, y: 0 }}
+																	transition={{ delay: index * 0.1, duration: 0.3 }}
+																	className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
+																>
+																	<div className="flex items-start gap-3">
+																		<div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+																			{index + 1}
+																		</div>
+																		<div className="flex-1">
+																			<div className="flex items-center justify-between">
+																				<h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
+																					{task.title}
+																				</h4>
+																				<span className="text-xs text-gray-500">
+																					{formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																				</span>
+																			</div>
+																			
+																			{task.description && (
+																				<p className="text-sm text-gray-600 mt-1">
+																					{task.description}
+																				</p>
+																			)}
+																			
+																			<div className="mt-2 flex flex-wrap gap-2">
+																				<span className="text-xs px-2 py-1 bg-gray-100 rounded">
+																					{getStatusLabel(task.status)}
+																				</span>
+																				
+																				{task.isProtocol === 'active' && (
+																					<span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+																						Протокольное
+																					</span>
+																				)}
+																				
+																				<span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+																					Автор: {task.creator?.fullname}
+																				</span>
+																				
+																				<span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+																					Исполнитель: {task.assignee?.fullname}
+																				</span>
+																				
+																				<span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+																					Создано: {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																				</span>
+																				
+																				{task.deadline && (
+																					<span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+																						Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+																					</span>
+																				)}
+																			</div>
+																		</div>
+																	</div>
+																</motion.div>
+															);
+														})}
+												</div>
+												) : (
+													<div className="text-center py-8 text-gray-500">
+														Нет истории изменений
+													</div>
+												)
+											}
+										</AnimatePresence>
+									</div>
+								</DialogContent>
+							</Dialog>
+							<button className="flex gap-3 text-[#757D8A]" onClick={() => setShowReassign(true)}>
+								<ReassignIcon />
+								Сменить исполнителя
+							</button>
+							{/* Кнопка переназначения */}
+							<Dialog open={showReassign} onOpenChange={setShowReassign}>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Переназначить поручение</DialogTitle>
+									</DialogHeader>
+									<div className="space-y-4 py-4">
+										<div className="space-y-2">
+											<Label htmlFor="reassign-to">Переназначить <span className="text-red-500">*</span> </Label>
+											<Select value={reassignTo} onValueChange={setReassignTo}>
+												<SelectTrigger>
+													<SelectValue placeholder="Выберите сотрудника" />
+												</SelectTrigger>
+												<SelectContent>
+													{subordinates
+														.filter(user => user.id !== selectedTask.assignedTo)
+														.map((user) => (
+															<SelectItem key={user.id} value={user.id}>
+																{user.name || user.fullname}
+															</SelectItem>
+														))
+													}
+												</SelectContent>
+											</Select>
+										</div>
+										
+										<div className="space-y-2">
+											<Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
+											<Input 
+												id="new-title" 
+												placeholder={selectedTask.title}
+												value={newTitle}
+												onChange={(e) => setNewTitle(e.target.value)}
+											/>
+										</div>
+										
+										<div className="space-y-2">
+											<Label htmlFor="new-description">Новое описание (Опционально)</Label>
+											<Textarea 
+												id="new-description" 
+												placeholder={selectedTask.description}
+												value={newDescription}
+												onChange={(e) => setNewDescription(e.target.value)}
+											/>
+										</div>
+										
+										<div className="space-y-2">
+											<Label>Новый дедлайн (Опционально)</Label>
+											<Input 
+												type="date"
+												value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+												onChange={(e) => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
+												className="w-full"
+												min={format(new Date(), 'yyyy-MM-dd')}
+											/>
+										</div>
+										
+										<Button onClick={handleReassign} className="w-full">
+											Переназначить поручение
+										</Button>
+									</div>
+								</DialogContent>
+							</Dialog>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Мобильная версия */}
+			<div className='w-full h-full flex md:hidden flex-col items-center gap-6 bg-[#f7f7f7] p-4 pb-32 overflow-y-auto'>
+				{/* Исполнитель */}
+				<div className='w-full bg-white shadow-md rounded-l-[50px] rounded-r-xl pr-2 flex gap-2'>
+					<Avatar className="h-[50px] w-[50px]">
+						<AvatarImage src={assignee?.image} alt={assignee?.fullname} />
+						<AvatarFallback>{assignee?.fullname?.slice(0,2)}</AvatarFallback>
+					</Avatar>
+					<div className='text-[12px] flex flex-col gap-1 p-1 w-full'>
+						<div className='flex-1 flex justify-between text-[#757D8A]'>
+							<span>Исполнитель</span>
+							<span>{department}</span>
+						</div>
+						<div className='text-[14px]'>{assignee?.fullname}</div>
+					</div>
+				</div>
+				{/* Основная информация о задаче */}
+				<div className='w-full bg-white shadow-md rounded-xl p-2 pb-6 flex flex-col gap-10'>
+					<div className='flex flex-col gap-1'>
+						<span className='text-[12px] text-[#757D8A]'>Тема</span>
+						<h1 className='text-[16px] font-bold'>{selectedTask.title}</h1>
+					</div>
+					<div className='flex gap-3'>
+						{selectedTask.priority == "high" && (
+							<div className='text-[#DA100B]'><PriorityIcon /></div>
+						)}
+						<div className='text-[#757D8A]'>
+							{new Date(selectedTask.createdAt).toLocaleDateString('ru-RU', { 
+								day: 'numeric', 
+								month: 'short', 
+								year: 'numeric' 
+							})} - {new Date(selectedTask.deadline).toLocaleDateString('ru-RU', { 
+								day: 'numeric', 
+								month: 'short', 
+								year: 'numeric' 
+							})}
+						</div>
+					</div>
+					<div className='flex flex-col gap-1'>
+						<span className='text-[12px] text-[#757D8A]'>Описание</span>
+						<h1 className='text-[16px]'>{selectedTask.description}</h1>
+					</div>
+				</div>
+
+				{/* Панель управления */}
+				<div className='w-1/2 flex justify-between'>
+					<button
+						className={`flex gap-3 ${selectedTask.isProtocol == "active" ? "text-[#3F79FF]" : "text-[#757D8A]"}`}
+						onClick={() => {
+							// Определяем новое состояние ДО вызова API
+							const newProtocolState = selectedTask.isProtocol === 'active' ? 'inactive' : 'active';
+							
+							// Сразу применяем локальные изменения (оптимистичное обновление)
+							selectTask({
+								...selectedTask,
+								isProtocol: newProtocolState
+							});
+							
+							// Затем вызываем API
+							Promise.resolve(toggleProtocol(selectedTask.id, newProtocolState)).catch(() => {
+								// В случае ошибки - возвращаем предыдущее состояние
+								selectTask({
+									...selectedTask,
+									isProtocol: selectedTask.isProtocol // исходное значение
+								});
+							});
+						}}
+					>
+						<ProtocolIcon />
+					</button>
+					<button className="flex gap-3 text-[#757D8A]" onClick={() => setHistoryOpen(true)}>
+						<HistoryIcon />
+					</button>
+					{/* Диалог для истории */}
+					<Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+						<DialogContent className={cn(
+							"h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r",
+							"w-full max-w-full", // 100% ширины на мобильных
+							"sm:w-[40%] sm:max-w-[40%]", // 40% ширины на десктопе
+							"mx-0" // Убираем margin
+						)} style={{ margin: 0 }}>
+							<DialogHeader>
+								<DialogTitle className="text-xl">История поручения</DialogTitle>
+							</DialogHeader>
+							
+							<div className="overflow-y-auto h-[calc(100vh-100px)]">
+								<AnimatePresence>
+									{
+										isLoadingHistory ? (
+											<div className="flex justify-center py-8">
+												<Loader2 className="h-8 w-8 animate-spin" />
+											</div>
+										) : taskHistory.length > 0 ? (
+										<div className="space-y-4 pr-4">
+												{taskHistory.map((task, index) => {
+													const isCurrentTask = task.id === selectedTask.id;
+													return (
+														<motion.div
+															layout
+															key={task.id}
+															initial={{ opacity: 0, y: 20 }}
+															animate={{ opacity: 1, y: 0 }}
+															transition={{ delay: index * 0.1, duration: 0.3 }}
+															className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
+														>
+															<div className="flex items-start gap-3">
+																<div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
+																	{index + 1}
+																</div>
+																<div className="flex-1">
+																	<div className="flex items-center justify-between">
+																		<h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
+																			{task.title}
+																		</h4>
+																		<span className="text-xs text-gray-500">
+																			{formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																		</span>
+																	</div>
+																	
+																	{task.description && (
+																		<p className="text-sm text-gray-600 mt-1">
+																			{task.description}
+																		</p>
+																	)}
+																	
+																	<div className="mt-2 flex flex-wrap gap-2">
+																		<span className="text-xs px-2 py-1 bg-gray-100 rounded">
+																			{getStatusLabel(task.status)}
+																		</span>
+																		
+																		{task.isProtocol === 'active' && (
+																			<span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+																				Протокольное
+																			</span>
+																		)}
+																		
+																		<span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+																			Автор: {task.creator?.fullname}
+																		</span>
+																		
+																		<span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+																			Исполнитель: {task.assignee?.fullname}
+																		</span>
+																		
+																		<span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+																			Создано: {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
+																		</span>
+																		
+																		{task.deadline && (
+																			<span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
+																				Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
+																			</span>
+																		)}
+																	</div>
+																</div>
+															</div>
+														</motion.div>
+													);
+												})}
+										</div>
+										) : (
+											<div className="text-center py-8 text-gray-500">
+												Нет истории изменений
+											</div>
+										)
+									}
+								</AnimatePresence>
+							</div>
+						</DialogContent>
+					</Dialog>
+					<button className="flex gap-3 text-[#757D8A]" onClick={() => setShowReassign(true)}>
+						<ReassignIcon />
+					</button>
+					{/* Кнопка переназначения */}
+					<Dialog open={showReassign} onOpenChange={setShowReassign}>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Переназначить поручение</DialogTitle>
+							</DialogHeader>
+							<div className="space-y-4 py-4">
+								<div className="space-y-2">
+									<Label htmlFor="reassign-to">Переназначить <span className="text-red-500">*</span> </Label>
+									<Select value={reassignTo} onValueChange={setReassignTo}>
+										<SelectTrigger>
+											<SelectValue placeholder="Выберите сотрудника" />
+										</SelectTrigger>
+										<SelectContent>
+											{subordinates
+												.filter(user => user.id !== selectedTask.assignedTo)
+												.map((user) => (
+													<SelectItem key={user.id} value={user.id}>
+														{user.name || user.fullname}
+													</SelectItem>
+												))
+											}
+										</SelectContent>
+									</Select>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
+									<Input 
+										id="new-title" 
+										placeholder={selectedTask.title}
+										value={newTitle}
+										onChange={(e) => setNewTitle(e.target.value)}
+									/>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="new-description">Новое описание (Опционально)</Label>
+									<Textarea 
+										id="new-description" 
+										placeholder={selectedTask.description}
+										value={newDescription}
+										onChange={(e) => setNewDescription(e.target.value)}
+									/>
+								</div>
+								
+								<div className="space-y-2">
+									<Label>Новый дедлайн (Опционально)</Label>
+									<Input 
+										type="date"
+										value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+										onChange={(e) => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
+										className="w-full"
+										min={format(new Date(), 'yyyy-MM-dd')}
+									/>
+								</div>
+								
+								<Button onClick={handleReassign} className="w-full">
+									Переназначить поручение
+								</Button>
+							</div>
+						</DialogContent>
+					</Dialog>
+				</div>
+				
+				{/* Чат */}
+				<div className='relative bg-white shadow-md rounded-xl min-h-72 w-full flex flex-col overflow-y-auto p-[10px]'>
 					{/* Кнопка переключения между обычными и системными сообщениями */}
 					<div className="flex justify-end mb-2 px-4 text-[#757D8A] font-thin">
 						<Button
@@ -812,11 +1560,10 @@ export default function TaskDetail() {
 							</DialogContent>
 						</Dialog>
 						</div>
-					</div>
-      
+			
 						{/* Поле ввода сообщения */}
 						{/* Поле ввода сообщения - исправленная версия */}
-						<div className="fixed sm:absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+						<div className="absolute bottom-0 left-0 right-0 bg-[#f7f7f7] border-t border-gray-200 z-10">
 							{/* Отображение выбранных файлов */}
 							{selectedFiles.length > 0 && (
 								<div className="bg-white p-2 max-h-[200px] overflow-y-auto">
@@ -838,9 +1585,9 @@ export default function TaskDetail() {
 								</div>
 							)}
 							
-							<div className="flex w-full h-[57px]">
+							<div className="flex w-full h-[50px]">
 								{/* Кнопка загрузки файла */}
-								<label className="flex items-center justify-center px-3 cursor-pointer text-gray-500 hover:text-gray-700">
+								<label className="flex items-center justify-center px-3 cursor-pointer text-[#020817] hover:text-gray-700">
 									<input 
 										type="file" 
 										ref={fileInputRef}
@@ -852,24 +1599,19 @@ export default function TaskDetail() {
 									<Paperclip size={20} />
 								</label>
 								
-								<Input 
+								<input 
 									value={chatMessage}
 									onChange={(e) => setChatMessage(e.target.value)}
 									placeholder="Напишите сообщение..."
-									className="flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
-									onKeyDown={(e) => {
-										if (e.key === 'Enter') {
-											handleSendChatMessage();
-										}
-									}}
+									className="border-r-white border-r-4 flex-1 py-[20px] pl-[16px] pr-[30px] outline-none h-full text-[15px] rounded-none bg-[#f6f7fb] border-none"
 								/>
-								<Button 
+								<button 
 									onClick={handleSendChatMessage} 
-									className='w-[55px] h-full bg-[#4d76fd] rounded-none'
+									className='flex justify-center items-center w-[55px] h-full rounded-none bg-[#f7f7f7] text-[#020817] disabled:text-gray-400'
 									disabled={!chatMessage.trim() && !selectedFiles.length}
 								>
-									<Send size={30} />
-								</Button>
+									<Send size={20} />
+								</button>
 							</div>
 						</div>
 
@@ -893,331 +1635,103 @@ export default function TaskDetail() {
 								))}
 							</div>
 						)}
-				{viewerFile && (
-					<FileViewer 
-					file={viewerFile} 
-					onClose={() => setViewerFile(null)}
-					/>
-				)}
-				</div>
-				{/* Раздел дополнительной информации о задаче */}
-				<div className='hidden md:flex col-span-2 flex-col px-4 py-8 gap-12'>
-					<div className='w-full flex flex-col gap-2 items-center'>
-						<p className='text-xl text-[#757D8A]'>Исполнитель</p>
-						<Avatar className="h-[100px] w-[100px]">
-							<AvatarImage src={assignee?.image} alt={assignee?.fullname} />
-							<AvatarFallback>{assignee?.fullname?.slice(0,2)}</AvatarFallback>
-						</Avatar>
-						<p className='max-w-[70%] text-center text-[#020817] text-xl line-height-[140%] font-normal uppercase'>{assignee?.fullname}</p>
-						<p className='text-[#757D8A] text-base'>{department}</p>
+						{viewerFile && (
+							<FileViewer 
+							file={viewerFile} 
+							onClose={() => setViewerFile(null)}
+							/>
+						)}
 					</div>
-					<div className='w-full flex flex-col gap-4 items-center'>
-						<div
-							className={`flex gap-3 ${selectedTask.priority == "high" ? "text-[#F05D5E]" : "text-[#757D8A]"}`}
-						>
-							<PriorityIcon />
-							{selectedTask.priority == "high" ? "Высокий приоритет" : "Стандартный приоритет"}
-						</div>
-						<div className='text-[#757D8A] flex gap-3 text-sm'>
-							<CalendarIcon />
-							{new Date(selectedTask.createdAt).toLocaleDateString('ru-RU', { 
-								day: 'numeric', 
-								month: 'short', 
-								year: 'numeric' 
-							})} - {new Date(selectedTask.deadline).toLocaleDateString('ru-RU', { 
-								day: 'numeric', 
-								month: 'short', 
-								year: 'numeric' 
-							})}
-						</div>
-						<div className='hidden bg-[#0DA678] bg-[#D3E0FF] bg-[#BCBCBC] bg-[#EEF4C7] bg-[#FFDFDF] bg-[#FFF2DA] text-[#DA100B] text-[#FFFFFF] text-[#3F79FF] text-[#414141] text-[#0DA678]' /> 
-						<button
-							className={`flex justify-center gap-4 text-xl font-bold w-full py-4 rounded-[21px] bg-[${bgFromStatus[selectedTask.status]}] text-[${textFromStatus[selectedTask.status]}]`}
-							onClick={() => {
-								setIsStatusConfirmOpen(true);
-								setNextStatus(null);
-								setStatusComment('');
-							}}
-						>
-							{iconFromStatus[selectedTask.status]}
-							{getStatusLabel(selectedTask.status)}
-						</button>
-						<Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>Смена статуса поручения</DialogTitle>
-							</DialogHeader>
-							<div className="py-4">
+				<button
+					className={`flex justify-center gap-4 text-xl font-bold w-4/5 py-4 rounded-[21px] bg-[${bgFromStatus[selectedTask.status]}] text-[${textFromStatus[selectedTask.status]}]`}
+					onClick={() => {
+						setIsStatusConfirmOpen(true);
+						setNextStatus(null);
+						setStatusComment('');
+					}}
+				>
+					{iconFromStatus[selectedTask.status]}
+					{getStatusLabel(selectedTask.status)}
+				</button>
+				<Dialog open={isStatusConfirmOpen} onOpenChange={setIsStatusConfirmOpen}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Смена статуса поручения</DialogTitle>
+						</DialogHeader>
+						<div className="py-4">
+							<div className="mb-4">
+								<Label>Доступные статусы:</Label>
+								<div className="flex flex-col gap-2 mt-2">
+									{getAvailableStatuses().map(opt => (
+										<label key={opt.value} className="flex items-center gap-2">
+											<input
+												type="radio"
+												name="status"
+												value={opt.value}
+												checked={nextStatus === opt.value}
+												onChange={() => setNextStatus(opt.value)}
+											/>
+											{opt.label}
+										</label>
+									))}
+									{getAvailableStatuses().length === 0 && (
+										<span className="text-gray-500 text-sm">Нет доступных статусов для смены</span>
+									)}
+								</div>
+							</div>
+							{/* Изменение дедлайна — только для создателя */}
+							{user.id === selectedTask.createdBy && (
 								<div className="mb-4">
-									<Label>Доступные статусы:</Label>
-									<div className="flex flex-col gap-2 mt-2">
-										{getAvailableStatuses().map(opt => (
-											<label key={opt.value} className="flex items-center gap-2">
-												<input
-													type="radio"
-													name="status"
-													value={opt.value}
-													checked={nextStatus === opt.value}
-													onChange={() => setNextStatus(opt.value)}
-												/>
-												{opt.label}
-											</label>
-										))}
-										{getAvailableStatuses().length === 0 && (
-											<span className="text-gray-500 text-sm">Нет доступных статусов для смены</span>
-										)}
-									</div>
+									<Label>Новый дедлайн (опционально)</Label>
+									<Input
+										type="date"
+										value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
+										onChange={e => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
+										min={format(new Date(), 'yyyy-MM-dd')}
+									/>
 								</div>
-								{/* Изменение дедлайна — только для создателя */}
-								{user.id === selectedTask.createdBy && (
-									<div className="mb-4">
-										<Label>Новый дедлайн (опционально)</Label>
-										<Input
-											type="date"
-											value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
-											onChange={e => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
-											min={format(new Date(), 'yyyy-MM-dd')}
-										/>
-									</div>
-								)}
-								{/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
-								{selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
-									<div className="mb-2">
-										<Label>Комментарий для исполнителя <span className="text-red-500">*</span></Label>
-										<Textarea
-											value={statusComment}
-											onChange={e => setStatusComment(e.target.value)}
-											placeholder="Опишите, что нужно доработать..."
-											className="min-h-[80px]"
-										/>
-									</div>
-								)}
-							</div>
-							<div className="flex justify-end gap-2">
-								<Button variant="outline" onClick={() => setIsStatusConfirmOpen(false)}>
-									Отмена
-								</Button>
-								<Button
-									onClick={async () => {
-										if (!nextStatus) return;
-										if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim()) {
-											return;
-										}
-										// Если возвращаем на доработку, добавить комментарий
-										if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
-											await updateTaskStatus(selectedTask.id, nextStatus, statusComment, newDeadline);
-										} else {
-											await updateTaskStatus(selectedTask.id, nextStatus, undefined, newDeadline);
-										}
-										setIsStatusConfirmOpen(false);
-									}}
-									disabled={
-										!nextStatus ||
-										(selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim())
+							)}
+							{/* Комментарий обязателен, если постановщик возвращает задачу на доработку */}
+							{selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && (
+								<div className="mb-2">
+									<Label>Комментарий для исполнителя <span className="text-red-500">*</span></Label>
+									<Textarea
+										value={statusComment}
+										onChange={e => setStatusComment(e.target.value)}
+										placeholder="Опишите, что нужно доработать..."
+										className="min-h-[80px]"
+									/>
+								</div>
+							)}
+						</div>
+						<div className="flex justify-end gap-2">
+							<Button variant="outline" onClick={() => setIsStatusConfirmOpen(false)}>
+								Отмена
+							</Button>
+							<Button
+								onClick={async () => {
+									if (!nextStatus) return;
+									if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim()) {
+										return;
 									}
-								>
-									Подтвердить
-								</Button>
-							</div>
-						</DialogContent>
-					</Dialog>
-					</div>
-					<div className='w-full flex flex-col gap-4 items-center'>
-						<button
-							className={`flex gap-3 ${selectedTask.isProtocol == "active" ? "text-[#3F79FF]" : "text-[#757D8A]"}`}
-							onClick={() => {
-								// Определяем новое состояние ДО вызова API
-								const newProtocolState = selectedTask.isProtocol === 'active' ? 'inactive' : 'active';
-								
-								// Сразу применяем локальные изменения (оптимистичное обновление)
-								selectTask({
-									...selectedTask,
-									isProtocol: newProtocolState
-								});
-								
-								// Затем вызываем API
-								Promise.resolve(toggleProtocol(selectedTask.id, newProtocolState)).catch(() => {
-									// В случае ошибки - возвращаем предыдущее состояние
-									selectTask({
-										...selectedTask,
-										isProtocol: selectedTask.isProtocol // исходное значение
-									});
-								});
-							}}
-						>
-							<ProtocolIcon />
-							{selectedTask.isProtocol === "active" ? "Протокол активен" : "Протокол не активен"}
-						</button>
-						<button className="flex gap-3 text-[#757D8A]" onClick={() => setHistoryOpen(true)}>
-							<HistoryIcon />
-							История поручения
-						</button>
-						{/* Диалог для истории */}
-						<Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-							<DialogContent className={cn(
-								"h-screen max-h-screen fixed left-0 top-0 translate-x-0 translate-y-0 rounded-none border-r",
-								"w-full max-w-full", // 100% ширины на мобильных
-								"sm:w-[40%] sm:max-w-[40%]", // 40% ширины на десктопе
-								"mx-0" // Убираем margin
-							)} style={{ margin: 0 }}>
-								<DialogHeader>
-									<DialogTitle className="text-xl">История поручения</DialogTitle>
-								</DialogHeader>
-								
-								<div className="overflow-y-auto h-[calc(100vh-100px)]">
-									<AnimatePresence>
-										{
-											isLoadingHistory ? (
-												<div className="flex justify-center py-8">
-													<Loader2 className="h-8 w-8 animate-spin" />
-												</div>
-											) : taskHistory.length > 0 ? (
-											<div className="space-y-4 pr-4">
-													{taskHistory.map((task, index) => {
-														const isCurrentTask = task.id === selectedTask.id;
-														return (
-															<motion.div
-																layout
-																key={task.id}
-																initial={{ opacity: 0, y: 20 }}
-																animate={{ opacity: 1, y: 0 }}
-																transition={{ delay: index * 0.1, duration: 0.3 }}
-																className={`p-4 rounded-lg border ${isCurrentTask ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}
-															>
-																<div className="flex items-start gap-3">
-																	<div className={`h-8 w-8 rounded-full flex items-center justify-center ${isCurrentTask ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'}`}>
-																		{index + 1}
-																	</div>
-																	<div className="flex-1">
-																		<div className="flex items-center justify-between">
-																			<h4 className={`font-medium ${isCurrentTask ? 'text-blue-600' : 'text-gray-700'}`}>
-																				{task.title}
-																			</h4>
-																			<span className="text-xs text-gray-500">
-																				{formatDateSafe(task.created_at, 'dd.MM.yyyy')}
-																			</span>
-																		</div>
-																		
-																		{task.description && (
-																			<p className="text-sm text-gray-600 mt-1">
-																				{task.description}
-																			</p>
-																		)}
-																		
-																		<div className="mt-2 flex flex-wrap gap-2">
-																			<span className="text-xs px-2 py-1 bg-gray-100 rounded">
-																				{getStatusLabel(task.status)}
-																			</span>
-																			
-																			{task.isProtocol === 'active' && (
-																				<span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
-																					Протокольное
-																				</span>
-																			)}
-																			
-																			<span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-																				Автор: {task.creator?.fullname}
-																			</span>
-																			
-																			<span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
-																				Исполнитель: {task.assignee?.fullname}
-																			</span>
-																			
-																			<span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
-																				Создано: {formatDateSafe(task.created_at, 'dd.MM.yyyy')}
-																			</span>
-																			
-																			{task.deadline && (
-																				<span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded">
-																					Срок: {formatDateSafe(task.deadline, 'dd.MM.yyyy')}
-																				</span>
-																			)}
-																		</div>
-																	</div>
-																</div>
-															</motion.div>
-														);
-													})}
-											</div>
-											) : (
-												<div className="text-center py-8 text-gray-500">
-													Нет истории изменений
-												</div>
-											)
-										}
-									</AnimatePresence>
-								</div>
-							</DialogContent>
-						</Dialog>
-						<button className="flex gap-3 text-[#757D8A]" onClick={() => setShowReassign(true)}>
-							<ReassignIcon />
-							Сменить исполнителя
-						</button>
-						{/* Кнопка переназначения */}
-						<Dialog open={showReassign} onOpenChange={setShowReassign}>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>Переназначить поручение</DialogTitle>
-								</DialogHeader>
-								<div className="space-y-4 py-4">
-									<div className="space-y-2">
-										<Label htmlFor="reassign-to">Переназначить <span className="text-red-500">*</span> </Label>
-										<Select value={reassignTo} onValueChange={setReassignTo}>
-											<SelectTrigger>
-												<SelectValue placeholder="Выберите сотрудника" />
-											</SelectTrigger>
-											<SelectContent>
-												{subordinates
-													.filter(user => user.id !== selectedTask.assignedTo)
-													.map((user) => (
-														<SelectItem key={user.id} value={user.id}>
-															{user.name || user.fullname}
-														</SelectItem>
-													))
-												}
-											</SelectContent>
-										</Select>
-									</div>
-									
-									<div className="space-y-2">
-										<Label htmlFor="new-title">Новый заголовок (Опционально)</Label>
-										<Input 
-											id="new-title" 
-											placeholder={selectedTask.title}
-											value={newTitle}
-											onChange={(e) => setNewTitle(e.target.value)}
-										/>
-									</div>
-									
-									<div className="space-y-2">
-										<Label htmlFor="new-description">Новое описание (Опционально)</Label>
-										<Textarea 
-											id="new-description" 
-											placeholder={selectedTask.description}
-											value={newDescription}
-											onChange={(e) => setNewDescription(e.target.value)}
-										/>
-									</div>
-									
-									<div className="space-y-2">
-										<Label>Новый дедлайн (Опционально)</Label>
-										<Input 
-											type="date"
-											value={newDeadline ? format(newDeadline, 'yyyy-MM-dd') : ''}
-											onChange={(e) => setNewDeadline(e.target.value ? new Date(e.target.value) : undefined)}
-											className="w-full"
-											min={format(new Date(), 'yyyy-MM-dd')}
-										/>
-									</div>
-									
-									<Button onClick={handleReassign} className="w-full">
-										Переназначить поручение
-									</Button>
-								</div>
-							</DialogContent>
-						</Dialog>
-					</div>
-				</div>
+									// Если возвращаем на доработку, добавить комментарий
+									if (selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress') {
+										await updateTaskStatus(selectedTask.id, nextStatus, statusComment, newDeadline);
+									} else {
+										await updateTaskStatus(selectedTask.id, nextStatus, undefined, newDeadline);
+									}
+									setIsStatusConfirmOpen(false);
+								}}
+								disabled={
+									!nextStatus ||
+									(selectedTask.status === 'on_verification' && user.id === selectedTask.createdBy && nextStatus === 'in_progress' && !statusComment.trim())
+								}
+							>
+								Подтвердить
+							</Button>
+						</div>
+					</DialogContent>
+				</Dialog>
 			</div>
 		</div>
   );

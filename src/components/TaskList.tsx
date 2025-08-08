@@ -766,12 +766,9 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       {/* Mobile Task Detail Drawer */}
       {isMobile && selectedTask && (
         <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-          <DrawerContent className="h-[100vh] max-h-[100vh]">
+          <DrawerContent className="h-screen max-h-screen">
             <div className="relative h-full">
-              <DrawerClose className="absolute right-4 top-4 z-50 mt-0.2">
-                <X className="h-6 w-6" />
-              </DrawerClose>
-              <div className="lg:px-4 py-2 h-full overflow-auto mt-0.5">
+              <div className="lg:px-4 py-2 h-full mt-[42px]">
                 <TaskDetail />
               </div>
             </div>
