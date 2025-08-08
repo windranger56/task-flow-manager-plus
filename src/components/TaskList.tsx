@@ -47,7 +47,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
 		getUserById,
     user,
     taskFilter,
-    getFilteredTasks
+    getFilteredTasks,
+    selectedUserId
   } = useTaskContext();
   
   const [showNewTask, setShowNewTask] = useState(false);
@@ -137,33 +138,20 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
 
 	useEffect(() => {
     (async () => {
-      const tasksWithUsers = await Promise.all(tasks.map(async t => ({
+      // Get filtered tasks from context
+      const contextFilteredTasks = getFilteredTasks();
+      
+      const tasksWithUsers = await Promise.all(contextFilteredTasks.map(async t => ({
         ...t, 
         assignee: await getUserById(t.assignedTo),
         creator: await getUserById(t.createdBy)
       })));
       
-      // Фильтруем задачи в зависимости от состояния архива И роли пользователя
+      // Apply archive filter
       const filteredTasks = tasksWithUsers.filter(task => {
-        // Применяем фильтр по роли
-        let roleFilter = false;
-        switch (taskFilter) {
-          case 'author':
-            roleFilter = user?.id === task.createdBy;
-            break;
-          case 'assignee':
-            roleFilter = user?.id === task.assignedTo;
-            break;
-          case 'all':
-          default:
-            roleFilter = user?.id === task.createdBy || user?.id === task.assignedTo;
-            break;
-        }
-        
-        // В зависимости от showArchive применяем дополнительный фильтр
         return showArchive 
-          ? roleFilter && task.status === 'completed'
-          : roleFilter && task.status !== 'completed';
+          ? task.status === 'completed'
+          : task.status !== 'completed';
       });
       
       // Сортируем задачи по дедлайну (от ближайшего к дальнему)
@@ -178,7 +166,7 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         };
       }));
     })();
-  }, [tasks, showArchive, user?.id, taskFilter]);
+  }, [tasks, showArchive, user?.id, taskFilter, getFilteredTasks, selectedUserId]);
   
   
   useEffect(() => {

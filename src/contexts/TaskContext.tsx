@@ -33,10 +33,12 @@ interface TaskContextType {
   // Selected items
   selectedDepartment: Department | null;
   selectedTask: Task | null;
+  selectedUserId: string | null;
   
   // Actions
   selectDepartment: (department: Department | null) => void;
   selectTask: (task: Task | null) => void;
+  setSelectedUserId: (userId: string | null) => void;
   addDepartment: (name: string, managerId: string, userIds?: string[]) => void;
   addUsersToDepartment: (departmentId: string, userIds: string[]) => Promise<void>;
   addTask: (
@@ -61,6 +63,7 @@ interface TaskContextType {
   taskFilter: 'all' | 'author' | 'assignee';
   setTaskFilter: (filter: 'all' | 'author' | 'assignee') => void;
   getFilteredTasks: () => Task[];
+  getUserDepartmentId: (userId: string) => Promise<string | null>;
   
   // Helper functions
   getUserById: (id: string) => Promise<any>;
@@ -81,6 +84,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [taskFilter, setTaskFilter] = useState<'all' | 'author' | 'assignee'>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDepartments, setUserDepartments] = useState<{userId: string, departmentId: string}[]>([
     { userId: '2', departmentId: '1' },
     { userId: '3', departmentId: '2' },
@@ -1298,10 +1302,39 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Function to get user's department ID
+  const getUserDepartmentId = async (userId: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('departmentId')
+        .eq('id', userId)
+        .single();
+        
+      if (error || !data) {
+        console.error("Ошибка при получении departmentId пользователя:", error);
+        return null;
+      }
+      
+      return data.departmentId;
+    } catch (error) {
+      console.error("Ошибка при получении departmentId пользователя:", error);
+      return null;
+    }
+  };
+
   // Function to get filtered tasks based on current filter
   const getFilteredTasks = (): Task[] => {
     if (!user) return [];
     
+    // If a specific user is selected, show only their tasks
+    if (selectedUserId) {
+      return tasks.filter(task => 
+        task.createdBy === selectedUserId || task.assignedTo === selectedUserId
+      );
+    }
+    
+    // Otherwise use the regular filter
     switch(taskFilter) {
       case 'author':
         return tasks.filter(task => task.createdBy === user.id);
@@ -1327,8 +1360,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       supabase, // Add supabase to the context value
       selectedDepartment,
       selectedTask,
+      selectedUserId,
       selectDepartment,
       selectTask,
+      setSelectedUserId,
       addDepartment,
       addUsersToDepartment,
       addTask,
@@ -1349,7 +1384,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       fetchTasks,
       taskFilter,
       setTaskFilter,
-      getFilteredTasks
+      getFilteredTasks,
+      getUserDepartmentId
     }}>
       {children}
     </TaskContext.Provider>

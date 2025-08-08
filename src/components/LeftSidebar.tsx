@@ -40,7 +40,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     selectTask,
     tasks,
     taskFilter,
-    setTaskFilter
+    setTaskFilter,
+    selectedUserId,
+    setSelectedUserId,
+    getUserDepartmentId,
+    getFilteredTasks
   } = useTaskContext();
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
@@ -317,23 +321,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
   useEffect(() => {
     if (user) {
-      let filteredTasks = [];
-      
-      // Filter tasks based on selected filter
-      switch(taskFilter) {
-        case 'author':
-          filteredTasks = tasks.filter(task => task.createdBy === user.id);
-          break;
-        case 'assignee':
-          filteredTasks = tasks.filter(task => task.assignedTo === user.id);
-          break;
-        case 'all':
-        default:
-          filteredTasks = tasks.filter(task => 
-            task.createdBy === user.id || task.assignedTo === user.id
-          );
-          break;
-      }
+      // Use the filtered tasks from context
+      const filteredTasks = getFilteredTasks();
       
       setDoneTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
       setOverdueTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
@@ -345,7 +334,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       fetchTasksWithNewMessages();
       fetchTasksWithNewStatus();
     }
-  }, [tasks, user, taskFilter]);
+  }, [tasks, user, taskFilter, selectedUserId, getFilteredTasks]);
 
   // Effect to periodically refresh new messages and statuses
   useEffect(() => {
@@ -370,28 +359,38 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const statsClass = isMobile ? "flex justify-center gap-6" : "flex justify-between";
   const subordinateAvatarSize = isMobile ? "h-8 w-8" : "h-10 w-10";
 
-  // States for selected employee and their tasks
-  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
-  const [selectedEmployeeTasks, setSelectedEmployeeTasks] = useState<any[]>([]);
-  const [showEmployeeTasksDialog, setShowEmployeeTasksDialog] = useState(false);
-  
   // States for department and task filter
   const [userDepartment, setUserDepartment] = useState<string>('');
   const [subordinateDepartments, setSubordinateDepartments] = useState<{[userId: string]: string}>({});
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
-  const handleShowEmployeeTasks = async (employee: User) => {
-    setSelectedEmployee(employee);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .or(`assigned_to.eq.${employee.id},created_by.eq.${employee.id}`);
-    if (!error) {
-      setSelectedEmployeeTasks(data || []);
-      setShowEmployeeTasksDialog(true);
-    } else {
-      setSelectedEmployeeTasks([]);
-      setShowEmployeeTasksDialog(true);
+  const handleSelectEmployee = async (employee: User) => {
+    try {
+      // Set selected user in context
+      setSelectedUserId(employee.id);
+      setSelectedEmployeeId(employee.id);
+      
+      // Get user's department and auto-select it
+      const departmentId = await getUserDepartmentId(employee.id);
+      if (departmentId) {
+        const department = departments.find(d => d.id === departmentId);
+        if (department) {
+          selectDepartment(department);
+        }
+      }
+      
+      // Reset task filter to 'all'
+      setTaskFilter('all');
+    } catch (error) {
+      console.error("Ошибка при выборе сотрудника:", error);
     }
+  };
+
+  const handleFilterChange = (filter: 'all' | 'author' | 'assignee') => {
+    // Reset selected user when changing filter
+    setSelectedUserId(null);
+    setSelectedEmployeeId(null);
+    setTaskFilter(filter);
   };
 
   // Calculate total notifications count
@@ -428,20 +427,20 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         {/* Task Filter Buttons */}
         <div className="flex justify-center gap-4 mt-[20px] mb-[15px] ">
           <button
-            onClick={() => setTaskFilter('all')}
-            className={`text-m pb-1 ${taskFilter === 'all' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            onClick={() => handleFilterChange('all')}
+            className={`text-m pb-1 ${taskFilter === 'all' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             Все
           </button>
           <button
-            onClick={() => setTaskFilter('author')}
-            className={`text-m pb-1 ${taskFilter === 'author' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            onClick={() => handleFilterChange('author')}
+            className={`text-m pb-1 ${taskFilter === 'author' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Автор
           </button>
           <button
-            onClick={() => setTaskFilter('assignee')}
-            className={`text-m pb-1 ${taskFilter === 'assignee' ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            onClick={() => handleFilterChange('assignee')}
+            className={`text-m pb-1 ${taskFilter === 'assignee' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Исполнитель
           </button>
@@ -782,15 +781,19 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               subordinates.map((user, index) => (
                 <div
                   key={user.id}
-                  className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full`}
-                  onClick={() => handleShowEmployeeTasks(user)}
+                  className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full ${
+                    selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
+                  }`}
+                  onClick={() => handleSelectEmployee(user)}
                 >
                   <Avatar className="h-10 w-10 mr-3">
                     <AvatarImage src={user.image} alt={user.fullname} />
                     <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="text-m font-medium">{user.fullname}</span>
+                    <span className={`text-m font-medium ${
+                      selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
+                    }`}>{user.fullname}</span>
                     <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
                   </div>
                 </div>
@@ -859,34 +862,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Диалог для задач выбранного сотрудника */}
-      <Dialog open={showEmployeeTasksDialog} onOpenChange={setShowEmployeeTasksDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Поручения: {selectedEmployee?.fullname}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {selectedEmployeeTasks.length > 0 ? (
-              selectedEmployeeTasks.map(task => (
-                <div key={task.id} className="p-3 border rounded-md">
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-sm text-gray-500">{task.description}</p>
-                  <div className="flex justify-between mt-2">
-                    <span className="text-xs text-gray-500">
-                      Срок: {task.deadline ? new Date(task.deadline).toLocaleDateString() : '—'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Статус: {task.status}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">Нет поручений</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
