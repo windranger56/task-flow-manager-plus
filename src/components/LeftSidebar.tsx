@@ -361,8 +361,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
   // Mobile-specific styles
   const sidebarClass = isMobile 
-    ? "w-full flex flex-col bg-white max-h-[100vh] overflow-y" 
-    : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200";
+  ? "w-full flex flex-col bg-white h-screen overflow-y-auto" 
+  : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200 overflow-hidden";
 
   const borderClass = isMobile ? "" : "border-b border-gray-200";
   const avatarSize = isMobile ? "h-16 w-16" : "h-[70px] w-[70px]";
@@ -775,28 +775,30 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       </div>
       
       {/* Subordinates */}
-      <div className="p-4 р-">
-        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto ${subordinates.length > 4 ? 'max-h-[270px]' : ''} gap-3`}>
-          {subordinates.length > 0 ? (
-            subordinates.map((user, index) => (
-              <div
-                key={user.id}
-                className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full ${index >= 4 ? '' : ''}`}
-                onClick={() => handleShowEmployeeTasks(user)}
-              >
-                <Avatar className="h-10 w-10 mr-3">
-                  <AvatarImage src={user.image} alt={user.fullname} />
-                  <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-m font-medium">{user.fullname}</span>
-                  <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
+          <div className={`flex flex-col ${isMobile ? 'items-center' : ''} gap-3`}>
+            {subordinates.length > 0 ? (
+              subordinates.map((user, index) => (
+                <div
+                  key={user.id}
+                  className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full`}
+                  onClick={() => handleShowEmployeeTasks(user)}
+                >
+                  <Avatar className="h-10 w-10 mr-3">
+                    <AvatarImage src={user.image} alt={user.fullname} />
+                    <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="text-m font-medium">{user.fullname}</span>
+                    <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500">Нет подчиненных</div>
-          )}
+              ))
+            ) : (
+              <div className="text-center text-gray-500">Нет подчиненных</div>
+            )}
+          </div>
         </div>
       </div>
       
