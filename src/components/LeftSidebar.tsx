@@ -775,8 +775,8 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       </div>
       
       {/* Subordinates */}
-      <div className="p-4">
-        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto ${subordinates.length > 4 ? 'max-h-[200px]' : ''} gap-3`}>
+      <div className="p-4 р-">
+        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto ${subordinates.length > 4 ? 'max-h-[270px]' : ''} gap-3`}>
           {subordinates.length > 0 ? (
             subordinates.map((user, index) => (
               <div

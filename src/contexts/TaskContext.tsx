@@ -195,13 +195,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   // Функция для проверки и обновления просроченных задач
   const checkAndUpdateOverdueTasks = async (tasksToCheck: Task[]) => {
     const now = new Date();
+    // Устанавливаем начало текущего дня (00:00:00)
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const tasksToUpdate = tasksToCheck.filter(task => {
       const deadline = new Date(task.deadline);
- 
-      // Задача просрочена только если текущее время больше дедлайна
-      // Поскольку дедлайн установлен на 23:59:59, задача станет просроченной только после этого времени
-      const isOverdue = now > deadline && task.status !== 'completed' && task.status !== 'overdue';
-     
+      // Задача просрочена, если дедлайн был до начала текущего дня (вчера или раньше)
+      const isOverdue = deadline < startOfToday && task.status !== 'completed' && task.status !== 'overdue';
       return isOverdue;
     });
     
@@ -225,7 +225,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             .insert([{
               content: 'Поручение просрочено',
               task_id: task.id,
-              sent_by: task.createdBy, // Используем ID создателя задачи
+              sent_by: task.createdBy,
               is_system: 1,
             }]);
         } catch (messageError) {
