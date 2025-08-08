@@ -10,14 +10,14 @@ export function getTaskStatusColor(status: string) {
     case 'completed':
       return 'bg-green-500';
     case 'new':
-      return 'bg-gray-400';
+      return 'bg-[#BCBCBC]';
     case 'in_progress':
-      return 'bg-blue-400';
+      return 'bg-[#3F79FF]';
     case 'on_verification':
-      return 'bg-green-300';
+      return 'bg-[#EEF4C7]';
     case 'overdue':
     case 'canceled':
-      return 'bg-red-700';
+      return 'bg-[#DA100B]';
     default:
       return 'bg-red-400';
   }

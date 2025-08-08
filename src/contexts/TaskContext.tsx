@@ -33,10 +33,12 @@ interface TaskContextType {
   // Selected items
   selectedDepartment: Department | null;
   selectedTask: Task | null;
+  selectedUserId: string | null;
   
   // Actions
   selectDepartment: (department: Department | null) => void;
   selectTask: (task: Task | null) => void;
+  setSelectedUserId: (userId: string | null) => void;
   addDepartment: (name: string, managerId: string, userIds?: string[]) => void;
   addUsersToDepartment: (departmentId: string, userIds: string[]) => Promise<void>;
   addTask: (
@@ -57,6 +59,12 @@ interface TaskContextType {
   searchTasks: (query: string) => Task[];
   updateTaskIsNew: (taskId: string, isNew: boolean) => Promise<void>;
   
+  // Task filter
+  taskFilter: 'all' | 'author' | 'assignee';
+  setTaskFilter: (filter: 'all' | 'author' | 'assignee') => void;
+  getFilteredTasks: () => Task[];
+  getUserDepartmentId: (userId: string) => Promise<string | null>;
+  
   // Helper functions
   getUserById: (id: string) => Promise<any>;
   getDepartmentById: (id: string) => Promise<Department | undefined>;
@@ -75,6 +83,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'author' | 'assignee'>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDepartments, setUserDepartments] = useState<{userId: string, departmentId: string}[]>([
     { userId: '2', departmentId: '1' },
     { userId: '3', departmentId: '2' },
@@ -189,9 +199,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   // Функция для проверки и обновления просроченных задач
   const checkAndUpdateOverdueTasks = async (tasksToCheck: Task[]) => {
     const now = new Date();
+    // Устанавливаем начало текущего дня (00:00:00)
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
     const tasksToUpdate = tasksToCheck.filter(task => {
       const deadline = new Date(task.deadline);
-      return deadline < now && task.status !== 'completed' && task.status !== 'overdue';
+      // Задача просрочена, если дедлайн был до начала текущего дня (вчера или раньше)
+      const isOverdue = deadline < startOfToday && task.status !== 'completed' && task.status !== 'overdue';
+      return isOverdue;
     });
     
     if (tasksToUpdate.length > 0) {
@@ -214,7 +229,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             .insert([{
               content: 'Поручение просрочено',
               task_id: task.id,
-              sent_by: task.createdBy, // Используем ID создателя задачи
+              sent_by: task.createdBy,
               is_system: 1,
             }]);
         } catch (messageError) {
@@ -1287,6 +1302,52 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Function to get user's department ID
+  const getUserDepartmentId = async (userId: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('departmentId')
+        .eq('id', userId)
+        .single();
+        
+      if (error || !data) {
+        console.error("Ошибка при получении departmentId пользователя:", error);
+        return null;
+      }
+      
+      return data.departmentId;
+    } catch (error) {
+      console.error("Ошибка при получении departmentId пользователя:", error);
+      return null;
+    }
+  };
+
+  // Function to get filtered tasks based on current filter
+  const getFilteredTasks = (): Task[] => {
+    if (!user) return [];
+    
+    // If a specific user is selected, show only their tasks
+    if (selectedUserId) {
+      return tasks.filter(task => 
+        task.createdBy === selectedUserId || task.assignedTo === selectedUserId
+      );
+    }
+    
+    // Otherwise use the regular filter
+    switch(taskFilter) {
+      case 'author':
+        return tasks.filter(task => task.createdBy === user.id);
+      case 'assignee':
+        return tasks.filter(task => task.assignedTo === user.id);
+      case 'all':
+      default:
+        return tasks.filter(task => 
+          task.createdBy === user.id || task.assignedTo === user.id
+        );
+    }
+  };
+
   return (
     <TaskContext.Provider value={{
 			user,
@@ -1299,8 +1360,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       supabase, // Add supabase to the context value
       selectedDepartment,
       selectedTask,
+      selectedUserId,
       selectDepartment,
       selectTask,
+      setSelectedUserId,
       addDepartment,
       addUsersToDepartment,
       addTask,
@@ -1318,7 +1381,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getMessagesByTask,
       getSubordinates,
       updateSelectedDepartmentId,
-      fetchTasks
+      fetchTasks,
+      taskFilter,
+      setTaskFilter,
+      getFilteredTasks,
+      getUserDepartmentId
     }}>
       {children}
     </TaskContext.Provider>

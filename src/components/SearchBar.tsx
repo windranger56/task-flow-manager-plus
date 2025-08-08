@@ -94,7 +94,7 @@ export default function SearchBar() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end ml-2">
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-[#BCBCBC]">
                         {task.createdBy === user?.id ? 'Вы создали' : 
                          task.assignedTo === user?.id ? 'Вы исполнитель' : 'Доступно'}
                       </div>
@@ -166,7 +166,7 @@ export default function SearchBar() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end ml-2">
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-[#BCBCBC]">
                             {task.createdBy === user?.id ? 'Вы создали' : 
                              task.assignedTo === user?.id ? 'Вы исполнитель' : 'Доступно'}
                           </div>

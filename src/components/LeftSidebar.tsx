@@ -19,6 +19,7 @@ import {
 import { User } from '@/types';
 import { toast } from "@/components/ui/use-toast";
 import { Tooltip } from 'react-tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface LeftSidebarProps {
   onItemClick?: () => void;
@@ -37,7 +38,13 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     getDepartmentByUserId,
     addUsersToDepartment,
     selectTask,
-    tasks
+    tasks,
+    taskFilter,
+    setTaskFilter,
+    selectedUserId,
+    setSelectedUserId,
+    getUserDepartmentId,
+    getFilteredTasks
   } = useTaskContext();
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
@@ -57,6 +64,24 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       if (isMobile) {
         setShowTaskDetail(true);
       }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+      toast({
+        title: "Успешный выход",
+        description: "Вы вышли из системы",
+      });
+    } catch (error) {
+      console.error("Ошибка при выходе:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось выйти из системы",
+        variant: "destructive"
+      });
     }
   };
 
@@ -144,18 +169,17 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [filteredTasks, setFilteredTasks] = useState([]);
   
-  // New states for new messages and status notifications
+  // States for notifications
   const [tasksWithNewMessages, setTasksWithNewMessages] = useState([]);
   const [tasksWithNewStatus, setTasksWithNewStatus] = useState([]);
-  const [showNewMessagesDialog, setShowNewMessagesDialog] = useState(false);
-  const [showNewStatusDialog, setShowNewStatusDialog] = useState(false);
+  const [showNotificationsDialog, setShowNotificationsDialog] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState('all'); // 'all', 'messages', 'status'
   
   // Function to fetch tasks with new messages
   const fetchTasksWithNewMessages = async () => {
     if (!user) return;
     
     try {
-      // Fetch tasks where user has unread messages
       const { data: messagesData, error } = await supabase
         .from('messages')
         .select(`
@@ -170,13 +194,12 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             created_by
           )
         `)
-        .neq('sent_by', user.id) // Messages not sent by current user
-        .eq('is_read', false) // Unread messages
+        .neq('sent_by', user.id)
+        .eq('is_new', true)
         .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
 
       if (error) throw error;
 
-      // Group by task and format data
       const tasksMap = new Map();
       messagesData?.forEach(msg => {
         if (msg.tasks && !tasksMap.has(msg.task_id)) {
@@ -208,7 +231,45 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       console.error("Ошибка при загрузке задач с новым статусом:", error);
     }
   };
-  
+
+  // Function to mark notifications as read
+  const markNotificationsAsRead = async (type: 'messages' | 'status') => {
+    if (!user) return;
+    
+    try {
+      if (type === 'messages') {
+        // Mark messages as read
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_new: false })
+          .neq('sent_by', user.id)
+          .eq('is_new', true)
+          .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`, { foreignTable: 'tasks' });
+          
+        if (error) throw error;
+        
+        // Refresh messages
+        fetchTasksWithNewMessages();
+      } else if (type === 'status') {
+        // Mark tasks as not new
+        const taskIds = tasksWithNewStatus.map(task => task.id);
+        if (taskIds.length > 0) {
+          const { error } = await supabase
+            .from('tasks')
+            .update({ is_new: false })
+            .in('id', taskIds);
+            
+          if (error) throw error;
+          
+          // Refresh status
+          fetchTasksWithNewStatus();
+        }
+      }
+    } catch (error) {
+      console.error("Ошибка при обновлении уведомлений:", error);
+    }
+  };
+
   useEffect(() => {
     getProfile();
     const loadSubordinates = async () => {
@@ -220,14 +281,48 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       }
     };
     
-    loadSubordinates();
-  }, []);
+    const loadUserDepartment = async () => {
+      if (user) {
+        try {
+          const department = await getDepartmentByUserId(user.id);
+          setUserDepartment(department?.name || '');
+        } catch (error) {
+          console.error("Ошибка при загрузке департамента пользователя:", error);
+        }
+      }
+    };
+    
+    const loadSubordinateDepartments = async () => {
+      if (subordinates.length > 0) {
+        try {
+          const deptPromises = subordinates.map(async (sub) => {
+            const dept = await getDepartmentByUserId(sub.id);
+            return { userId: sub.id, departmentName: dept?.name || 'Не назначен' };
+          });
+          
+          const deptResults = await Promise.all(deptPromises);
+          const deptMap = deptResults.reduce((acc, curr) => {
+            acc[curr.userId] = curr.departmentName;
+            return acc;
+          }, {} as {[userId: string]: string});
+          
+          setSubordinateDepartments(deptMap);
+        } catch (error) {
+          console.error("Ошибка при загрузке департаментов подчиненных:", error);
+        }
+      }
+    };
+    
+    loadSubordinates().then(() => {
+      loadSubordinateDepartments();
+    });
+    loadUserDepartment();
+  }, [user]);
 
   useEffect(() => {
     if (user) {
-      const filteredTasks = tasks.filter(task => 
-        task.createdBy === user.id || task.assignedTo === user.id
-      );
+      // Use the filtered tasks from context
+      const filteredTasks = getFilteredTasks();
       
       setDoneTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
       setOverdueTasks(filteredTasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
@@ -239,7 +334,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       fetchTasksWithNewMessages();
       fetchTasksWithNewStatus();
     }
-  }, [tasks, user]);
+  }, [tasks, user, taskFilter, selectedUserId, getFilteredTasks]);
 
   // Effect to periodically refresh new messages and statuses
   useEffect(() => {
@@ -253,174 +348,10 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  
-
-  // useEffect(() => {
-  //   setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []))
-  // }, [tasks])
-
-  // useEffect(() => {
-  //   setinworkTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'in_progress' ? [c] : [])]), []))
-  // }, [tasks])
-
-  // useEffect(() => {
-  //   setverifyTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'on_verification' ? [c] : [])]), []))
-  // }, [tasks])
-
-  // useEffect(() => {
-  //   setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []))
-  // }, [tasks])
-
-  // useEffect(() => {
-  //   setDoneTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'completed' ? [c] : [])]), []));
-  //   setOverdueTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'overdue' ? [c] : [])]), []));
-  //   setNewTasks(tasks.reduce((a, c) => ([...a, ...(c.status === 'new' ? [c] : [])]), []));
-  // }, [tasks]);
-
-  useEffect(() => {
-    if (showNewDepartment) {
-      fetchUsers();
-    }
-  }, [showNewDepartment]);
-
-  useEffect(() => {
-    if (showAddUsersToDepartment) {
-      fetchUsersForExistingDepartment();
-    }
-  }, [showAddUsersToDepartment]);
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate('/auth');
-      toast({
-        title: "Успешный выход",
-        description: "Вы вышли из системы",
-      });
-    } catch (error) {
-      console.error("Ошибка при выходе:", error);
-      toast({
-        title: "Ошибка",
-        description: "Не удалось выйти из системы",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, fullname')
-        .is('leader_id', null)
-        .order('fullname');
-        
-      if (error) {
-        console.error("Ошибка при загрузке пользователей:", error);
-        toast({
-          title: "Ошибка", 
-          description: "Не удалось загрузить пользователей",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (data) {
-        if (data.length === 0) {
-          toast({
-            title: "Внимание", 
-            description: "Нет доступных пользователей без руководителя",
-            variant: "default"
-          });
-        }
-        setAvailableUsers(data);
-      }
-    } catch (error) {
-      console.error("Ошибка при загрузке пользователей:", error);
-      toast({
-        title: "Ошибка", 
-        description: "Произошла ошибка при загрузке пользователей",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const fetchUsersForExistingDepartment = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, fullname')
-        .is('leader_id', null)
-        .order('fullname');
-        
-      if (error) {
-        console.error("Ошибка при загрузке пользователей:", error);
-        toast({
-          title: "Ошибка", 
-          description: "Не удалось загрузить пользователей",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (data) {
-        if (data.length === 0) {
-          toast({
-            title: "Внимание", 
-            description: "Нет доступных пользователей без руководителя",
-            variant: "default"
-          });
-        }
-        setAvailableUsers(data);
-      }
-    } catch (error) {
-      console.error("Ошибка при загрузке пользователей:", error);
-      toast({
-        title: "Ошибка", 
-        description: "Произошла ошибка при загрузке пользователей",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleCreateDepartment = () => {
-    if (newDeptName && newDeptManager) {
-      addDepartment(newDeptName, newDeptManager);
-      setNewDeptName("");
-      setNewDeptManager("");
-      setShowNewDepartment(false);
-    }
-  };
-
-  const handleUserSelection = (userId: string) => {
-    setSelectedUsersToAdd(prev => 
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
-  const handleAddUsersToDepartment = () => {
-    if (selectedDeptForUsers && selectedUsersToAdd.length > 0) {
-      addUsersToDepartment(selectedDeptForUsers, selectedUsersToAdd);
-      setSelectedDeptForUsers("");
-      setSelectedUsersToAdd([]);
-      setShowAddUsersToDepartment(false);
-    }
-  };
-
-  const toggleDepartment = (departmentId: string) => {
-    setExpandedDepartments(prev => 
-      prev.includes(departmentId) 
-        ? prev.filter(id => id !== departmentId) 
-        : [...prev, departmentId]
-    );
-  };
-
   // Mobile-specific styles
   const sidebarClass = isMobile 
-    ? "w-full flex flex-col bg-white max-h-[100vh] overflow-y" 
-    : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200";
+  ? "w-full flex flex-col bg-white h-screen overflow-y-auto" 
+  : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200 overflow-hidden";
 
   const borderClass = isMobile ? "" : "border-b border-gray-200";
   const avatarSize = isMobile ? "h-16 w-16" : "h-[70px] w-[70px]";
@@ -428,26 +359,42 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const statsClass = isMobile ? "flex justify-center gap-6" : "flex justify-between";
   const subordinateAvatarSize = isMobile ? "h-8 w-8" : "h-10 w-10";
 
-  // --- ДОБАВИТЬ состояния для выбранного сотрудника и его задач ---
-  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
-  const [selectedEmployeeTasks, setSelectedEmployeeTasks] = useState<any[]>([]);
-  const [showEmployeeTasksDialog, setShowEmployeeTasksDialog] = useState(false);
+  // States for department and task filter
+  const [userDepartment, setUserDepartment] = useState<string>('');
+  const [subordinateDepartments, setSubordinateDepartments] = useState<{[userId: string]: string}>({});
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
-  // --- ДОБАВИТЬ функцию для загрузки задач сотрудника ---
-  const handleShowEmployeeTasks = async (employee: User) => {
-    setSelectedEmployee(employee);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .or(`assigned_to.eq.${employee.id},created_by.eq.${employee.id}`);
-    if (!error) {
-      setSelectedEmployeeTasks(data || []);
-      setShowEmployeeTasksDialog(true);
-    } else {
-      setSelectedEmployeeTasks([]);
-      setShowEmployeeTasksDialog(true);
+  const handleSelectEmployee = async (employee: User) => {
+    try {
+      // Set selected user in context
+      setSelectedUserId(employee.id);
+      setSelectedEmployeeId(employee.id);
+      
+      // Get user's department and auto-select it
+      const departmentId = await getUserDepartmentId(employee.id);
+      if (departmentId) {
+        const department = departments.find(d => d.id === departmentId);
+        if (department) {
+          selectDepartment(department);
+        }
+      }
+      
+      // Reset task filter to 'all'
+      setTaskFilter('all');
+    } catch (error) {
+      console.error("Ошибка при выборе сотрудника:", error);
     }
   };
+
+  const handleFilterChange = (filter: 'all' | 'author' | 'assignee') => {
+    // Reset selected user when changing filter
+    setSelectedUserId(null);
+    setSelectedEmployeeId(null);
+    setTaskFilter(filter);
+  };
+
+  // Calculate total notifications count
+  const totalNotifications = tasksWithNewMessages.length + tasksWithNewStatus.length;
 
   return (
     <div className={sidebarClass}>
@@ -456,7 +403,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
           УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
         </div>
       ) : (
-        <div className='h-[70px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>
+        <div className=' h-12 w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>
           УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
         </div>
       )}
@@ -464,293 +411,262 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
       <div className={`px-[40px] py-[5px] ${isMobile ? 'text-center' : ''}`}>
         {/* User Info */}
         <div className="flex flex-col items-center">
-          <Avatar className={`${avatarSize} mb-2`}>
+
+          <h3 className="text-center text-xl font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
+          <p className="text-l text-gray-500">{profile.email}</p>
+          {userDepartment && (
+            <p className="text-xs text-[#BCBCBC] mt-1">{userDepartment}</p>
+          )}
+          <Avatar className={`h-[90px] w-[90px] mb-2 mt-4`}>
             <AvatarImage src={profile.image} alt={profile.fullname} />
             <AvatarFallback>{profile.fullname ? profile.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
           </Avatar>
-          <h3 className="text-center font-semibold mt-[15px] mb-[8px]">{profile.fullname}</h3>
-          <p className="text-sm text-gray-500">{profile.email}</p>
+          
+        </div>
+        
+        {/* Task Filter Buttons */}
+        <div className="flex justify-center gap-4 mt-[20px] mb-[15px] ">
+          <button
+            onClick={() => handleFilterChange('all')}
+            className={`text-m pb-1 ${taskFilter === 'all' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+          >
+            Все
+          </button>
+          <button
+            onClick={() => handleFilterChange('author')}
+            className={`text-m pb-1 ${taskFilter === 'author' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+          >
+            я Автор
+          </button>
+          <button
+            onClick={() => handleFilterChange('assignee')}
+            className={`text-m pb-1 ${taskFilter === 'assignee' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+          >
+            я Исполнитель
+          </button>
         </div>
         
         {/* Action Buttons */}
-        <div className={`${buttonGroupClass} mt-[25px]`}>
-          {/* <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+        <div className={`${buttonGroupClass} mt-[15px]`}>
+          {/* Combined Notifications Button */}
+          <Dialog open={showNotificationsDialog} onOpenChange={setShowNotificationsDialog}>
             <DialogTrigger asChild>
               <Button 
                 data-tooltip-id="tooltip" 
-                data-tooltip-content="Действия с подразделениями"
-                className="w-[36px] h-[36px] overflow-hidden relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd] flex items-center justify-center"
+                data-tooltip-content="Уведомления"
+                className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                  <path d="M20.75 11V8.75H23V7.25H20.75V5H19.25V7.25H17V8.75H19.25V11H20.75Z" stroke="rgb(77, 118, 253)" />
-                  <path d="M11 4C8.79 4 7 5.79 7 8C7 10.21 8.79 12 11 12C13.21 12 15 10.21 15 8C15 5.79 13.21 4 11 4Z" />
-                  <path d="M3 18C3 15.34 8.33 14 11 14C13.67 14 19 15.34 19 18V20H3V18Z" stroke="rgb(77, 118, 253)" />
-                </svg>
+                <Bell className="h-4 w-4" />
+                {totalNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {totalNotifications}
+                  </span>
+                )}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Что вы хотите сделать?</DialogTitle>
+                <DialogTitle>Уведомления</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="flex flex-col space-y-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowActionDialog(false);
-                      setShowNewDepartment(true);
-                    }}
-                  >
-                    Добавить новое подразделение
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowActionDialog(false);
-                      setShowAddUsersToDepartment(true);
-                    }}
-                  >
-                    Добавить пользователей
-                  </Button>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowActionDialog(false)}
-                  className="w-full"
-                >
-                  Отмена
-                </Button>
-              </div>
+              
+              <Tabs 
+                value={notificationFilter} 
+                onValueChange={setNotificationFilter}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="all">Все</TabsTrigger>
+                  <TabsTrigger value="messages">Сообщения</TabsTrigger>
+                  <TabsTrigger value="status">Статусы</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="all" className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {tasksWithNewMessages.length === 0 && tasksWithNewStatus.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">Нет новых уведомлений</p>
+                  ) : (
+                    <>
+                      {tasksWithNewMessages.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-medium">Новые сообщения ({tasksWithNewMessages.length})</h3>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => markNotificationsAsRead('messages')}
+                              className="text-xs"
+                            >
+                              Прочитано
+                            </Button>
+                          </div>
+                          {tasksWithNewMessages.map(task => (
+                            <div 
+                              key={`msg-${task.id}`} 
+                              className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 mb-2"
+                              onClick={() => {
+                                handleTaskClick(task.id);
+                                setShowNotificationsDialog(false);
+                              }}
+                            >
+                              <p className="font-medium">{task.title}</p>
+                              <p className="text-sm text-gray-500">{task.description}</p>
+                              <div className="flex justify-between mt-2">
+                                <span className="text-xs text-gray-500">
+                                  Срок: {new Date(task.deadline).toLocaleDateString()}
+                                </span>
+                                {task.priority === 'high' && (
+                                  <span className="text-xs text-gray-500">
+                                    Приоритет: Высокий
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {tasksWithNewStatus.length > 0 && (
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-medium">Новые статусы ({tasksWithNewStatus.length})</h3>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => markNotificationsAsRead('status')}
+                              className="text-xs"
+                            >
+                              Прочитано
+                            </Button>
+                          </div>
+                          {tasksWithNewStatus.map(task => (
+                            <div 
+                              key={`status-${task.id}`} 
+                              className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 mb-2"
+                              onClick={() => {
+                                handleTaskClick(task.id);
+                                setShowNotificationsDialog(false);
+                              }}
+                            >
+                              <p className="font-medium">{task.title}</p>
+                              <p className="text-sm text-gray-500">{task.description}</p>
+                              <div className="flex justify-between mt-2">
+                                <span className="text-xs text-gray-500">
+                                  Срок: {new Date(task.deadline).toLocaleDateString()}
+                                </span>
+                                <span className="text-xs text-blue-500">
+                                  Статус: {
+                                    task.status === 'overdue' ? 'просрочено' :
+                                    task.status === 'in_progress' ? 'в работе' :
+                                    task.status === 'new' ? 'новое' :
+                                    task.status === 'completed' ? 'завершена' :
+                                    task.status === 'canceled' ? 'отменена' :
+                                    task.status === 'on_verification' ? 'на проверке' :
+                                    task.status
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="messages" className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {tasksWithNewMessages.length > 0 ? (
+                    <>
+                      <div className="flex justify-end mb-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => markNotificationsAsRead('messages')}
+                          className="text-xs"
+                        >
+                          Пометить все как прочитанные
+                        </Button>
+                      </div>
+                      {tasksWithNewMessages.map(task => (
+                        <div 
+                          key={`msg-${task.id}`} 
+                          className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 mb-2"
+                          onClick={() => {
+                            handleTaskClick(task.id);
+                            setShowNotificationsDialog(false);
+                          }}
+                        >
+                          <p className="font-medium">{task.title}</p>
+                          <p className="text-sm text-gray-500">{task.description}</p>
+                          <div className="flex justify-between mt-2">
+                            <span className="text-xs text-gray-500">
+                              Срок: {new Date(task.deadline).toLocaleDateString()}
+                            </span>
+                            {task.priority === 'high' && (
+                              <span className="text-xs text-gray-500">
+                                Приоритет: Высокий
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">Нет новых сообщений</p>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="status" className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {tasksWithNewStatus.length > 0 ? (
+                    <>
+                      <div className="flex justify-end mb-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => markNotificationsAsRead('status')}
+                          className="text-xs"
+                        >
+                          Пометить все как прочитанные
+                        </Button>
+                      </div>
+                      {tasksWithNewStatus.map(task => (
+                        <div 
+                          key={`status-${task.id}`} 
+                          className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 mb-2"
+                          onClick={() => {
+                            handleTaskClick(task.id);
+                            setShowNotificationsDialog(false);
+                          }}
+                        >
+                          <p className="font-medium">{task.title}</p>
+                          <p className="text-sm text-gray-500">{task.description}</p>
+                          <div className="flex justify-between mt-2">
+                            <span className="text-xs text-gray-500">
+                              Срок: {new Date(task.deadline).toLocaleDateString()}
+                            </span>
+                            <span className="text-xs text-blue-500">
+                              Статус: {
+                                task.status === 'overdue' ? 'просрочено' :
+                                task.status === 'in_progress' ? 'в работе' :
+                                task.status === 'new' ? 'новое' :
+                                task.status === 'completed' ? 'завершена' :
+                                task.status === 'canceled' ? 'отменена' :
+                                task.status === 'on_verification' ? 'на проверке' :
+                                task.status
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">Нет обновлений статуса</p>
+                  )}
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
 
-          <Dialog open={showNewDepartment} onOpenChange={setShowNewDepartment}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Добавить новое подразделение</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="department-name">Название подразделения <span className="text-red-500">*</span> </Label>
-                <Input 
-                  id="department-name" 
-                  value={newDeptName}
-                  onChange={(e) => setNewDeptName(e.target.value)}
-                  placeholder="Введите название подразделения"
-                  className={!newDeptName && "border-red-500"}
-                />
-               
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department-manager">Руководитель подразделения <span className="text-red-500">*</span> </Label>
-                <Select value={newDeptManager} onValueChange={setNewDeptManager}>
-                  <SelectTrigger className={!newDeptManager && "border-red-500"}>
-                    <SelectValue placeholder="Выберите руководителя" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableUsers.length > 0 ? (
-                      availableUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.fullname}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="p-2 text-center text-gray-500">
-                        Нет доступных пользователей без руководителя
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-                
-              </div>
-              <Button 
-                onClick={() => {
-                  if (!newDeptName || !newDeptManager) {
-                    return;
-                  }
-                  handleCreateDepartment();
-                }} 
-                className="w-full"
-              >
-                Добавить подразделение
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog> */}
-
-        {/* <Dialog open={showAddUsersToDepartment} onOpenChange={setShowAddUsersToDepartment}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Добавить пользователей в подразделение</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="department-select">Выберите подразделение</Label>
-                <Select 
-                  value={selectedDeptForUsers} 
-                  onValueChange={setSelectedDeptForUsers}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите подразделение" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Выберите пользователей <span className="text-red-500">*</span> </Label>
-                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                  {availableUsers.length > 0 ? (
-                    availableUsers.map((user) => (
-                      <div key={user.id} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`user-${user.id}`} 
-                          checked={selectedUsersToAdd.includes(user.id)}
-                          onCheckedChange={() => handleUserSelection(user.id)}
-                        />
-                        <Label htmlFor={`user-${user.id}`} className="flex items-center">
-                          <span>{user.fullname}</span>
-                        </Label>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-gray-500 py-2">
-                      Нет доступных пользователей без руководителя
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Отображаются только пользователи без руководителя
-                </p>
-              </div>
-              <Button 
-                onClick={handleAddUsersToDepartment} 
-                disabled={!selectedDeptForUsers || selectedUsersToAdd.length === 0} 
-                className="w-full"
-              >
-                Добавить пользователей
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog> */}
-
-        {/* New Messages Dialog */}
-        <Dialog open={showNewMessagesDialog} onOpenChange={setShowNewMessagesDialog}>
-          <DialogTrigger asChild>
-            <Button 
-              data-tooltip-id="tooltip" 
-              data-tooltip-content="Новые сообщения"
-              className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
-            >
-              <Mail className="h-4 w-4" />
-              {tasksWithNewMessages.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {tasksWithNewMessages.length}
-                </span>
-              )}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Поручения с новыми сообщениями</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {tasksWithNewMessages.length > 0 ? (
-                tasksWithNewMessages.map(task => (
-                  <div 
-                    key={task.id} 
-                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
-                    onClick={() => {
-                      handleTaskClick(task.id);
-                      setShowNewMessagesDialog(false);
-                    }}
-                  >
-                    <p className="font-medium">{task.title}</p>
-                    <p className="text-sm text-gray-500">{task.description}</p>
-                    <div className="flex justify-between mt-2">
-                      <span className="text-xs text-gray-500">
-                        Срок: {new Date(task.deadline).toLocaleDateString()}
-                      </span>
-                      {task.priority === 'high' && (
-                        <span className="text-xs text-gray-500">
-                          Приоритет: Высокий
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">Нет новых сообщений</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* New Status Dialog */}
-        <Dialog open={showNewStatusDialog} onOpenChange={setShowNewStatusDialog}>
-          <DialogTrigger asChild>
-            <Button 
-              data-tooltip-id="tooltip" 
-              data-tooltip-content="Новые статусы"
-              className="w-[36px] h-[36px] relative bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
-            >
-              <Bell className="h-4 w-4" />
-              {tasksWithNewStatus.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {tasksWithNewStatus.length}
-                </span>
-              )}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Поручения с новым статусом</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {tasksWithNewStatus.length > 0 ? (
-                tasksWithNewStatus.map(task => (
-                  <div 
-                    key={task.id} 
-                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
-                    onClick={() => {
-                      handleTaskClick(task.id);
-                      setShowNewStatusDialog(false);
-                    }}
-                  >
-                    <p className="font-medium">{task.title}</p>
-                    <p className="text-sm text-gray-500">{task.description}</p>
-                    <div className="flex justify-between mt-2">
-                      <span className="text-xs text-gray-500">
-                        Срок: {new Date(task.deadline).toLocaleDateString()}
-                      </span>
-                      <span className="text-xs text-blue-500">
-                        Статус: {
-                          task.status === 'overdue' ? 'просрочено' :
-                          task.status === 'in_progress' ? 'в работе' :
-                          task.status === 'new' ? 'новое' :
-                          task.status === 'completed' ? 'завершена' :
-                          task.status === 'canceled' ? 'отменена' :
-                          task.status === 'on_verification' ? 'на проверке' :
-                          task.status
-                        }
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">Нет обновлений статуса</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Кнопка выхода - только иконка на мобильных */}
-        {isMobile ? (
+          {/* Кнопка выхода - только иконка на мобильных */}
+          {isMobile ? (
             <Button 
               onClick={handleLogout} 
               variant="outline" 
@@ -761,44 +677,43 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
               <LogOut className="h-4 w-4" />
             </Button>
           ) : null}
-          
         </div>
         
         {/* Stats */}
-        {/* <div className='mt-[11px] flex justify-end text-[10px] text-[#7a7e9d] font-semibold'>
-          {doneTasks.length}/{tasks.length}
-        </div> */}
-        <div className='bg-[#e7edf5] w-full h-[8px] rounded-full mt-[50px] relative overflow-hidden'>
-          {/* Просроченные - красный */}
+        <div className='bg-transperent w-full h-[8px] rounded-full mt-[20px] relative overflow-hidden'>
+          {/* Просроченные */}
           <div 
-            className='bg-red-500 border-b h-full absolute left-0 transition-all duration-300' 
-            style={{ width: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%` }}
-          />
-          
-          {/* Новые - голубой */}
-          <div 
-            className='bg-blue-500 h-full absolute transition-all duration-300' 
+            className='bg-[#DA100B] h-full absolute left-0 transition-all duration-300 rounded-full' 
             style={{ 
-              width: `${(newTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
-              left: `${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+              width: `calc(${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 3.75px)`,
+              marginRight: '5px'
             }}
           />
           
-          {/* На проверке - фиолетовый */}
+          {/* Новые */}
           <div 
-            className='bg-purple-500 h-full absolute transition-all duration-300' 
+            className='bg-[#BCBCBC] h-full absolute transition-all duration-300 rounded-full' 
             style={{ 
-              width: `${(verifyTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
-              left: `${((overdueTasks.length + newTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+              width: `calc(${(newTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 7.5px)`,
+              left: `calc(${(overdueTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% + 1.25px)`
             }}
           />
           
-          {/* В работе - желтый */}
+          {/* На проверке */}
           <div 
-            className='bg-yellow-500 h-full absolute transition-all duration-300' 
+            className='bg-[#EEF4C7] h-full absolute transition-all duration-300 rounded-full' 
             style={{ 
-              width: `${(inworkTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`,
-              left: `${((overdueTasks.length + newTasks.length + verifyTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}%`
+              width: `calc(${(verifyTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 7.5px)`,
+              left: `calc(${(overdueTasks.length + newTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length) * 100}% + 1.25px)`
+            }}
+          />
+          
+          {/* В работе */}
+          <div 
+            className='bg-[#3F79FF] h-full absolute transition-all duration-300 rounded-full' 
+            style={{ 
+              width: `calc(${(inworkTasks.length / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length)) * 100}% - 3.75px)`,
+              left: `calc(${(overdueTasks.length + newTasks.length + verifyTasks.length) / (overdueTasks.length + newTasks.length + verifyTasks.length + inworkTasks.length) * 100}% + 1.25px)`
             }}
           />
         </div>
@@ -808,23 +723,23 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             {/* Первая строка */}
             <div className="flex justify-between space-x-3">
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[140px]
-                  ${selectedStatus === 'overdue' ? 'bg-red-50 border-red-300' : 'border-gray-200 hover:border-red-200 hover:border-2'}
-                  flex items-center space-x-2 justify-center`}
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[140px]
+                   'border-gray-200'}
+                  flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('overdue')}
               >
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[#DA100B]"></div>
                 <p className="text-xs font-bold">{overdueTasks.length}</p>
                 <p className="text-xs text-gray-500">Просрочено</p>
               </div>
               
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[100px]
-                  ${selectedStatus === 'in_progress' ? 'bg-yellow-50 border-yellow-300' : 'border-gray-200 hover:border-yellow-200 hover:border-2'}
-                  flex items-center space-x-2 justify-center`}
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[100px]
+                   'border-gray-200'}
+                  flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('in_progress')}
               >
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[#3F79FF]"></div>
                 <p className="text-xs font-bold">{inworkTasks.length}</p>
                 <p className="text-xs text-gray-500">В работе</p>
               </div>
@@ -833,23 +748,23 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
             {/* Вторая строка */}
             <div className="flex justify-between space-x-3">
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[90px] max-w-[100px]
-                  ${selectedStatus === 'new' ? 'bg-blue-50 border-blue-300' : 'border-gray-200 hover:border-blue-200 hover:border-2'}
-                  flex items-center space-x-2 justify-center`}
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[90px] max-w-[100px]
+                   'border-gray-200'}
+                  flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('new')}
               >
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[#BCBCBC]"></div>
                 <p className="text-xs font-bold">{newTasks.length}</p>
                 <p className="text-xs text-gray-500">Новые</p>
               </div>
               
               <div 
-                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 min-w-[120px]
-                  ${selectedStatus === 'on_verification' ? 'bg-purple-50 border-purple-300' : 'border-gray-200 hover:border-purple-200 hover:border-2'}
-                  flex items-center space-x-2 justify-center`}
+                className={`text-center p-3 rounded-lg cursor-pointer border flex-1 transition-all duration-200 h-4 min-w-[120px]
+                  'border-gray-200'}
+                  flex items-center space-x-2 justify-center hover:bg-gray-200`}
                 onClick={() => handleStatusClick('on_verification')}
               >
-                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[#EEF4C7]"></div>
                 <p className="text-xs font-bold">{verifyTasks.length}</p>
                 <p className="text-xs text-gray-500">На проверке</p>
               </div>
@@ -858,128 +773,36 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </div>
       </div>
       
-      {/* Departments */}
-      {/* <div className={borderClass}>
-        <h4 className="text-sm font-medium uppercase tracking-wider mb-2 flex justify-between items-center px-4">
-          ПОДРАЗДЕЛЕНИЯ
-          <div className="flex space-x-2"></div>       
-        </h4>
-        <ul className="space-y-2 px-4">
-          {departments.map((department) => (
-            <Collapsible 
-              key={department.id}
-              className={`border border-transparent rounded-sm ${isMobile ? '' : 'mr-5'} mb-2`}
-              open={expandedDepartments.includes(department.id)}
-            >
-              <CollapsibleTrigger asChild>
-                <div 
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 rounded"
-                  onClick={() => toggleDepartment(department.id)}
-                >
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: department.color }} />
-                    <span className="ml-2 text-sm">{department.name.toLowerCase()}</span>
-                  </div>
-                  {expandedDepartments.includes(department.id) 
-                    ? <ChevronUp className="h-4 w-4" /> 
-                    : <ChevronDown className="h-4 w-4" />
-                  }
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="p-2 bg-gray-50 text-sm">
-                <p>Руководитель: {department.managerName || 'Не назначен'}</p>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </ul>
-      </div> */}
-      
       {/* Subordinates */}
-      <div className="p-4">
-        {/* <h4 className="text-sm font-medium uppercase tracking-wider mb-4">СОТРУДНИКИ</h4> */}
-        <div className={`flex flex-col ${isMobile ? 'items-center' : ''} overflow-y-auto max-h-[400px] gap-3`}>
-          {subordinates.length > 0 ? (
-            subordinates.map((user) => (
-              <div
-                key={user.id}
-                className="relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full"
-                onClick={() => handleShowEmployeeTasks(user)}
-              >
-                <Avatar className="h-10 w-10 mr-3">
-                  <AvatarImage src={user.image} alt={user.fullname} />
-                  <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{user.fullname}</span>
-                  {/* <span className="text-xs text-gray-500">{ || 'Не указан отдел'}</span> */}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-gray-500">Нет подчиненных</div>
-          )}
-        </div>
-                {/* <Button
-                  size="icon"
-                  variant="destructive"
-                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-6 h-6 p-0 text-xs"
-                  onClick={() => setDeletingSubordinateId(user.id)}
-                  title="Удалить сотрудника"
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
+          <div className={`flex flex-col ${isMobile ? 'items-center' : ''} gap-3`}>
+            {subordinates.length > 0 ? (
+              subordinates.map((user, index) => (
+                <div
+                  key={user.id}
+                  className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full ${
+                    selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
+                  }`}
+                  onClick={() => handleSelectEmployee(user)}
                 >
-                  ×
-                </Button> */}
-                {/* Диалог подтверждения удаления */}
-                {/* <Dialog open={deletingSubordinateId === user.id} onOpenChange={(open) => !open && setDeletingSubordinateId(null)}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Удалить сотрудника</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-2">Вы уверены, что хотите удалить сотрудника <b>{user.fullname}</b>? Это действие нельзя отменить.</div>
-                    <div className="flex gap-2 justify-end mt-4">
-                      <Button variant="ghost" onClick={() => setDeletingSubordinateId(null)}>Отмена</Button>
-                      <Button
-                        variant="destructive"
-                        onClick={async () => {
-                          const { data: departmentsManaged, error: depError } = await supabase
-                            .from('departments')
-                            .select('id')
-                            .eq('managerId', user.id);
-                          if (depError) {
-                            toast({ title: 'Ошибка', description: 'Не удалось проверить руководителя департамента', variant: 'destructive' });
-                            return;
-                          }
-                          if (departmentsManaged && departmentsManaged.length > 0) {
-                            const depIds = departmentsManaged.map(dep => dep.id);
-                            const { error: updateError } = await supabase
-                              .from('departments')
-                              .update({ managerId: null })
-                              .in('id', depIds);
-                            if (updateError) {
-                              toast({ title: 'Ошибка', description: 'Не удалось обновить департамент(ы)', variant: 'destructive' });
-                              return;
-                            }
-                          }
-                          const { error } = await supabase.from('users').update({ active: false, leader_id: null }).eq('id', user.id);
-                          if (!error) {
-                            setSubordinates((prev) => prev.filter((u) => u.id !== user.id));
-                            setDeletingSubordinateId(null);
-                            toast({ title: `Сотрудник ${user.fullname} удалён!` });
-                          } else {
-                            toast({ title: 'Ошибка', description: 'Не удалось удалить сотрудника', variant: 'destructive' });
-                          }
-                        }}
-                      >
-                        Удалить
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog> */}
-              {/* </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500 w-full text-center">У вас нет подчинённых сотрудников</p>
-          )}
-        </div> */}
+                  <Avatar className="h-10 w-10 mr-3">
+                    <AvatarImage src={user.image} alt={user.fullname} />
+                    <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className={`text-m font-medium ${
+                      selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
+                    }`}>{user.fullname}</span>
+                    <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500">Нет подчиненных</div>
+            )}
+          </div>
+        </div>
       </div>
       
       {/* Logout button at the bottom */}
@@ -1039,36 +862,9 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Диалог для задач выбранного сотрудника */}
-      <Dialog open={showEmployeeTasksDialog} onOpenChange={setShowEmployeeTasksDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Поручения: {selectedEmployee?.fullname}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {selectedEmployeeTasks.length > 0 ? (
-              selectedEmployeeTasks.map(task => (
-                <div key={task.id} className="p-3 border rounded-md">
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-sm text-gray-500">{task.description}</p>
-                  <div className="flex justify-between mt-2">
-                    <span className="text-xs text-gray-500">
-                      Срок: {task.deadline ? new Date(task.deadline).toLocaleDateString() : '—'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Статус: {task.status}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">Нет поручений</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 export default LeftSidebar;
+
