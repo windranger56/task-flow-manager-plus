@@ -40,7 +40,7 @@ export default function Index() {
 							</Drawer>
 					)}
 					
-					{/* Main Content */}
+					{/* Main Content  для пуша*/}
 					<div className="flex flex-col flex-1 min-w-0">
 						{/* Search Bar */}
 						<div className="md:static sticky top-0 bg-white z-10 p-1 border-b border-gray-200 flex items-center h-12">
