@@ -33,8 +33,9 @@ const Auth = () => {
     // Set up auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Обрабатываем только события входа, игнорируем глобальные выходы
+      if (event === 'SIGNED_IN' && session) {
         navigate("/");
       }
     });
