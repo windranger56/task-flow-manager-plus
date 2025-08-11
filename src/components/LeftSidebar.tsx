@@ -782,7 +782,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                 <div
                   key={user.id}
                   className={`relative group flex items-center cursor-pointer hover:bg-gray-100 rounded p-2 w-full ${
-                    selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
+                    selectedEmployeeId === user.id ? 'border-b-2 border-black' : ''
                   }`}
                   onClick={() => handleSelectEmployee(user)}
                 >
@@ -791,9 +791,7 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
                     <AvatarFallback>{user.fullname ? user.fullname.slice(0, 2) : 'UN'}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className={`text-m font-medium ${
-                      selectedEmployeeId === user.id ? 'border-b-2 border-blue-500' : ''
-                    }`}>{user.fullname}</span>
+                    <span className={`text-m font-medium `}>{user.fullname}</span>
                     <span className="text-s text-gray-500">{subordinateDepartments[user.id] || 'Не назначен'}</span>
                   </div>
                 </div>

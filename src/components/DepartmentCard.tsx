@@ -32,9 +32,9 @@ export default function DepartmentCard({ department, manager, statistics, onClic
           <h3 className="font-medium text-sm text-foreground truncate">
             {department.name}
           </h3>
-          <p className="text-xs text-muted-foreground truncate">
+          {/* <p className="text-xs text-muted-foreground truncate">
             {manager?.fullname || 'Менеджер не назначен'}
-          </p>
+          </p> */}
         </div>
       </div>
       

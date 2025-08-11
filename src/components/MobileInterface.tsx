@@ -185,23 +185,26 @@ export default function MobileInterface({
       <div className="px-4 pb-4">
         <div className="flex gap-2">
           <Button
-            variant={taskFilter === 'all' ? 'default' : 'outline'}
+            variant="ghost"
             size="sm"
             onClick={() => handleFilterClick('all')}
+            className={`${taskFilter === 'all' ? 'font-bold underline underline-offset-4' : 'text-foreground'}`}
           >
             Все
           </Button>
           <Button
-            variant={taskFilter === 'author' ? 'default' : 'outline'}
+            variant="ghost"
             size="sm"
             onClick={() => handleFilterClick('author')}
+            className={`${taskFilter === 'author' ? 'font-bold underline underline-offset-4' : 'text-foreground'}`}
           >
             я Автор
           </Button>
           <Button
-            variant={taskFilter === 'assignee' ? 'default' : 'outline'}
+            variant="ghost"
             size="sm"
             onClick={() => handleFilterClick('assignee')}
+            className={`${taskFilter === 'assignee' ? 'font-bold underline underline-offset-4' : 'text-foreground'}`}
           >
             я Исполнитель
           </Button>
