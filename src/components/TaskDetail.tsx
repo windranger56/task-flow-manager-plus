@@ -676,7 +676,7 @@ export default function TaskDetail() {
 															<span>{file.name}</span>
 														</div>
 														<div className="flex gap-2 items-center">
-															{(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+															{(file.type.startsWith('image/') || (typeof file.name === 'string' && file.name.toLowerCase().endsWith('.pdf'))) && (
 																<div className="relative group">
 																	<button 
 																		onClick={() => setViewerFile(file)}
@@ -701,7 +701,7 @@ export default function TaskDetail() {
 																			const url = window.URL.createObjectURL(blob);
 																			const link = document.createElement('a');
 																			link.href = url;
-																			link.download = file.name;
+															link.download = typeof file.name === 'string' ? file.name : 'file';
 																			document.body.appendChild(link);
 																			link.click();
 																			document.body.removeChild(link);
@@ -723,8 +723,8 @@ export default function TaskDetail() {
 													
 													{file.type.startsWith('image/') && (
 														<img 
-															src={file.url} 
-															alt={file.name}
+															src={typeof file.url === 'string' ? file.url : ''} 
+															alt={typeof file.name === 'string' ? file.name : 'file'}
 															className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
 															onClick={() => setViewerFile(file)}
 														/>
@@ -1467,7 +1467,7 @@ export default function TaskDetail() {
 														<span>{file.name}</span>
 													</div>
 													<div className="flex gap-2 items-center">
-														{(file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.pdf')) && (
+														{(file.type.startsWith('image/') || (typeof file.name === 'string' && file.name.toLowerCase().endsWith('.pdf'))) && (
 															<div className="relative group">
 																<button 
 																	onClick={() => setViewerFile(file)}
@@ -1492,7 +1492,7 @@ export default function TaskDetail() {
 																		const url = window.URL.createObjectURL(blob);
 																		const link = document.createElement('a');
 																		link.href = url;
-																		link.download = file.name;
+																		link.download = typeof file.name === 'string' ? file.name : 'file';
 																		document.body.appendChild(link);
 																		link.click();
 																		document.body.removeChild(link);
@@ -1514,8 +1514,8 @@ export default function TaskDetail() {
 												
 												{file.type.startsWith('image/') && (
 													<img 
-														src={file.url} 
-														alt={file.name}
+														src={typeof file.url === 'string' ? file.url : ''} 
+														alt={typeof file.name === 'string' ? file.name : 'file'}
 														className="max-w-full h-auto max-h-40 rounded mt-2 cursor-pointer"
 														onClick={() => setViewerFile(file)}
 													/>
