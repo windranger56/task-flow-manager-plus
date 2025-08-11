@@ -30,11 +30,27 @@ const App = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, session ? "session exists" : "no session");
+      
+      // Обрабатываем только события, связанные с текущей вкладкой
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        setSession(session);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Обработка закрытия вкладки - очищаем только локальную сессию
+    const handleBeforeUnload = () => {
+      // При закрытии вкладки не выходим из системы глобально
+      // Это позволяет другим вкладкам продолжать работу
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   if (loading) {

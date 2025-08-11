@@ -69,11 +69,27 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log("Начинаем локальный выход из системы...");
+      
+      // Используем scope: 'local' чтобы выход происходил только в текущей вкладке
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      console.log("Локальный выход успешен, перенаправляем на страницу входа");
+      
+      // Очищаем локальные данные пользователя
+      setUser(null);
+      setProfile({
+        user_unique_id: "",
+        fullname: "",
+        email: "",
+        image: "",
+      });
+      
       navigate('/auth');
+      
       toast({
         title: "Успешный выход",
-        description: "Вы вышли из системы",
+        description: "Вы вышли из системы (только в этой вкладке)",
       });
     } catch (error) {
       console.error("Ошибка при выходе:", error);
@@ -89,24 +105,30 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       navigate("/auth");
+      return;
     }
 
-    const { data, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('user_unique_id', session.user.id)
-      .limit(1);
-    if (userError) throw userError;
+    try {
+      const { data, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('user_unique_id', session.user.id)
+        .limit(1);
+      if (userError) throw userError;
 
-    setUser(data[0])
- 
-    if(data) {
-      setProfile({
-        user_unique_id: data[0].user_unique_id || "",
-        fullname: data[0].fullname || "",
-        email: data[0].email || "",
-        image: data[0].image || "",
-      });
+      setUser(data[0])
+   
+      if(data) {
+        setProfile({
+          user_unique_id: data[0].user_unique_id || "",
+          fullname: data[0].fullname || "",
+          email: data[0].email || "",
+          image: data[0].image || "",
+        });
+      }
+    } catch (error) {
+      console.error("Ошибка при получении профиля:", error);
+      // Не перенаправляем на /auth при ошибке получения профиля
     }
   }
 
