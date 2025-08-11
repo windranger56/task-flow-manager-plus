@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Archive, FileDown, List } from 'lucide-react';
+import { Archive, FileDown, List, ChevronDown, ChevronUp } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import DepartmentCard from '@/components/DepartmentCard';
 import MobileBottomNavigation from '@/components/MobileBottomNavigation';
+import MobileTaskCard from '@/components/MobileTaskCard';
 import { useTaskContext } from '@/contexts/TaskContext';
-import { TaskStatus } from '@/types';
+import { TaskStatus, Task, User } from '@/types';
+import { supabase } from '@/supabase/client';
 
 interface MobileInterfaceProps {
   showArchive: boolean;
@@ -28,10 +30,16 @@ export default function MobileInterface({
     taskFilter, 
     setTaskFilter, 
     selectDepartment,
-    getUserById 
+    getUserById,
+    user,
+    getFilteredTasks,
+    selectTask
   } = useTaskContext();
 
   const [activeBottomTab, setActiveBottomTab] = useState<'menu' | 'tasks' | 'add' | 'settings' | 'notifications'>('tasks');
+  const [expandedDepartment, setExpandedDepartment] = useState<string | null>(null);
+  const [departmentTasks, setDepartmentTasks] = useState<{[key: string]: (Task & { assignee?: User; creator?: User })[]}>({});
+  const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
 
   const today = new Date();
   const dayOfWeek = format(today, 'EEEE', { locale: ru });
@@ -48,12 +56,77 @@ export default function MobileInterface({
     };
   };
 
+  // Load tasks with user data for departments
+  useEffect(() => {
+    const loadDepartmentTasks = async () => {
+      const allTasks = getFilteredTasks();
+      const newDepartmentTasks: {[key: string]: (Task & { assignee?: User; creator?: User })[]} = {};
+      
+      for (const department of departments) {
+        const deptTasks = allTasks.filter(task => task.departmentId === department.id);
+        const tasksWithUsers = await Promise.all(
+          deptTasks.map(async (task) => ({
+            ...task,
+            assignee: await getUserById(task.assignedTo),
+            creator: await getUserById(task.createdBy)
+          }))
+        );
+        newDepartmentTasks[department.id] = tasksWithUsers;
+      }
+      
+      setDepartmentTasks(newDepartmentTasks);
+    };
+    
+    loadDepartmentTasks();
+  }, [tasks, taskFilter, departments, getUserById, getFilteredTasks]);
+
+  // Load tasks with new messages
+  useEffect(() => {
+    const fetchTasksWithNewMessages = async () => {
+      if (!user?.id) return;
+
+      const { data, error } = await supabase
+        .from('messages')
+        .select('task_id')
+        .eq('is_new', true)
+        .neq('sent_by', user.id)
+        .neq('is_system', true);
+
+      if (!error && data) {
+        const taskIds = new Set(data.map(msg => msg.task_id));
+        setTasksWithNewMessages(taskIds);
+      }
+    };
+
+    fetchTasksWithNewMessages();
+  }, [user?.id]);
+
   const handleDepartmentClick = (departmentId: string) => {
-    const department = departments.find(d => d.id === departmentId);
-    if (department) {
-      selectDepartment(department);
-      onShowTaskList();
+    if (expandedDepartment === departmentId) {
+      setExpandedDepartment(null);
+    } else {
+      setExpandedDepartment(departmentId);
     }
+  };
+
+  const handleTaskClick = async (task: Task) => {
+    // Mark messages as read
+    if (tasksWithNewMessages.has(task.id)) {
+      await supabase
+        .from('messages')
+        .update({ is_new: false })
+        .eq('task_id', task.id)
+        .eq('is_new', true);
+
+      setTasksWithNewMessages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(task.id);
+        return newSet;
+      });
+    }
+
+    selectTask(task);
+    onShowTaskList();
   };
 
   const handleFilterClick = (filter: 'all' | 'author' | 'assignee') => {
@@ -137,18 +210,48 @@ export default function MobileInterface({
 
       {/* Department cards grid */}
       <div className="px-4 pb-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {departments.map(department => {
             const statistics = getDepartmentStatistics(department.id);
+            const isExpanded = expandedDepartment === department.id;
+            const deptTasks = departmentTasks[department.id] || [];
             
             return (
-              <DepartmentCard
-                key={department.id}
-                department={department}
-                manager={undefined} // Will be loaded asynchronously if needed
-                statistics={statistics}
-                onClick={() => handleDepartmentClick(department.id)}
-              />
+              <div key={department.id}>
+                <div className="relative">
+                  <DepartmentCard
+                    department={department}
+                    manager={undefined} // Will be loaded asynchronously if needed
+                    statistics={statistics}
+                    onClick={() => handleDepartmentClick(department.id)}
+                  />
+                  {deptTasks.length > 0 && (
+                    <div className="absolute top-2 right-2 text-muted-foreground">
+                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Expanded tasks list */}
+                {isExpanded && deptTasks.length > 0 && (
+                  <div className="mt-2 pl-4 space-y-2 border-l-2 border-muted">
+                    {deptTasks.map(task => (
+                      <MobileTaskCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => handleTaskClick(task)}
+                        hasNewMessages={tasksWithNewMessages.has(task.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+                
+                {isExpanded && deptTasks.length === 0 && (
+                  <div className="mt-2 pl-4 py-4 text-center text-muted-foreground text-sm border-l-2 border-muted">
+                    Нет поручений в этом департаменте
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
