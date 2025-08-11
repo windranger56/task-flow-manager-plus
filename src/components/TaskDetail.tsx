@@ -67,8 +67,19 @@ export default function TaskDetail() {
 
 	useEffect(() => {
 		(async () => {
-			const {data} = await supabase.from("departments").select("name").eq("id", selectedTask.departmentId);
-			setDepartment(data[0].name);
+			if (!selectedTask || !selectedTask.departmentId) return;
+			
+			try {
+				const {data, error} = await supabase.from("departments").select("name").eq("id", selectedTask.departmentId);
+				if (error) throw error;
+				
+				if (data && data.length > 0) {
+					setDepartment(data[0].name);
+				}
+			} catch (error) {
+				console.error("Ошибка при получении департамента:", error);
+				setDepartment("");
+			}
 		})()
 	}, [selectedTask])
 
