@@ -117,8 +117,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     }
   };
 
-  
-  
   // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
   useEffect(() => {
     if (showNewTask) {
@@ -785,19 +783,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
           ))}
         </Accordion>
       </div>
-      
-      {/* Mobile Task Detail Drawer */}
-      {isMobile && selectedTask && (
-        <Drawer open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-          <DrawerContent className="h-screen max-h-screen">
-            <div className="relative h-full">
-              <div className="lg:px-4 py-2 h-full mt-[42px]">
-                <TaskDetail />
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
 
 			{/* Add task */}
 			{isMobile ? (

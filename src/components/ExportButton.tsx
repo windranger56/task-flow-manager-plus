@@ -44,7 +44,7 @@ import DepartmentSelector from './DepartmentSelector';
 import ExecutorSelector from './ExecutorSelector';
 import { TaskStatusSelector } from './TaskStatusSelector';
 
-export default function ExportButton() {
+export default function ExportButton({type = "desktop"}: {type: "desktop" | "mobile"}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -496,7 +496,7 @@ export default function ExportButton() {
       Array.from(uniqueUserIds).map(async userId => await getUserById(userId as string))
     );
     
-    let attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
+    const attendees = users.map(user => user?.fullname || `Пользователь ${user?.id}`);
     if (filters.approvedBy) attendees.push(filters.approvedBy);
     if (filters.protocolAuthor) attendees.push(filters.protocolAuthor);
     
@@ -642,7 +642,7 @@ export default function ExportButton() {
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <Button variant={type == "desktop" ? "outline" : "link"} size="sm" className={`${type == "desktop" ? "text-[#0f172a] flex items-center gap-2" : "text-[#C5C7CD] h-fit p-0"}`}>
             <FileDown className="h-4 w-4" />
             <span className="hidden sm:inline">Экспорт протокола</span>
           </Button>

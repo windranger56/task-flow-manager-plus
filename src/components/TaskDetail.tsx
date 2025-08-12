@@ -1179,7 +1179,7 @@ export default function TaskDetail() {
 			</div>
 
 			{/* Мобильная версия */}
-			<div className='w-full h-full flex md:hidden flex-col items-center gap-6 bg-[#f7f7f7] p-4 pb-32 overflow-y-auto'>
+			<div className='w-full h-full flex md:hidden flex-col items-center gap-6 bg-[#f7f7f7] p-4 pt-[58px] pb-32 overflow-y-auto'>
 				{/* Исполнитель */}
 				<div className='w-full bg-white shadow-md rounded-l-[50px] rounded-r-xl pr-2 flex gap-2'>
 					<Avatar className="h-[50px] w-[50px]">

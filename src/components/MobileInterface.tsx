@@ -9,20 +9,12 @@ import MobileTaskCard from '@/components/MobileTaskCard';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { TaskStatus, Task, User } from '@/types';
 import { supabase } from '@/supabase/client';
+import { Drawer, DrawerContent } from './ui/drawer';
+import TaskDetail from './TaskDetail';
+import ArchiveButton from './ArchiveButton';
+import ExportButton from './ExportButton';
 
-interface MobileInterfaceProps {
-  showArchive: boolean;
-  onToggleArchive: () => void;
-  onShowMobileDrawer: () => void;
-  onShowTaskList: () => void;
-}
-
-export default function MobileInterface({ 
-  showArchive, 
-  onToggleArchive, 
-  onShowMobileDrawer,
-  onShowTaskList 
-}: MobileInterfaceProps) {
+export default function MobileInterface() {
   const { 
     departments, 
     tasks,
@@ -32,13 +24,17 @@ export default function MobileInterface({
     getUserById,
     user,
     getFilteredTasks,
-    selectTask
+    selectTask,
+		selectedTask,
+		tab,
   } = useTaskContext();
 
   const [activeBottomTab, setActiveBottomTab] = useState<'menu' | 'tasks' | 'add' | 'settings' | 'notifications'>('tasks');
   const [expandedDepartment, setExpandedDepartment] = useState<string | null>(null);
   const [departmentTasks, setDepartmentTasks] = useState<{[key: string]: (Task & { assignee?: User; creator?: User })[]}>({});
   const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
+	const [showDrawer, setShowDrawer] = useState(false);
+	const [showArchive, setShowArchive] = useState(false);
 
   const today = new Date();
   const dayOfWeek = format(today, 'EEEE', { locale: ru });
@@ -125,7 +121,7 @@ export default function MobileInterface({
     }
 
     selectTask(task);
-    onShowTaskList();
+		setShowDrawer(true);
   };
 
   const handleFilterClick = (filter: 'all' | 'author' | 'assignee') => {
@@ -143,8 +139,27 @@ export default function MobileInterface({
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
       
+			<div className='fixed top-0 z-[60] w-full h-[58px] bg-white flex items-center justify-center shadow-md rounded-b-lg'>
+				<div className='flex flex-col items-center w-full relative'>
+					<span className='text-[#C5C7CD] text-sm'>{new Date().toLocaleDateString('ru-RU', { 
+						weekday: 'long',
+						day: 'numeric', 
+						month: 'long', 
+						year: 'numeric' 
+					})}</span>
+					<span>{tab}</span>
+					<div className='absolute right-[17px] h-full flex gap-4 items-center text-[#C5C7CD]'>
+						<ArchiveButton 
+							showArchive={showArchive}
+							onToggle={() => setShowArchive(!showArchive)}
+							type='mobile'
+						/>
+						<ExportButton type='mobile' />	
+					</div>
+				</div>
+			</div>
 
       {/* Search bar */}
       <div className="p-4">
@@ -229,9 +244,15 @@ export default function MobileInterface({
           })}
         </div>
       </div>
-
-      
-      
+			<Drawer open={showDrawer} onOpenChange={() => {setShowDrawer(false); selectTask(null)}}>
+				<DrawerContent className="h-screen max-h-screen">
+					<div className="relative h-full">
+						<div className="lg:px-4 h-full">
+							<TaskDetail />
+						</div>
+					</div>
+				</DrawerContent>
+			</Drawer>
     </div>
   );
 }
