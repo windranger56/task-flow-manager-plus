@@ -9,10 +9,13 @@ import MobileTaskCard from '@/components/MobileTaskCard';
 import { useTaskContext } from '@/contexts/TaskContext';
 import { TaskStatus, Task, User } from '@/types';
 import { supabase } from '@/supabase/client';
-import { Drawer, DrawerContent } from './ui/drawer';
+import { Drawer, DrawerContent, DrawerOverlay, DrawerPortal } from './ui/drawer';
 import TaskDetail from './TaskDetail';
 import ArchiveButton from './ArchiveButton';
 import ExportButton from './ExportButton';
+import { LeftArrow } from './icons';
+import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 export default function MobileInterface() {
   const { 
@@ -27,18 +30,16 @@ export default function MobileInterface() {
     selectTask,
 		selectedTask,
 		tab,
+		viewHistory,
+		setViewHistory,
   } = useTaskContext();
 
   const [activeBottomTab, setActiveBottomTab] = useState<'menu' | 'tasks' | 'add' | 'settings' | 'notifications'>('tasks');
   const [expandedDepartment, setExpandedDepartment] = useState<string | null>(null);
   const [departmentTasks, setDepartmentTasks] = useState<{[key: string]: (Task & { assignee?: User; creator?: User })[]}>({});
   const [tasksWithNewMessages, setTasksWithNewMessages] = useState<Set<string>>(new Set());
-	const [showDrawer, setShowDrawer] = useState(false);
-	const [showArchive, setShowArchive] = useState(false);
 
-  const today = new Date();
-  const dayOfWeek = format(today, 'EEEE', { locale: ru });
-  const dateString = format(today, 'dd MMMM yyyy', { locale: ru });
+	useEffect(() => {console.log(viewHistory)}, [viewHistory])
 
   const getDepartmentStatistics = (departmentId: string) => {
     const departmentTasks = tasks.filter(task => task.departmentId === departmentId);
@@ -121,45 +122,16 @@ export default function MobileInterface() {
     }
 
     selectTask(task);
-		setShowDrawer(true);
+		setViewHistory(history => [...history, "task"]);
   };
 
   const handleFilterClick = (filter: 'all' | 'author' | 'assignee') => {
     setTaskFilter(filter);
   };
 
-  const handleAddTask = () => {
-    // TODO: Implement add task functionality
-    console.log('Add task clicked');
-  };
-
-  const handleNotifications = () => {
-    // TODO: Implement notifications functionality
-    console.log('Notifications clicked');
-  };
-
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
-      
-			<div className='fixed top-0 z-[60] w-full h-[58px] bg-white flex items-center justify-center shadow-md rounded-b-lg'>
-				<div className='flex flex-col items-center w-full relative'>
-					<span className='text-[#C5C7CD] text-sm'>{new Date().toLocaleDateString('ru-RU', { 
-						weekday: 'long',
-						day: 'numeric', 
-						month: 'long', 
-						year: 'numeric' 
-					})}</span>
-					<span>{tab}</span>
-					<div className='absolute right-[17px] h-full flex gap-4 items-center text-[#C5C7CD]'>
-						<ArchiveButton 
-							showArchive={showArchive}
-							onToggle={() => setShowArchive(!showArchive)}
-							type='mobile'
-						/>
-						<ExportButton type='mobile' />	
-					</div>
-				</div>
-			</div>
+			<Header />		
 
       {/* Search bar */}
       <div className="p-4">
@@ -244,7 +216,13 @@ export default function MobileInterface() {
           })}
         </div>
       </div>
-			<Drawer open={showDrawer} onOpenChange={() => {setShowDrawer(false); selectTask(null)}}>
+			<Drawer open={viewHistory.some(view => view === "task")} onOpenChange={(event) => {
+				if (!event.valueOf()) {
+					setViewHistory(history => history.slice(0, -1));
+					selectTask(null)
+				}
+			}}>
+				<DrawerOverlay className='pointer-events-none' />
 				<DrawerContent className="h-screen max-h-screen">
 					<div className="relative h-full">
 						<div className="lg:px-4 h-full">
@@ -254,5 +232,49 @@ export default function MobileInterface() {
 				</DrawerContent>
 			</Drawer>
     </div>
+  );
+}
+
+function Header() {
+	const { viewHistory, setViewHistory, showArchive, setShowArchive, tab, setTab } = useTaskContext();
+
+	return (
+		<div onClick={event => event.stopPropagation()} className='fixed pointer-events-auto top-0 z-[9999] w-full h-[58px] bg-white flex items-center justify-center shadow-md rounded-b-lg'>
+			<div className='flex flex-col items-center w-full relative'>
+				<AnimatePresence>
+					{viewHistory.length > 0 && (
+						<motion.button
+							key="backButton"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.3 }}
+							className="absolute left-[17px] h-full flex items-center"
+							onClick={() => {
+								setViewHistory(history => history.slice(0, -1))
+								setTab("Поручения")
+							}}
+						>
+							<LeftArrow />
+						</motion.button>
+					)}
+				</AnimatePresence>
+				<span className='text-[#C5C7CD] text-sm'>{new Date().toLocaleDateString('ru-RU', { 
+					weekday: 'long',
+					day: 'numeric', 
+					month: 'long', 
+					year: 'numeric' 
+				})}</span>
+				<span>{tab}</span>
+				<div className='absolute right-[17px] h-full flex gap-4 items-center text-[#C5C7CD]'>
+					<ArchiveButton 
+						showArchive={showArchive}
+						onToggle={() => setShowArchive(!showArchive)}
+						type='mobile'
+					/>
+					<ExportButton type='mobile' />	
+				</div>
+			</div>
+		</div>
   );
 }

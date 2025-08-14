@@ -22,6 +22,10 @@ import { format } from 'date-fns';
 interface TaskContextType {
 	tab,
 	setTab,
+	viewHistory,
+	setViewHistory,
+	showArchive,
+	setShowArchive,
   // Data
 	user: User,
 	setUser: React.Dispatch<User>,
@@ -82,6 +86,8 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
 	const [tab, setTab] = useState<string>('Личный кабинет')
+	const [viewHistory, setViewHistory] = useState<string[]>([]);
+	const [showArchive, setShowArchive] = useState<boolean>(false);
 	const [user, setUser] = useState(null)
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -1356,6 +1362,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     <TaskContext.Provider value={{
 			tab,
 			setTab,
+			viewHistory,
+			setViewHistory,
+			showArchive,
+			setShowArchive,
 			user,
 			setUser,
       currentUser: user, // Добавляем currentUser

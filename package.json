@@ -53,6 +53,7 @@
     "embla-carousel-react": "^8.3.0",
     "file-saver": "^2.0.5",
     "file-viewer": "^1.2.0",
+    "framer-motion": "^12.23.12",
     "input-otp": "^1.2.4",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.462.0",
