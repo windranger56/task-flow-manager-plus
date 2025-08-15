@@ -14,7 +14,6 @@ import { ru } from 'date-fns/locale';
 import { supabase } from '@/supabase/client';
 import { Paperclip, X, FileIcon, Trash2 } from 'lucide-react';
 import { FileViewer } from './FileViewer'; // или путь к вашему компоненту
-import { time } from 'console';
 import { Task } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarIcon, CompletedIcon, HistoryIcon, InProgressIcon, NewIcon, OnVerificationIcon, OverdueIcon, PriorityIcon, ProtocolIcon, ReassignIcon } from './icons';
