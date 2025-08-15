@@ -49,7 +49,7 @@ function Header() {
 	const { viewHistory, setViewHistory, showArchive, setShowArchive, headerTitle, setHeaderTitle } = useTaskContext();
 
 	return (
-		<div onClick={event => event.stopPropagation()} className='fixed pointer-events-auto top-0 z-[9999] w-full h-[58px] bg-white flex items-center justify-center shadow-md rounded-b-lg'>
+		<div onClick={event => event.stopPropagation()} className='fixed pointer-events-auto top-0 z-[60] w-full h-[58px] bg-white flex items-center justify-center shadow-md rounded-b-lg'>
 			<div className='flex flex-col items-center w-full relative'>
 				<AnimatePresence>
 					{viewHistory.length > 0 && (
