@@ -370,11 +370,6 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Mobile-specific styles
-  const sidebarClass = isMobile 
-  ? "w-full flex flex-col bg-white h-screen overflow-y-auto" 
-  : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200 overflow-hidden";
-
   const borderClass = isMobile ? "" : "border-b border-gray-200";
   const avatarSize = isMobile ? "h-16 w-16" : "h-[70px] w-[70px]";
   const buttonGroupClass = isMobile ? "flex justify-center gap-4" : "flex justify-center gap-[25px]";
@@ -419,12 +414,11 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
   const totalNotifications = tasksWithNewMessages.length + tasksWithNewStatus.length;
 
   return (
-    <div className={sidebarClass}>
-      {isMobile ? (
-        <div className='h-[50px] w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px]'>
-          УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
-        </div>
-      ) : (
+    <div className={`${isMobile
+			? "w-full flex flex-col h-screen overflow-y-auto bg-[#f7f7f7]" 
+  		: "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200 overflow-hidden"}
+		`}>
+      {!isMobile && (
         <div className=' h-12 w-full flex justify-center items-center text-[#979dc3] text-[17px] font-bold tracking-[0.7px] border-[#e5e4e9] border-b'>
           УПРАВЛЕНИЕ ПОРУЧЕНИЯМИ
         </div>
@@ -450,19 +444,19 @@ const LeftSidebar = ({ onItemClick }: LeftSidebarProps) => {
         <div className="flex justify-center gap-4 mt-[20px] mb-[15px] ">
           <button
             onClick={() => handleFilterChange('all')}
-            className={`text-m pb-1 ${taskFilter === 'all' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'all' && !selectedUserId ? 'border-b-2 border-black' : 'text-gray-600'}`}
           >
             Все
           </button>
           <button
             onClick={() => handleFilterChange('author')}
-            className={`text-m pb-1 ${taskFilter === 'author' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'author' && !selectedUserId ? ' border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Автор
           </button>
           <button
             onClick={() => handleFilterChange('assignee')}
-            className={`text-m pb-1 ${taskFilter === 'assignee' && !selectedUserId ? 'font-bold border-b-2 border-black' : 'text-gray-600'}`}
+            className={`text-m pb-1 ${taskFilter === 'assignee' && !selectedUserId ? ' border-b-2 border-black' : 'text-gray-600'}`}
           >
             я Исполнитель
           </button>

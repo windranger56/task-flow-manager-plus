@@ -65,6 +65,7 @@ export default function TaskDetail() {
 	const [department, setDepartment] = useState("");
 
 	useEffect(() => {
+		if (!selectedTask) return
 		(async () => {
 			const {data} = await supabase.from("departments").select("name").eq("id", selectedTask.departmentId);
 			setDepartment(data[0].name);

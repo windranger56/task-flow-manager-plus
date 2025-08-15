@@ -20,8 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface TaskContextType {
-	tab,
-	setTab,
+	headerTitle,
+	setHeaderTitle,
 	viewHistory,
 	setViewHistory,
 	showArchive,
@@ -85,7 +85,7 @@ interface TaskContextType {
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-	const [tab, setTab] = useState<string>('Личный кабинет')
+	const [headerTitle, setHeaderTitle] = useState<string>("Поручения")
 	const [viewHistory, setViewHistory] = useState<string[]>([]);
 	const [showArchive, setShowArchive] = useState<boolean>(false);
 	const [user, setUser] = useState(null)
@@ -346,7 +346,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const selectTask = (task: Task | null) => {
-		setTab(task ? "Поручение" : "Поручения")
+		setHeaderTitle(task ? "Поручение" : "Поручения")
     setSelectedTask(task);
   };
 
@@ -1360,8 +1360,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   return (
     <TaskContext.Provider value={{
-			tab,
-			setTab,
+			headerTitle,
+			setHeaderTitle,
 			viewHistory,
 			setViewHistory,
 			showArchive,
