@@ -4,16 +4,16 @@ import {
   AsyncThunkPayloadCreator,
 } from "@reduxjs/toolkit";
 import { supabase } from "@/supabase/client";
-import { State, set as commonSet, addThunkCases, RejectType } from "../common";
+import { State, set, addThunkCases, RejectType } from "../common";
 
 const sessionSlice = createSlice({
   name: "session",
   initialState: initialState(),
-  reducers: { set: commonSet },
+  reducers: { setSession: set },
   extraReducers: (builder) => addThunkCases(builder, authenticationThunk),
 });
 
-export const { set } = sessionSlice.actions;
+export const { setSession } = sessionSlice.actions;
 export default sessionSlice.reducer;
 
 function initialState(): SessionState {
