@@ -1,0 +1,29 @@
+import { createSlice } from "@reduxjs/toolkit";
+import { set } from "../common";
+
+// This state stores the title that appears in the
+// middle of the mobile applicaion header
+const headerTitleSlice = createSlice({
+  name: "header-title",
+  initialState: initialState(),
+  reducers: { setHeaderTitle: set },
+});
+
+export const { setHeaderTitle } = headerTitleSlice.actions;
+export default headerTitleSlice.reducer;
+
+function initialState(): HeaderTitleState {
+  return { value: "Личный кабинет" };
+}
+
+export interface HeaderTitleState {
+  value?: HeaderTitle;
+}
+
+export type HeaderTitle =
+  | "Личный кабинет"
+  | "Поручения"
+  | "Поручение"
+  | "Новое поручение"
+  | "Календарь"
+  | "Уведомления";
