@@ -4,11 +4,11 @@ import {
   PayloadAction,
 } from "@reduxjs/toolkit";
 
-export const onLoading = <Type extends State>(state: Type) => {
+export const onLoading = <Type extends AsyncState>(state: Type) => {
   state.loading = true;
 };
 
-export const onFulfilled = <Type extends State>(
+export const onFulfilled = <Type extends AsyncState>(
   state: Type,
   action: PayloadAction<Type["value"]>,
 ) => {
@@ -16,7 +16,7 @@ export const onFulfilled = <Type extends State>(
   state.value = action.payload;
 };
 
-export const onError = <Type extends State>(state: Type) => {
+export const onError = <Type extends AsyncState>(state: Type) => {
   state.loading = false;
   state.error = "Something went wrong";
 };
@@ -31,7 +31,7 @@ export const cases = {
   rejected: onError,
 } as const;
 
-export function addThunkCases<Type extends State>(
+export function addThunkCases<Type extends AsyncState>(
   builder: ActionReducerMapBuilder<Type>,
   thunk: AsyncThunk<Type["value"], void, unknown>,
 ) {
@@ -41,10 +41,14 @@ export function addThunkCases<Type extends State>(
     .addCase(thunk.rejected, cases.rejected);
 }
 
-export interface State<Value = unknown> {
+export interface AsyncState<Value = unknown> {
   value?: Value | null;
   loading: boolean;
   error?: string;
+}
+
+export interface State<Value = unknown> {
+  value?: Value;
 }
 
 export interface RejectType {
