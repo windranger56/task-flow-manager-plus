@@ -5,7 +5,7 @@ import { set } from "../common";
 const slice = createSlice({
   name: "screen-size",
   initialState: initialState(),
-  reducers: { setScreenSize: set },
+  reducers: { setScreenSize: set<ScreenSizeState> },
 });
 
 export const { setScreenSize } = slice.actions;

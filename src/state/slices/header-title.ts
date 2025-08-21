@@ -6,7 +6,7 @@ import { set } from "../common";
 const slice = createSlice({
   name: "header-title",
   initialState: initialState(),
-  reducers: { setHeaderTitle: set },
+  reducers: { setHeaderTitle: set<HeaderTitleState> },
 });
 
 export const { setHeaderTitle } = slice.actions;

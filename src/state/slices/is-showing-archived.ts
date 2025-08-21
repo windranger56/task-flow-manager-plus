@@ -6,7 +6,7 @@ import { set } from "../common";
 const slice = createSlice({
   name: "is-showing-archived",
   initialState: initialState(),
-  reducers: { setIsShowingArchived: set },
+  reducers: { setIsShowingArchived: set<IsShowingArchivedState> },
 });
 
 export const { setIsShowingArchived } = slice.actions;
