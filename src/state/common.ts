@@ -21,7 +21,7 @@ export const onError = <Type extends AsyncState>(state: Type) => {
   state.error = "Something went wrong";
 };
 
-export const set = <Type extends State>(state: Type, action: PayloadAction) => {
+export const set = <Type extends State>(state: Type, action: PayloadAction<Type['value']>) => {
   state.value = action.payload;
 };
 
