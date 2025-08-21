@@ -2,14 +2,14 @@ import { createSlice } from "@reduxjs/toolkit";
 import { set } from "../common";
 
 // This state stores the screen size
-const screenSizeSlice = createSlice({
+const slice = createSlice({
   name: "screen-size",
   initialState: initialState(),
   reducers: { setScreenSize: set },
 });
 
-export const { setScreenSize } = screenSizeSlice.actions;
-export default screenSizeSlice.reducer;
+export const { setScreenSize } = slice.actions;
+export default slice.reducer;
 
 function initialState(): ScreenSizeState {
   return { value: undefined };

@@ -3,14 +3,14 @@ import { set } from "../common";
 
 // This state stores whether the application should
 // show the archived tasks or the active ones
-const isShowingArchivedSlice = createSlice({
+const slice = createSlice({
   name: "is-showing-archived",
   initialState: initialState(),
   reducers: { setIsShowingArchived: set },
 });
 
-export const { setIsShowingArchived } = isShowingArchivedSlice.actions;
-export default isShowingArchivedSlice.reducer;
+export const { setIsShowingArchived } = slice.actions;
+export default slice.reducer;
 
 function initialState(): IsShowingArchivedState {
   return { value: false };

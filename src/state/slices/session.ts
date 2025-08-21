@@ -7,15 +7,15 @@ import { supabase } from "@/supabase/client";
 import { set, addThunkCases, RejectType, AsyncState } from "../common";
 
 // This state stores the user session
-const sessionSlice = createSlice({
+const slice = createSlice({
   name: "session",
   initialState: initialState(),
   reducers: { setSession: set },
   extraReducers: (builder) => addThunkCases(builder, getSession),
 });
 
-export const { setSession } = sessionSlice.actions;
-export default sessionSlice.reducer;
+export const { setSession } = slice.actions;
+export default slice.reducer;
 
 function initialState(): SessionState {
   return {

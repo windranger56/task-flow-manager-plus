@@ -3,14 +3,14 @@ import { set } from "../common";
 
 // This state stores the title that appears in the
 // middle of the mobile applicaion header
-const headerTitleSlice = createSlice({
+const slice = createSlice({
   name: "header-title",
   initialState: initialState(),
   reducers: { setHeaderTitle: set },
 });
 
-export const { setHeaderTitle } = headerTitleSlice.actions;
-export default headerTitleSlice.reducer;
+export const { setHeaderTitle } = slice.actions;
+export default slice.reducer;
 
 function initialState(): HeaderTitleState {
   return { value: "Личный кабинет" };
