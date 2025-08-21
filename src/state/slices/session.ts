@@ -5,12 +5,13 @@ import {
 } from "@reduxjs/toolkit";
 import { supabase } from "@/supabase/client";
 import { set, addThunkCases, RejectType, AsyncState } from "../common";
+import { Session } from "@supabase/supabase-js"
 
 // This state stores the user session
 const slice = createSlice({
   name: "session",
   initialState: initialState(),
-  reducers: { setSession: set },
+  reducers: { setSession: set<SessionState> },
   extraReducers: (builder) => addThunkCases(builder, getSession),
 });
 
@@ -27,10 +28,6 @@ function initialState(): SessionState {
 
 export interface SessionState extends AsyncState {
   value?: Session;
-}
-
-export interface Session {
-  id: string;
 }
 
 export const getSession = createAsyncThunk<Session>(
