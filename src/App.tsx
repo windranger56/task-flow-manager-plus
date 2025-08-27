@@ -1,117 +1,122 @@
-import { supabase } from "@/supabase/client";
 import { Navigate } from "react-router-dom";
-import Auth from "@/pages/Auth";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
-import Index from "./pages/Index";
-import { useState } from "react";
-import AdminPanel from "./pages/AdminPanel";
-import UserForm from "./pages/UserForm";
-import RegisterPage from "./pages/RegisterPage";
+import { useEffect, useLayoutEffect } from "react";
+import { Provider } from "react-redux";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+import Index from "./pages/Index";
+import { store } from "./state/store";
+import { useAppDispatch, useAppSelector } from "./state/hooks";
+import { listenToSession } from "./state/features/session";
+import { listenToScreenSize } from "./state/features/screen-size";
+import { fetchTasks } from "./state/features/tasks";
+import { fetchDepartments } from "./state/features/departments";
+import { fetchSubordinates } from "./state/features/subordinates";
+import { fetchNotifications } from "./state/features/notifications";
+import { groupTasks } from "./state/features/grouped-tasks";
+import { setTasksFilter } from "./state/features/tasks-filter";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
+import Auth from "@/pages/Auth";
 
 const App = () => {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+  const session = useAppSelector((state) => state.session.value);
+  const { value: user, loading: userLoading } = useAppSelector(
+    (state) => state.user,
+  );
+  const { value: tasks, loading: tasksLoading } = useAppSelector(
+    (state) => state.tasks,
+  );
+  const subordinatesLoading = useAppSelector(
+    (state) => state.subordinates.loading,
+  );
+  const notificationsLoading = useAppSelector(
+    (state) => state.notifications.loading,
+  );
+  const filter = useAppSelector((state) => state.tasksFilter.value);
 
-    const badge = document.getElementById('lovable-badge');
-    if(badge) badge.style.display = "none";
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state change:", event, session ? "session exists" : "no session");
-      
-      // Обрабатываем только события, связанные с текущей вкладкой
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-        setSession(session);
-      }
-    });
-
-    // Обработка закрытия вкладки - очищаем только локальную сессию
-    const handleBeforeUnload = () => {
-      // При закрытии вкладки не выходим из системы глобально
-      // Это позволяет другим вкладкам продолжать работу
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
+  useLayoutEffect(() => {
+    removeLovableBadge();
+    return listenToSession();
   }, []);
 
-  if (loading) {
-    return null;
-  }
+  useLayoutEffect(() => {
+    if (!user) return;
+    void dispatch(fetchDepartments());
+    void dispatch(fetchTasks());
+    void dispatch(fetchSubordinates());
+    void dispatch(fetchNotifications());
+    dispatch(setTasksFilter({ user, role: "all", archived: false }));
+  }, [user]);
 
-  const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-background">
-      <div className="flex">
-        {/* Измененные стили для адаптивности */}
-        <div className="flex-1 md:px-10 w-full max-w-screen">
-          {children}
-        </div>
+  useLayoutEffect(() => {
+    if (!tasks.length) return;
+    dispatch(groupTasks({ tasks, filter }));
+  }, [tasks]);
+
+  useEffect(() => listenToScreenSize(), []);
+
+  if (
+    userLoading ||
+    tasksLoading ||
+    subordinatesLoading ||
+    notificationsLoading
+  )
+    return (
+      <div className="h-screen w-screen flex justify-center items-center">
+        <Loader2 className="h-16 w-16 animate-spin text-blue-600" />
       </div>
-    </div>
-  );
+    );
 
-  
-  
   return (
-    <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/auth"
+          element={session ? <Navigate to="/" replace /> : <Auth />}
+        />
+        <Route
+          path="/"
+          element={
+            session ? (
+              <AuthenticatedLayout>
+                <Index />
+              </AuthenticatedLayout>
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+function Root() {
+  return (
+    <Provider store={store}>
+      <Toaster />
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route
-              path="/auth"
-              element={
-                session ? <Navigate to="/" replace /> : <Auth />
-              }
-            />
-            <Route
-              path="/"
-              element={
-                session ? (
-                  <AuthenticatedLayout>
-                    <Index />
-                  </AuthenticatedLayout>
-                ) : (
-                  <Navigate to="/auth" replace />
-                )
-              }
-            />
-            <Route
-              path="/admin"
-              element={<AdminPanel session={session} />}
-            />
-            <Route
-              path="/register"
-              element={<RegisterPage session={session} />}
-            />
-            <Route
-              path="/admin/users/:id"
-              element={<UserForm />}
-            />
-          </Routes>
-        </BrowserRouter>
+        <App />
       </TooltipProvider>
-    </QueryClientProvider>
+    </Provider>
   );
 }
 
-export default App;
+export default Root;
+
+function removeLovableBadge() {
+  const badge = document.getElementById("lovable-badge");
+  if (badge) badge.style.display = "none";
+}
+
+const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => (
+  <div className="min-h-screen bg-background">
+    <div className="flex">
+      <div className="flex-1 md:px-10 w-full max-w-screen">{children}</div>
+    </div>
+  </div>
+);

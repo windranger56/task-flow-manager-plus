@@ -1,23 +1,30 @@
-import React from 'react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Department, User } from '@/types';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Department } from "@/state/features/departments";
+import { User } from "@/state/features/user";
 
 interface DepartmentCardProps {
   department: Department;
   manager?: User;
-  statistics: {
-    overdue: number;
-    in_progress: number;
-    on_verification: number;
-    new: number;
-  };
+  statistics: DepartmentStatistics;
   onClick: () => void;
 }
 
-export default function DepartmentCard({ department, manager, statistics, onClick }: DepartmentCardProps) {
+export interface DepartmentStatistics {
+  overdue: number;
+  in_progress: number;
+  on_verification: number;
+  new: number;
+}
+
+export default function DepartmentCard({
+  department,
+  manager,
+  statistics,
+  onClick,
+}: DepartmentCardProps) {
   return (
-    <div 
+    <div
       className="bg-card border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
       onClick={onClick}
     >
@@ -25,7 +32,7 @@ export default function DepartmentCard({ department, manager, statistics, onClic
         <Avatar className="w-10 h-10">
           <AvatarImage src={manager?.image} />
           <AvatarFallback className="text-sm">
-            {manager?.fullname?.charAt(0) || '?'}
+            {manager?.fullname?.charAt(0) || "?"}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
@@ -37,7 +44,7 @@ export default function DepartmentCard({ department, manager, statistics, onClic
           </p> */}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Просрочено</span>

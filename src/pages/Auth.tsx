@@ -1,13 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { AlertCircle, Upload } from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload } from "lucide-react";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +27,6 @@ const Auth = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check for active session on component mount
@@ -35,7 +41,7 @@ const Auth = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       // Обрабатываем только события входа, игнорируем глобальные выходы
-      if (event === 'SIGNED_IN' && session) {
+      if (event === "SIGNED_IN" && session) {
         navigate("/");
       }
     });
@@ -51,9 +57,9 @@ const Auth = () => {
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     setAvatarFile(file);
-    
+
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -62,7 +68,9 @@ const Auth = () => {
     reader.readAsDataURL(file);
   };
 
-  const validatePassword = (password: string): { isValid: boolean; message: string } => {
+  const validatePassword = (
+    password: string,
+  ): { isValid: boolean; message: string } => {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
@@ -77,9 +85,9 @@ const Auth = () => {
     if (!hasSpecialChar) requirements.push("специальный символ");
 
     if (requirements.length > 0) {
-      return { 
-        isValid: false, 
-        message: `Пароль не соответствует требованиям безопасности. Необходимо добавить: ${requirements.join(", ")}` 
+      return {
+        isValid: false,
+        message: `Пароль не соответствует требованиям безопасности. Необходимо добавить: ${requirements.join(", ")}`,
       };
     }
 
@@ -109,11 +117,11 @@ const Auth = () => {
             emailRedirectTo: window.location.origin,
           },
         });
-        
+
         console.log("Sign up response:", data);
-        
+
         if (signUpError) throw signUpError;
-        
+
         if (data?.user?.identities?.length === 0) {
           setError("Пользователь с таким email уже существует");
           return;
@@ -127,20 +135,20 @@ const Auth = () => {
 
         // Upload avatar if a file was selected
         if (avatarFile && data.user) {
-          const fileExt = avatarFile.name.split('.').pop();
+          const fileExt = avatarFile.name.split(".").pop();
           const filePath = `${data.user.id}/avatar.${fileExt}`;
 
           try {
             const { error: uploadError } = await supabase.storage
-              .from('images')
+              .from("images")
               .upload(filePath, avatarFile, { upsert: true });
-  
+
             if (uploadError) throw uploadError;
-  
-            const { data: { publicUrl } } = supabase.storage
-              .from('images')
-              .getPublicUrl(filePath);
-              
+
+            const {
+              data: { publicUrl },
+            } = supabase.storage.from("images").getPublicUrl(filePath);
+
             avatarUrl = publicUrl;
           } catch (error) {
             console.error("Avatar upload error:", error);
@@ -150,61 +158,70 @@ const Auth = () => {
 
         // Create user record in the users table
         try {
-          const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            fullname,
-            email,
-            user_unique_id: data.user.id,
-            image: avatarUrl,
-          }, { count: 'exact' });
-  
-          if(userError) {
+          const { error: userError } = await supabase.from("users").insert(
+            {
+              fullname,
+              email,
+              user_unique_id: data.user.id,
+              image: avatarUrl,
+            },
+            { count: "exact" },
+          );
+
+          if (userError) {
             console.error("Failed to create user record:", userError);
-            throw new Error("Не удалось создать запись пользователя: " + userError.message);
+            throw new Error(
+              "Не удалось создать запись пользователя: " + userError.message,
+            );
           }
         } catch (insertError) {
           console.error("Insert error details:", insertError);
           // We'll continue even if this fails, as the auth user is already created
         }
-        
-        toast({
-          title: "Регистрация успешна",
+
+        toast.success("Регистрация успешна", {
           description: "Проверьте вашу почту для подтверждения аккаунта",
         });
       } else {
         // Login flow
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
+        const { data, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
         if (signInError) throw signInError;
-        
+
         // Check if user exists in users table
         if (data.user) {
           try {
             const { data: userData, error: userDataError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('user_unique_id', data.user.id)
+              .from("users")
+              .select("*")
+              .eq("user_unique_id", data.user.id)
               .limit(1);
-              
+
             console.log("User data check:", userData);
-            
+
             // If user doesn't exist in the users table, create it
             if (!userData || userData.length === 0) {
               try {
                 const { error: createError } = await supabase
-                  .from('users')
-                  .insert({
-                    fullname: email.split('@')[0], // Default name from email
-                    email,
-                    user_unique_id: data.user.id,
-                  }, { count: 'exact' });
-                  
+                  .from("users")
+                  .insert(
+                    {
+                      fullname: email.split("@")[0], // Default name from email
+                      email,
+                      user_unique_id: data.user.id,
+                    },
+                    { count: "exact" },
+                  );
+
                 if (createError) {
-                  console.error("Failed to create user record during login:", createError);
+                  console.error(
+                    "Failed to create user record during login:",
+                    createError,
+                  );
                 }
               } catch (insertError) {
                 console.error("Error creating user during login:", insertError);
@@ -216,13 +233,13 @@ const Auth = () => {
             // Continue navigation even if this fails
           }
         }
-        
+
         navigate("/");
       }
     } catch (err: any) {
       console.error("Auth error:", err);
       let errorMessage = "Произошла ошибка";
-      
+
       if (err.message === "Invalid login credentials") {
         errorMessage = "Неверный email или пароль";
       } else if (err.message.includes("password")) {
@@ -232,7 +249,7 @@ const Auth = () => {
       } else if (err.message.includes("Email not confirmed")) {
         errorMessage = "Пожалуйста, подтвердите ваш email";
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -276,7 +293,11 @@ const Auth = () => {
                   <div className="flex items-center gap-4">
                     {avatarPreview && (
                       <div className="h-16 w-16 rounded-full overflow-hidden border">
-                        <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
+                        <img
+                          src={avatarPreview}
+                          alt="Avatar preview"
+                          className="h-full w-full object-cover"
+                        />
                       </div>
                     )}
                     <input
@@ -287,9 +308,9 @@ const Auth = () => {
                       onChange={handleAvatarChange}
                       className="hidden"
                     />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -322,21 +343,26 @@ const Auth = () => {
               />
               {isSignUp && (
                 <div className="space-y-1 mt-2 bg-muted/50 p-3 rounded-md">
-                  <p className="text-sm font-medium">
-                    Требования к паролю:
-                  </p>
+                  <p className="text-sm font-medium">Требования к паролю:</p>
                   <ul className="text-xs list-disc pl-4 space-y-1 mt-1">
                     <li>Минимум 8 символов</li>
                     <li>Хотя бы одна заглавная буква (A-Z)</li>
                     <li>Хотя бы одна строчная буква (a-z)</li>
                     <li>Хотя бы одна цифра (0-9)</li>
-                    <li>Хотя бы один специальный символ (!@#$%^&*(),.?":{}|&lt;&gt;)</li>
+                    <li>
+                      Хотя бы один специальный символ (!@#$%^&*(),.?":{}
+                      |&lt;&gt;)
+                    </li>
                   </ul>
                 </div>
               )}
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Загрузка..." : isSignUp ? "Зарегистрироваться" : "Войти"}
+              {isLoading
+                ? "Загрузка..."
+                : isSignUp
+                  ? "Зарегистрироваться"
+                  : "Войти"}
             </Button>
           </form>
           <div className="opacity-0">

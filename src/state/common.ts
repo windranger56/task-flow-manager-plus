@@ -12,7 +12,7 @@ export const onFulfilled = <Type extends AsyncState>(
   state: Type,
   action: PayloadAction<Type["value"]>,
 ) => {
-  state.loading = true;
+  state.loading = false;
   state.value = action.payload;
 };
 
@@ -21,7 +21,10 @@ export const onError = <Type extends AsyncState>(state: Type) => {
   state.error = "Something went wrong";
 };
 
-export const set = <Type extends State>(state: Type, action: PayloadAction<Type['value']>) => {
+export const set = <Type extends State>(
+  state: Type,
+  action: PayloadAction<Type["value"]>,
+) => {
   state.value = action.payload;
 };
 
@@ -31,9 +34,9 @@ export const cases = {
   rejected: onError,
 } as const;
 
-export function addThunkCases<Type extends AsyncState>(
-  builder: ActionReducerMapBuilder<Type>,
-  thunk: AsyncThunk<Type["value"], void, unknown>,
+export function addThunkCases<State extends AsyncState, ThunkParameter>(
+  builder: ActionReducerMapBuilder<State>,
+  thunk: AsyncThunk<State["value"], ThunkParameter, unknown>,
 ) {
   builder
     .addCase(thunk.pending, cases.pending)

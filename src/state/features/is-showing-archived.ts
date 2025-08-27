@@ -1,21 +1,18 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { set } from "../common";
 
-// This state stores whether the application should
-// show the archived tasks or the active ones
+import { set, State } from "../common";
+
+const initialState: IsShowingArchivedState = { value: false };
+
 const slice = createSlice({
   name: "is-showing-archived",
-  initialState: initialState(),
+  initialState,
   reducers: { setIsShowingArchived: set<IsShowingArchivedState> },
 });
 
 export const { setIsShowingArchived } = slice.actions;
 export default slice.reducer;
 
-function initialState(): IsShowingArchivedState {
-  return { value: false };
-}
-
-export interface IsShowingArchivedState {
+export interface IsShowingArchivedState extends State {
   value?: boolean;
 }
