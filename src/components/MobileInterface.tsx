@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Swiper, SwiperSlide } from "swiper/react";
 
 import { Drawer, DrawerContent, DrawerOverlay } from "./ui/drawer";
 import TaskDetail from "./TaskDetail";
@@ -22,10 +23,8 @@ import { setHeaderTitle } from "@/state/features/header-title";
 import { MobileTab, setMobileTab } from "@/state/features/mobile-tab";
 import { setViewHistory } from "@/state/features/viewHistory";
 import { setTasksFilter, TasksFilter } from "@/state/features/tasks-filter";
-import {
-  filterTasksByStatus,
-  groupTasks,
-} from "@/state/features/grouped-tasks";
+import { filterTasksByStatus } from "@/state/features/grouped-tasks";
+import "swiper/css";
 
 const pages = {
   account: <LeftSidebar />,
@@ -45,22 +44,47 @@ const pages = {
       Страница отсутствует в дизайне
     </div>
   ),
-};
+} as const;
 
 export default function MobileInterface() {
   const dispatch = useAppDispatch();
   const activeTab = useAppSelector((state) => state.mobileTab.value);
+  const [swiper, setSwiper] = useState(null);
+  const isSwipeInternal = useRef(false);
+
+  useEffect(() => {
+    if (!swiper) return;
+    isSwipeInternal.current = true;
+    swiper.slideTo(Object.keys(pages).findIndex((tab) => tab == activeTab));
+    isSwipeInternal.current = false;
+  }, [activeTab]);
+
+  const handleSwipe = (swiper: any) => {
+    if (isSwipeInternal.current) return;
+    dispatch(setMobileTab(Object.keys(pages)[swiper.activeIndex] as MobileTab));
+  };
+
+  useEffect(() => {
+    dispatch(setHeaderTitle(tabToTabName[activeTab]));
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
       <Header />
-
-      {pages[activeTab]}
+      <Swiper
+        onSwiper={setSwiper}
+        spaceBetween={20}
+        slidesPerView={1}
+        onSlideChange={(swiper) => handleSwipe(swiper)}
+      >
+        {Object.values(pages).map((page, i) => (
+          <SwiperSlide key={i}>{page}</SwiperSlide>
+        ))}
+      </Swiper>
 
       <MobileFooter
         activeTab={activeTab}
         onTabChange={(tab: MobileTab) => {
-          dispatch(setHeaderTitle(tabToTabName[tab]));
           dispatch(setMobileTab(tab));
         }}
       />
@@ -127,8 +151,8 @@ function TaskList() {
   const dispatch = useAppDispatch();
   const viewHistory = useAppSelector((state) => state.viewHistory.value);
   const groupedTasks = useAppSelector((state) => state.groupedTasks.value);
-  const tasks = useAppSelector((state) => state.tasks.value);
   const taskFilter = useAppSelector((state) => state.tasksFilter.value);
+  const user = useAppSelector((state) => state.user.value);
   const {
     value: { tasksWithNewMessages },
   } = useAppSelector((state) => state.notifications);
@@ -146,6 +170,7 @@ function TaskList() {
   };
 
   const handleTaskClick = (task: Task) => {
+    dispatch(setHeaderTitle("Поручение"));
     dispatch(setSelectedTask(task));
     dispatch(setViewHistory([...viewHistory, "task"]));
   };
@@ -158,13 +183,11 @@ function TaskList() {
   });
 
   const handleRoleClick = (role: TasksFilter["role"]) => {
-    const newFilter = { ...taskFilter, role };
-    dispatch(setTasksFilter(newFilter));
-    dispatch(groupTasks({ tasks, filter: newFilter }));
+    dispatch(setTasksFilter({ ...taskFilter, role, user }));
   };
 
   return (
-    <div>
+    <div className="w-screen">
       {/* Search bar */}
       <div className="p-4">
         <SearchBar />
@@ -256,7 +279,7 @@ function TaskList() {
         </div>
       </div>
       <Drawer
-        open={viewHistory.some((view) => view === "task")}
+        open={viewHistory[viewHistory.length - 1] == "task"}
         onOpenChange={(event) => {
           if (!event.valueOf()) {
             dispatch(setViewHistory(viewHistory.slice(0, -1)));
