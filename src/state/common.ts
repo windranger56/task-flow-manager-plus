@@ -5,7 +5,9 @@ import {
 } from "@reduxjs/toolkit";
 
 export const onLoading = <Type extends AsyncState>(state: Type) => {
-  state.loading = true;
+  // We set the state to "loading" only on initial set.
+  // When the initial state is loaded, we refresh it without triggering the loading
+  if (!state.value) state.loading = true;
 };
 
 export const onFulfilled = <Type extends AsyncState>(
@@ -28,20 +30,14 @@ export const set = <Type extends State>(
   state.value = action.payload;
 };
 
-export const cases = {
-  pending: onLoading,
-  fulfilled: onFulfilled,
-  rejected: onError,
-} as const;
-
 export function addThunkCases<State extends AsyncState, ThunkParameter>(
   builder: ActionReducerMapBuilder<State>,
   thunk: AsyncThunk<State["value"], ThunkParameter, unknown>,
 ) {
   builder
-    .addCase(thunk.pending, cases.pending)
-    .addCase(thunk.fulfilled, cases.fulfilled)
-    .addCase(thunk.rejected, cases.rejected);
+    .addCase(thunk.pending, onLoading)
+    .addCase(thunk.fulfilled, onFulfilled)
+    .addCase(thunk.rejected, onError);
 }
 
 export interface AsyncState<Value = unknown> {

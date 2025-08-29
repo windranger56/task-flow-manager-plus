@@ -4,6 +4,7 @@ import { Check, Eye, EyeOff, Loader2, Send, Download } from "lucide-react";
 import { ru } from "date-fns/locale";
 import { Paperclip, X, FileIcon, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 
 import { FileViewer } from "./FileViewer"; // или путь к вашему компоненту
 import {
@@ -45,6 +46,7 @@ import { cn, getTaskStatusColor } from "@/lib/utils";
 import { supabase } from "@/supabase/client";
 import { setSelectedTask, Task } from "@/state/features/selected-task";
 import { useAppDispatch, useAppSelector } from "@/state/hooks";
+import { updateTask } from "@/state/features/tasks";
 
 export default function TaskDetail() {
   const dispatch = useAppDispatch();
@@ -82,9 +84,6 @@ export default function TaskDetail() {
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedTask) return;
-
-      // Проверяем, есть ли цепочка переназначений
-      await checkTaskChain(selectedTask.id);
 
       // Подписка на изменения сообщений
       const channel = supabase
@@ -144,6 +143,28 @@ export default function TaskDetail() {
 
     fetchData();
   }, [selectedTask]);
+
+  const toggleProtocol = () => {
+    // Определяем новое состояние ДО вызова API
+    const newProtocolState =
+      selectedTask.isProtocol === "active" ? "inactive" : "active";
+
+    // Сразу применяем локальные изменения (оптимистичное обновление)
+    dispatch(
+      setSelectedTask({
+        ...selectedTask,
+        isProtocol: newProtocolState,
+      }),
+    );
+
+    void dispatch(
+      updateTask({ id: selectedTask.id, is_protocol: newProtocolState }),
+    ).then(() =>
+      toast.success("Поручение обновлено", {
+        description: "Протокол переключен",
+      }),
+    );
+  };
 
   const handleSendChatMessage = async () => {
     if (!chatMessage.trim() && selectedFiles.length === 0) return;
@@ -490,32 +511,6 @@ export default function TaskDetail() {
         : format(dateObj, formatStr, { locale: ru });
     } catch {
       return "Ошибка даты";
-    }
-  };
-
-  const checkTaskChain = async (taskId: string) => {
-    try {
-      // Проверяем, есть ли родительская задача
-      const { data: currentTask } = await supabase
-        .from("tasks")
-        .select("parent_id")
-        .eq("id", taskId)
-        .single();
-
-      // Проверяем, есть ли дочерние задачи
-      const { data: children } = await supabase
-        .from("tasks")
-        .select("id")
-        .eq("parent_id", taskId);
-
-      const hasChain = !!(
-        currentTask?.parent_id ||
-        (children && children.length > 0)
-      );
-      setHasTaskChain(hasChain);
-    } catch (error) {
-      console.error("Error checking task chain:", error);
-      setHasTaskChain(false);
     }
   };
 
@@ -1058,32 +1053,7 @@ export default function TaskDetail() {
             <div className="w-full flex flex-col gap-4 items-center">
               <button
                 className={`flex gap-3 ${selectedTask.isProtocol == "active" ? "text-[#3F79FF]" : "text-[#757D8A]"}`}
-                onClick={() => {
-                  // Определяем новое состояние ДО вызова API
-                  const newProtocolState =
-                    selectedTask.isProtocol === "active"
-                      ? "inactive"
-                      : "active";
-
-                  // Сразу применяем локальные изменения (оптимистичное обновление)
-                  dispatch(
-                    setSelectedTask({
-                      ...selectedTask,
-                      isProtocol: newProtocolState,
-                    }),
-                  );
-
-                  // // Затем вызываем API
-                  // Promise.resolve(
-                  //   toggleProtocol(selectedTask.id, newProtocolState),
-                  // ).catch(() => {
-                  //   // В случае ошибки - возвращаем предыдущее состояние
-                  //   selectTask({
-                  //     ...selectedTask,
-                  //     isProtocol: selectedTask.isProtocol, // исходное значение
-                  //   });
-                  // });
-                }}
+                onClick={() => toggleProtocol()}
               >
                 <ProtocolIcon />
                 {selectedTask.isProtocol === "active"
@@ -1358,30 +1328,7 @@ export default function TaskDetail() {
         <div className="w-1/2 flex justify-between">
           <button
             className={`flex gap-3 ${selectedTask.isProtocol == "active" ? "text-[#3F79FF]" : "text-[#757D8A]"}`}
-            onClick={() => {
-              // Определяем новое состояние ДО вызова API
-              const newProtocolState =
-                selectedTask.isProtocol === "active" ? "inactive" : "active";
-
-              // Сразу применяем локальные изменения (оптимистичное обновление)
-              dispatch(
-                setSelectedTask({
-                  ...selectedTask,
-                  isProtocol: newProtocolState,
-                }),
-              );
-
-              // // Затем вызываем API
-              // Promise.resolve(
-              //   toggleProtocol(selectedTask.id, newProtocolState),
-              // ).catch(() => {
-              //   // В случае ошибки - возвращаем предыдущее состояние
-              //   selectTask({
-              //     ...selectedTask,
-              //     isProtocol: selectedTask.isProtocol, // исходное значение
-              //   });
-              // });
-            }}
+            onClick={() => toggleProtocol()}
           >
             <ProtocolIcon />
           </button>

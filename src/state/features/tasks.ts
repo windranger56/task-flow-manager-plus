@@ -30,7 +30,7 @@ const slice = createSlice({
     addThunkCases(builder, fetchTasks);
     addThunkCases(builder, refreshOverdueTasks);
     addThunkCases(builder, createTask);
-    addThunkCases(builder, advanceTask);
+    addThunkCases(builder, updateTask);
     addThunkCases(builder, deleteTask);
   },
 });
@@ -206,57 +206,61 @@ export function shapeTaskForApp(task: SupabaseTask): Task {
   };
 }
 
-export const advanceTask = createAsyncThunk<Task[], Task>(
-  "tasks/advance",
-  (data, thunkAPI) => handleTaskAdvancement(data, thunkAPI),
-);
+export const updateTask = createAsyncThunk<
+  Task[],
+  Partial<SupabaseTask> & { id: number }
+>("tasks/update", (data, thunkAPI) => handleTaskUpdate(data, thunkAPI));
 
-async function handleTaskAdvancement(
-  task: Task,
+async function handleTaskUpdate(
+  dataToUpdate: Partial<SupabaseTask> & { id: number },
   thunkAPI: GetThunkAPI<{ state: RootState }>,
 ) {
   const state = thunkAPI.getState();
-  authorizeTaskAdvancement(task, state.user.value);
 
-  const status = nextStatus[task.status];
-  const updatedTask = await updateTaskInDB(task.id, { status });
+  const task = getTaskById(state.tasks.value, dataToUpdate.id);
+  if (!task) throw new Error("Задача недоступна для обновления");
+
+  if (dataToUpdate.status)
+    authorizeStatusChange(task, state.user.value, dataToUpdate.status);
+
+  const updatedTask = await updateTaskInDB(dataToUpdate);
   const updatedTasks = replaceTask(state.tasks.value, updatedTask);
 
   return updatedTasks;
 }
 
-function authorizeTaskAdvancement(task: Task, user: User) {
-  if (task.status === "on_verification" && user.id === task.assignedTo)
+export function getTaskById(tasks: Task[], id: number) {
+  return tasks.filter((task) => task.id == id)[0];
+}
+
+function authorizeStatusChange(task: Task, user: User, newStatus: TaskStatus) {
+  if (newStatus === "on_verification" && user.id === task.assignedTo)
     throw new Error("Недостаточно привилегий");
-  if (task.status === "completed")
+  if (newStatus === "completed")
     throw new Error(
       "Невозможно изменить статус поручения так как оно уже завершено",
     );
-  if (task.status === "new" && user.id !== task.assignedTo)
+  if (newStatus === "new" && user.id !== task.assignedTo)
     throw new Error("Только исполнитель может взять поручение в работу");
-  if (task.status === "in_progress" && user.id !== task.assignedTo)
+  if (newStatus === "in_progress" && user.id !== task.assignedTo)
     throw new Error("Только исполнитель может отправить поручение на проверку");
-  if (task.status === "overdue" && user.id !== task.createdBy) {
+  if (newStatus === "overdue" && user.id !== task.createdBy) {
     throw new Error(
       "Только создатель может перевести просроченное поручение в работу или на проверку",
     );
   }
 }
 
-const nextStatus: Record<TaskStatus, TaskStatus> = {
-  overdue: "in_progress",
-  new: "in_progress",
-  in_progress: "on_verification",
-  on_verification: "completed",
-  completed: "completed",
-};
-
-async function updateTaskInDB(id: number, dataToUpdate: Partial<SupabaseTask>) {
+async function updateTaskInDB(
+  dataToUpdate: Partial<SupabaseTask> & { id: number },
+) {
   const { data, error } = await supabase
     .from("tasks")
     .update(dataToUpdate)
-    .eq("id", id)
-    .select()
+    .eq("id", dataToUpdate.id)
+    .select(
+      "*, assignee:users!tasks_assigned_to_fkey(*), department:departments(*)",
+    )
     .single<SupabaseTask>();
 
   if (error) throw error;
@@ -485,18 +489,3 @@ export type SupabaseTaskToCreate = Omit<
   SupabaseTask,
   "id" | "created_at" | "assignee" | "department"
 >;
-
-export const toggleProtocol = createAsyncThunk<Task[], Task>(
-  "tasks/toggle-protocol",
-  (task, thunkAPI) => handleTaskProtocolToggling(task, thunkAPI),
-);
-
-async function handleTaskProtocolToggling(
-  task: Task,
-  thunkAPI: GetThunkAPI<{ state: RootState }>,
-) {
-  const newState = task.isProtocol === "active" ? "inactive" : "active";
-  const newTask = await updateTaskInDB(task.id, { is_protocol: newState });
-  const tasks = thunkAPI.getState().tasks.value;
-  return replaceTask(tasks, newTask);
-}
