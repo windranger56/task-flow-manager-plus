@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from "react-tooltip";
@@ -26,6 +26,7 @@ import { setMobileTab } from "@/state/features/mobile-tab";
 import { groupTasks } from "@/state/features/grouped-tasks";
 import { setTasksFilter, TasksFilter } from "@/state/features/tasks-filter";
 import { markNotificationsWithTypeAsRead } from "@/state/features/notifications";
+import { setViewHistory } from "@/state/features/viewHistory";
 
 const LeftSidebar = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ const LeftSidebar = () => {
   const groupedTasks = useAppSelector((state) => state.groupedTasks.value);
   const filter = useAppSelector((state) => state.tasksFilter.value);
   const screenSize = useAppSelector((state) => state.screenSize.value);
+  const viewHistory = useAppSelector((state) => state.viewHistory.value);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(tasks);
   const {
     value: { tasksWithNewMessages, tasksWithNewStatus },
@@ -50,8 +52,15 @@ const LeftSidebar = () => {
 
   const handleTaskClick = (task: Task) => {
     dispatch(setSelectedTask(task));
-    if (screenSize == "mobile") dispatch(setMobileTab("tasks"));
+    if (screenSize == "mobile") {
+      dispatch(setMobileTab("tasks"));
+      dispatch(setViewHistory([...viewHistory, "task"]));
+    }
   };
+
+  useEffect(() => {
+    if (!user) navigate("/auth");
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -59,8 +68,6 @@ const LeftSidebar = () => {
 
       // Используем scope: 'local' чтобы выход происходил только в текущей вкладке
       await supabase.auth.signOut({ scope: "local" });
-
-      navigate("/auth");
 
       toast.success("Успешный выход", {
         description: "Вы вышли из системы (только в этой вкладке)",
@@ -474,7 +481,7 @@ const LeftSidebar = () => {
               {/* Кнопка выхода - только иконка на мобильных */}
               {screenSize == "mobile" ? (
                 <Button
-                  onClick={void handleLogout}
+                  onClick={() => void handleLogout()}
                   variant="outline"
                   className="w-[36px] h-[36px] ml-5 p-0 bg-[#eaeefc] hover:bg-[#c0c3cf] rounded-full text-[#4d76fd]"
                   data-tooltip-id="tooltip"
@@ -639,7 +646,7 @@ const LeftSidebar = () => {
           {screenSize != "mobile" ? (
             <div className="mt-auto p-4 border-t border-gray-200">
               <Button
-                onClick={void handleLogout}
+                onClick={() => void handleLogout()}
                 variant="outline"
                 className="w-full flex items-center justify-center gap-2 text-gray-600 hover:text-red-500 hover:bg-red-50"
               >

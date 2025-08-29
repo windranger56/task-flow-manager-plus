@@ -23,7 +23,9 @@ import Auth from "@/pages/Auth";
 const App = () => {
   const dispatch = useAppDispatch();
 
-  const session = useAppSelector((state) => state.session.value);
+  const { value: session, loading: sessionLoading } = useAppSelector(
+    (state) => state.session,
+  );
   const { value: user, loading: userLoading } = useAppSelector(
     (state) => state.user,
   );
@@ -53,17 +55,16 @@ const App = () => {
   }, [user]);
 
   useLayoutEffect(() => {
-    if (!tasks.length) return;
+    if (!filter) return;
     dispatch(groupTasks({ tasks, filter }));
-  }, [tasks]);
+  }, [tasks, filter]);
 
   useEffect(() => listenToScreenSize(), []);
 
   if (
-    userLoading ||
-    tasksLoading ||
-    subordinatesLoading ||
-    notificationsLoading
+    !sessionLoading &&
+    session &&
+    (userLoading || tasksLoading || subordinatesLoading || notificationsLoading)
   )
     return (
       <div className="h-screen w-screen flex justify-center items-center">
