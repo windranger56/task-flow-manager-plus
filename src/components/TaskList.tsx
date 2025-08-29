@@ -124,8 +124,8 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
       await dispatch(createTask(data)).then(() =>
         toast.success(
           selectedAssignees.length > 1
-            ? `Задача "${taskTitle} создана`
-            : `Задачи "${taskTitle} созданы`,
+            ? `Задачи "${taskTitle}" созданы`
+            : `Задача "${taskTitle}" создана`,
         ),
       );
 
