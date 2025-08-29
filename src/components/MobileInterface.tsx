@@ -71,21 +71,19 @@ export default function MobileInterface() {
   return (
     <div className="h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
       <Header />
-      <div className="h-full">
-        <Swiper
-          className="h-full"
-          onSwiper={setSwiper}
-          spaceBetween={20}
-          slidesPerView={1}
-          onSlideChange={(swiper) => handleSwipe(swiper)}
-        >
-          {Object.values(pages).map((page, i) => (
-            <SwiperSlide className="h-full" key={i}>
-              {page}
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      </div>
+      <Swiper
+        className="h-full"
+        onSwiper={setSwiper}
+        spaceBetween={20}
+        slidesPerView={1}
+        onSlideChange={(swiper) => handleSwipe(swiper)}
+      >
+        {Object.values(pages).map((page, i) => (
+          <SwiperSlide className="h-full overflow-y-auto" key={i}>
+            {page}
+          </SwiperSlide>
+        ))}
+      </Swiper>
 
       <MobileFooter
         activeTab={activeTab}

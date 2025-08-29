@@ -138,7 +138,7 @@ const LeftSidebar = () => {
     <div
       className={`${
         screenSize == "mobile"
-          ? "w-full flex flex-col h-screen overflow-y-auto bg-[#f7f7f7]"
+          ? "w-screen min-h-full flex flex-col overflow-y-auto bg-[#f7f7f7]"
           : "w-[360px] flex flex-col h-screen bg-white border-r border-gray-200 overflow-hidden"
       }
 		`}
@@ -179,7 +179,7 @@ const LeftSidebar = () => {
                 onClick={() => handleRoleClick("all")}
                 className={`text-m pb-1 ${filter.role === "all" ? "border-b-2 border-black" : "text-gray-600"}`}
               >
-                Все
+                Показать все
               </button>
               <button
                 onClick={() => handleRoleClick("author")}
