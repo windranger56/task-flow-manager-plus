@@ -4,7 +4,6 @@ import { Archive, List } from "lucide-react"; // Или любые другие 
 import { Button } from "@/components/ui/button";
 import { useAppDispatch, useAppSelector } from "@/state/hooks";
 import { setTasksFilter } from "@/state/features/tasks-filter";
-import { groupTasks } from "@/state/features/grouped-tasks";
 
 interface ArchiveButtonProps {
   type?: "mobile" | "desktop";
@@ -15,14 +14,11 @@ export default function ArchiveButton({
 }: ArchiveButtonProps) {
   const dispatch = useAppDispatch();
   const filter = useAppSelector((state) => state.tasksFilter.value);
-  const tasks = useAppSelector((state) => state.tasks.value);
 
   return (
     <Button
       onClick={() => {
-        const newFilter = { ...filter, archived: !filter.archived };
-        dispatch(setTasksFilter(newFilter));
-        dispatch(groupTasks({ tasks, filter: newFilter }));
+        dispatch(setTasksFilter({ ...filter, archived: !filter.archived }));
       }}
       className={`${type === "mobile" ? "text-[#C5C7CD] p-0 w-[24px] h-[24px]" : `text-[#0f172a] flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium ${filter.archived ? 'bg-blue-500 text-white hover:bg-blue-600"}' : "border text-black border-gray-300 bg-white hover:bg-gray-50"}`}`}
       variant="link"

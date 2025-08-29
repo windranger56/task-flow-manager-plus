@@ -1187,7 +1187,11 @@ export default function TaskDetail() {
               </Dialog>
               <button
                 className="flex gap-3 text-[#757D8A]"
-                onClick={() => setShowReassign(true)}
+                onClick={() =>
+                  toast.warning("На данный момент этот функционал отключен", {
+                    description: "Идёт обсуждение его логики",
+                  })
+                }
               >
                 <ReassignIcon />
                 Сменить исполнителя
@@ -1453,7 +1457,9 @@ export default function TaskDetail() {
           </Dialog>
           <button
             className="flex gap-3 text-[#757D8A]"
-            onClick={() => setShowReassign(true)}
+            onClick={() =>
+              toast.warning("На данный момент этот функционал отключен")
+            }
           >
             <ReassignIcon />
           </button>

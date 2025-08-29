@@ -86,9 +86,7 @@ const LeftSidebar = () => {
   };
 
   const handleRoleClick = (role: TasksFilter["role"]) => {
-    const filter = { user, role };
-    dispatch(setTasksFilter(filter));
-    dispatch(groupTasks({ tasks, filter }));
+    dispatch(setTasksFilter({ ...filter, user, role }));
   };
 
   // Получите правильные названия статусов
@@ -121,9 +119,12 @@ const LeftSidebar = () => {
       : "flex justify-center gap-[25px]";
 
   const handleSelectEmployee = (subordinate: User) => {
-    const filter = { user: subordinate, role: "subordinate" } as const;
-    dispatch(setTasksFilter(filter));
-    dispatch(groupTasks({ tasks, filter }));
+    dispatch(
+      groupTasks({
+        tasks,
+        filter: { ...filter, user: subordinate, role: "subordinate" },
+      }),
+    );
   };
 
   // Calculate total notifications count

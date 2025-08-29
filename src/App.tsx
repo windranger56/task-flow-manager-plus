@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { Provider } from "react-redux";
 import { Loader2 } from "lucide-react";
 
@@ -52,12 +52,13 @@ const App = () => {
     dispatch(setTasksFilter({ user, role: "all", archived: false }));
   }, [user]);
 
+  useLayoutEffect(() => listenToScreenSize(), []);
+
   useLayoutEffect(() => {
     if (!filter) return;
     dispatch(groupTasks({ tasks, filter }));
   }, [tasks, filter]);
 
-  useEffect(() => listenToScreenSize(), []);
   const appDataLoading =
     tasksLoading || subordinatesLoading || notificationsLoading;
 
