@@ -7,7 +7,7 @@ const initialState: ViewHistoryState = { value: [] };
 const slice = createSlice({
   name: "view-history",
   initialState,
-  reducers: { setViewHistory: set },
+  reducers: { setViewHistory: set<ViewHistoryState> },
 });
 
 export const { setViewHistory } = slice.actions;

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { cn, getTaskStatusColor } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/state/hooks";
 import { setSelectedTask } from "@/state/features/selected-task";
+import { setViewHistory } from "@/state/features/viewHistory";
 
 export default function SearchBar() {
   const dispatch = useAppDispatch();
@@ -15,6 +16,7 @@ export default function SearchBar() {
   const [isFocused, setIsFocused] = useState(false);
   const user = useAppSelector((state) => state.user.value);
   const tasks = useAppSelector((state) => state.tasks.value);
+  const viewHistory = useAppSelector((state) => state.viewHistory.value);
 
   const searchTasks = (query: string) => {
     if (!query) return [];
@@ -67,6 +69,7 @@ export default function SearchBar() {
     const task = searchResults.find((t) => t.id === taskId);
     if (task) {
       dispatch(setSelectedTask(task));
+      dispatch(setViewHistory([...viewHistory, "task"]));
       setSearchQuery("");
       setSearchResults([]);
       setIsFocused(false);

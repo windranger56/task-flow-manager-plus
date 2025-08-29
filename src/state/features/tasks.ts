@@ -67,7 +67,7 @@ async function handleTasksFetching(
 }
 
 export const refreshOverdueTasks = createAsyncThunk<Task[]>(
-  "tasks/checkAndUpdateOverdue",
+  "tasks/refresh-overdue",
   (_, thunkAPI) => handleOverdueTasksRefresh(thunkAPI),
 );
 
@@ -82,7 +82,7 @@ async function refreshOverdueTask(task: Task) {
   if (!isTaskOverdue(task)) return task;
 
   const [newTask] = await Promise.all([
-    updateTaskStatus(task.id, "overdue"),
+    updateTaskInDB({ id: task.id, status: "overdue" }),
     sendSystemMessage(task.id, SYSTEMMESSAGE.overdue),
   ]);
 
@@ -96,18 +96,6 @@ function isTaskOverdue(task: Task) {
   return (
     deadline < now && task.status !== "completed" && task.status !== "overdue"
   );
-}
-
-async function updateTaskStatus(id: number, status: TaskStatus) {
-  const { data, error } = await supabase
-    .from("tasks")
-    .update({ status })
-    .eq("id", id)
-    .select()
-    .single<Task>();
-
-  if (error) throw error;
-  return data;
 }
 
 async function sendSystemMessage(id: number, content: string) {
