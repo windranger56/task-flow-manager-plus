@@ -30,18 +30,18 @@ const pages = {
   account: <LeftSidebar />,
   tasks: <TaskList />,
   add: (
-    <div className="w-full h-full flex justify-center items-center">
-      Страница отсутствует в дизайне
+    <div className="w-full min-h-full flex justify-center items-center text-center p-4">
+      Страница добавления находится на стадии разработки
     </div>
   ),
   calendar: (
-    <div className="w-full h-full flex justify-center items-center">
-      Страница отсутствует в дизайне
+    <div className="w-full min-h-full flex justify-center items-center text-center p-4">
+      Страница календаря находится на стадии разработки
     </div>
   ),
   notifications: (
-    <div className="w-full h-full flex justify-center items-center">
-      Страница отсутствует в дизайне
+    <div className="w-full min-h-full flex justify-center items-center p-4 text-center">
+      Страница уведомлений находится на стадии разработки
     </div>
   ),
 } as const;
@@ -69,18 +69,23 @@ export default function MobileInterface() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
+    <div className="h-screen bg-[#f7f7f7] pb-20 pt-[58px]">
       <Header />
-      <Swiper
-        onSwiper={setSwiper}
-        spaceBetween={20}
-        slidesPerView={1}
-        onSlideChange={(swiper) => handleSwipe(swiper)}
-      >
-        {Object.values(pages).map((page, i) => (
-          <SwiperSlide key={i}>{page}</SwiperSlide>
-        ))}
-      </Swiper>
+      <div className="h-full">
+        <Swiper
+          className="h-full"
+          onSwiper={setSwiper}
+          spaceBetween={20}
+          slidesPerView={1}
+          onSlideChange={(swiper) => handleSwipe(swiper)}
+        >
+          {Object.values(pages).map((page, i) => (
+            <SwiperSlide className="h-full" key={i}>
+              {page}
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
 
       <MobileFooter
         activeTab={activeTab}
@@ -187,7 +192,7 @@ function TaskList() {
   };
 
   return (
-    <div className="w-screen">
+    <div className="w-screen h-full">
       {/* Search bar */}
       <div className="p-4">
         <SearchBar />
