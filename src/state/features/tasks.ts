@@ -130,10 +130,14 @@ async function handleTaskCreation(
   data: TaskCreationData,
   thunkAPI: GetThunkAPI<{ state: RootState }>,
 ) {
+  const state = thunkAPI.getState();
+  const user = state.user.value;
+  const tasks = state.tasks.value;
+
   if (data.assignees.length == 0)
     throw new Error("Выберите хотя бы одного исполнителя");
 
-  const template = getNewTaskWithoutAssignee(data);
+  const template = getNewTaskWithoutAssignee(data, user);
 
   const tasksToCreate: SupabaseTaskToCreate[] = data.assignees.map((assignee) =>
     getNewAssignedTask(template, assignee),
@@ -142,15 +146,14 @@ async function handleTaskCreation(
   const supabaseTasks = await createTasksInDB(tasksToCreate);
   const newTasks: Task[] = supabaseTasks.map((task) => shapeTaskForApp(task));
 
-  const tasks = thunkAPI.getState().tasks.value;
   return [...tasks, ...newTasks];
 }
 
-function getNewTaskWithoutAssignee(data: TaskCreationData) {
+function getNewTaskWithoutAssignee(data: TaskCreationData, creator: User) {
   return {
     title: data.title,
     description: data.description,
-    created_by: data.author.id,
+    created_by: creator.id,
     priority: data.priority,
     is_protocol: data.isProtocol,
     created_at: new Date().toISOString(),
@@ -171,7 +174,6 @@ function getNewAssignedTask(
 }
 
 export interface TaskCreationData {
-  author: User;
   title: string;
   description: string;
   priority: Priority;
@@ -181,7 +183,12 @@ export interface TaskCreationData {
 }
 
 async function createTasksInDB(tasks: SupabaseTaskToCreate[]) {
-  const { data, error } = await supabase.from("tasks").insert(tasks).select();
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert(tasks)
+    .select(
+      "*, assignee:users!tasks_assigned_to_fkey(*), department:departments(*)",
+    );
   if (error) throw error;
   return data as SupabaseTask[];
 }

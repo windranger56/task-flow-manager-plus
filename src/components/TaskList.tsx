@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 import { toast } from "sonner";
 
-import DepartmentSelector from "./DepartmentSelector";
-import ExecutorSelector from "./ExecutorSelector";
+import MultipleSelector from "./ui/multiple-selector";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,16 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { useTaskContext } from "@/contexts/TaskContext";
 import { cn } from "@/lib/utils";
 import {
   Accordion,
@@ -35,12 +26,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { supabase } from "@/supabase/client";
 import {
   ProtocolStatus,
   setSelectedTask,
 } from "@/state/features/selected-task";
 import { useAppDispatch, useAppSelector } from "@/state/hooks";
+import { User } from "@/state/features/user";
+import { createTask, TaskCreationData } from "@/state/features/tasks";
 
 interface TaskListProps {
   showArchive?: boolean;
@@ -49,9 +41,9 @@ interface TaskListProps {
 export default function TaskList({ showArchive = false }: TaskListProps) {
   const dispatch = useAppDispatch();
   const groupedTasks = useAppSelector((state) => state.groupedTasks.value);
-  const departments = useAppSelector((state) => state.departments.value);
   const selectedTask = useAppSelector((state) => state.selectedTask.value);
-  const screenSize = useAppSelector((state) => state.screenSize.value);
+  const subordinates = useAppSelector((state) => state.subordinates.value);
+  const [selectedAssignees, setSelectedAssignees] = useState<User[]>([]);
   const { tasksWithNewMessages } = useAppSelector(
     (state) => state.notifications.value,
   );
@@ -59,8 +51,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [showNewTask, setShowNewTask] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskDepartment, setTaskDepartment] = useState("");
-  const [taskAssignee, setTaskAssignee] = useState("");
   const [taskPriority, setTaskPriority] = useState<"low" | "medium" | "high">(
     "medium",
   );
@@ -68,23 +58,6 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
   const [taskDeadline, setTaskDeadline] = useState<Date>(
     new Date(new Date().setHours(23, 59, 59, 999)),
   );
-  // Состояние для хранения списка пользователей из БД
-  const [dbUsers, setDbUsers] = useState<{ id: string; fullname: string }[]>(
-    [],
-  );
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-
-  // Состояния для дублирования поручений
-  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
-  const [
-    selectedDepartmentsForDuplication,
-    setSelectedDepartmentsForDuplication,
-  ] = useState<string[]>([]);
-  const [selectedExecutorsForDuplication, setSelectedExecutorsForDuplication] =
-    useState<string[]>([]);
-  const [availableExecutors, setAvailableExecutors] = useState<
-    { id: string; fullname: string; departmentId: string }[]
-  >([]);
 
   // В начале компонента, после других ref
   const taskRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -107,43 +80,10 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
             behavior: "smooth",
             block: "start",
           });
-
-          // Альтернатива - ручной расчет позиции для более точного контроля
-          /*
-          const container = tasksContainerRef.current;
-          const element = taskRefs.current[newlyOpened];
-          if (container && element) {
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = element.getBoundingClientRect();
-            const offset = 20; // Отступ сверху в пикселях
-            
-            container.scrollTo({
-              top: elementRect.top - containerRect.top + container.scrollTop - offset,
-              behavior: 'smooth'
-            });
-          }
-          */
         }
       }, 100); // Небольшая задержка для завершения анимации аккордеона
     }
   };
-
-  // Загрузка пользователей при открытии диалога и автоматический выбор подразделения
-  useEffect(() => {
-    if (showNewTask) {
-      fetchUsers();
-
-      // Если у пользователя только одно подразделение, выбираем его автоматически
-      if (departments.length === 1) {
-        setTaskDepartment(departments[0].id);
-        // После выбора подразделения, fetchDepartmentUsers будет вызван через другой useEffect
-      }
-    } else {
-      // Сбрасываем выбранное подразделение при закрытии формы
-      setTaskDepartment("");
-      setTaskAssignee("");
-    }
-  }, [showNewTask, departments.length]);
 
   // Обработчик изменения даты с использованием нативного датапикера
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,94 +104,41 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
     setTaskDeadline(deadlineDate);
   };
 
-  // Обработчики для дублирования
-  const handleDepartmentToggleForDuplication = (departmentId: string) => {
-    setSelectedDepartmentsForDuplication((prev) => {
-      const updated = prev.includes(departmentId)
-        ? prev.filter((id) => id !== departmentId)
-        : [...prev, departmentId];
-
-      // Сбрасываем выбранных исполнителей
-      setSelectedExecutorsForDuplication([]);
-
-      return updated;
-    });
-  };
-
-  const handleExecutorToggleForDuplication = (executorId: string) => {
-    setSelectedExecutorsForDuplication((prev) =>
-      prev.includes(executorId)
-        ? prev.filter((id) => id !== executorId)
-        : [...prev, executorId],
-    );
-  };
-
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     // Проверяем каждое обязательное поле отдельно
     const errors = [];
     if (!taskTitle) errors.push("Заголовок");
     if (!taskDescription) errors.push("Описание");
-
-    // Для обычного режима проверяем департамент и исполнителя
-    if (!isDuplicateMode) {
-      if (!taskDepartment) errors.push("Подразделение");
-      if (!taskAssignee) errors.push("Исполнитель");
-    } else {
-      // Для режима дублирования проверяем выбранных исполнителей
-      if (selectedExecutorsForDuplication.length === 0) {
-        errors.push("Выберите исполнителей для дублирования");
-      }
-    }
-
     if (!taskDeadline) errors.push("Дедлайн");
 
     if (errors.length === 0) {
-      if (isDuplicateMode) {
-        // Создаем дублированные поручения
-        addTask(
-          taskTitle,
-          taskDescription,
-          taskPriority,
-          taskProtocol,
-          taskDeadline,
-          undefined, // selectedDepartmentId не нужен для дублирования
-          undefined, // assigneeId не нужен для дублирования
-          {
-            selectedDepartments: selectedDepartmentsForDuplication,
-            selectedExecutors: selectedExecutorsForDuplication,
-          },
-        );
-      } else {
-        // Создаем обычное поручение
-        addTask(
-          taskTitle,
-          taskDescription,
-          taskPriority,
-          taskProtocol,
-          taskDeadline,
-          taskDepartment,
-          taskAssignee,
-        );
-      }
+      const data: TaskCreationData = {
+        title: taskTitle,
+        description: taskDescription,
+        priority: taskPriority,
+        isProtocol: taskProtocol,
+        deadline: taskDeadline.toISOString(),
+        assignees: selectedAssignees,
+      };
+
+      await dispatch(createTask(data)).then(() =>
+        toast.success(
+          selectedAssignees.length > 1
+            ? `Задача "${taskTitle} создана`
+            : `Задачи "${taskTitle} созданы`,
+        ),
+      );
 
       // Reset form
       setTaskTitle("");
       setTaskDescription("");
-      setTaskDepartment("");
-      setTaskAssignee("");
       setTaskPriority("medium");
       setTaskProtocol("inactive");
       setTaskDeadline(new Date());
-      setIsDuplicateMode(false);
-      setSelectedDepartmentsForDuplication([]);
-      setSelectedExecutorsForDuplication([]);
-      setAvailableExecutors([]);
       setShowNewTask(false);
     } else {
-      toast({
-        title: "Ошибка",
+      toast("Ошибка", {
         description: `Заполните обязательные поля: ${errors.join(", ")}`,
-        variant: "destructive",
       });
     }
   };
@@ -398,512 +285,109 @@ export default function TaskList({ showArchive = false }: TaskListProps) {
         </Accordion>
       </div>
       {/* Add task */}
-      {screenSize == "mobile" ? (
-        <div className="fixed bottom-4 left-0 right-0 flex justify-center items-center z-50">
-          <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-3 px-6 shadow-lg">
-                <Plus className="mr-2 h-4 w-4" />
-                <span>Добавить поручение</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader className=" top-0 bg-background z-10 pt-2 pb-4">
-                <DialogTitle>Создать новое поручение</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="task-title">
-                    Заголовок <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="task-title"
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    className={!taskTitle && "border-red-500"}
-                    placeholder="Введите заголовок поручения"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="task-description">
-                    Описание <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="task-description"
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    className={cn(
-                      !taskDescription && "border-red-500",
-                      "whitespace-pre-wrap", // Это ключевое свойство
-                    )}
-                    placeholder="Введите описание поручения"
-                  />
-                </div>
-
-                {!isDuplicateMode && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="task-department">
-                        Подразделение <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={taskDepartment}
-                        onValueChange={setTaskDepartment}
-                      >
-                        <SelectTrigger
-                          className={!taskDepartment && "border-red-500"}
-                        >
-                          <SelectValue placeholder="Выберите подразделение" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.length > 0 ? (
-                            departments.map((department) => (
-                              <SelectItem
-                                key={department.id}
-                                value={department.id.toString()}
-                              >
-                                {department.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="p-2 text-center text-gray-500">
-                              У вас нет доступных подразделений
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="task-assignee">
-                        Исполнитель <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={taskAssignee}
-                        onValueChange={setTaskAssignee}
-                        disabled={!taskDepartment || isLoadingUsers}
-                      >
-                        <SelectTrigger
-                          className={!taskAssignee && "border-red-500"}
-                        >
-                          {isLoadingUsers ? (
-                            <span className="text-gray-500">
-                              Загрузка пользователей...
-                            </span>
-                          ) : (
-                            <SelectValue
-                              placeholder={
-                                !taskDepartment
-                                  ? "Сначала выберите подразделение"
-                                  : "Выберите исполнителя"
-                              }
-                            />
-                          )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dbUsers.length > 0 ? (
-                            <>
-                              {/* Сначала показываем руководителя, если он есть */}
-                              {dbUsers.some((user) =>
-                                user.fullname.includes("(Руководитель)"),
-                              ) && (
-                                <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                                  Руководитель
-                                </div>
-                              )}
-
-                              {/* Выводим руководителя */}
-                              {dbUsers
-                                .filter((user) =>
-                                  user.fullname.includes("(Руководитель)"),
-                                )
-                                .map((user) => (
-                                  <SelectItem key={user.id} value={user.id}>
-                                    {user.fullname.replace(
-                                      " (Руководитель)",
-                                      "",
-                                    )}
-                                  </SelectItem>
-                                ))}
-
-                              {/* Если есть обычные сотрудники, добавляем разделитель */}
-                              {dbUsers.some(
-                                (user) =>
-                                  !user.fullname.includes("(Руководитель)"),
-                              ) &&
-                                dbUsers.some((user) =>
-                                  user.fullname.includes("(Руководитель)"),
-                                ) && (
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                                    Сотрудники
-                                  </div>
-                                )}
-
-                              {/* Выводим остальных сотрудников */}
-                              {dbUsers
-                                .filter(
-                                  (user) =>
-                                    !user.fullname.includes("(Руководитель)"),
-                                )
-                                .map((user) => (
-                                  <SelectItem key={user.id} value={user.id}>
-                                    {user.fullname}
-                                  </SelectItem>
-                                ))}
-                            </>
-                          ) : (
-                            <div className="p-2 text-center text-gray-500">
-                              {!taskDepartment
-                                ? "Сначала выберите подразделение"
-                                : "В этом подразделении нет пользователей"}
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="task-priority"
-                    checked={taskPriority === "high"}
-                    onCheckedChange={(checked) =>
-                      setTaskPriority(checked ? "high" : "medium")
-                    }
-                  />
-                  <Label htmlFor="task-priority">Высокий приоритет</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="task-protocol"
-                    checked={taskProtocol === "active"}
-                    onCheckedChange={(checked) =>
-                      setTaskProtocol(checked ? "active" : "inactive")
-                    }
-                  />
-                  <Label htmlFor="task-protocol">Добавить в протокол</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="duplicate-mode"
-                    checked={isDuplicateMode}
-                    onCheckedChange={(checked) => {
-                      setIsDuplicateMode(!!checked);
-                      if (!checked) {
-                        setSelectedDepartmentsForDuplication([]);
-                        setSelectedExecutorsForDuplication([]);
-                        setAvailableExecutors([]);
-                      }
-                    }}
-                  />
-                  <Label htmlFor="duplicate-mode">Дублировать</Label>
-                </div>
-
-                {isDuplicateMode && (
-                  <>
-                    <DepartmentSelector
-                      departments={departments}
-                      selectedDepartments={selectedDepartmentsForDuplication}
-                      onDepartmentToggle={handleDepartmentToggleForDuplication}
-                    />
-
-                    {selectedDepartmentsForDuplication.length > 0 && (
-                      <ExecutorSelector
-                        executors={availableExecutors}
-                        selectedExecutors={selectedExecutorsForDuplication}
-                        onExecutorToggle={handleExecutorToggleForDuplication}
-                        departmentNames={departments.reduce(
-                          (acc, dept) => {
-                            acc[dept.id] = dept.name;
-                            return acc;
-                          },
-                          {} as { [key: string]: string },
-                        )}
-                      />
-                    )}
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <Label>
-                    Дедлайн <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    value={
-                      taskDeadline ? format(taskDeadline, "yyyy-MM-dd") : ""
-                    }
-                    onChange={handleDateChange}
-                    className={`w-full ${!taskDeadline && "border-red-500"}`}
-                    min={format(new Date(), "yyyy-MM-dd")}
-                  />
-                </div>
-
-                <Button onClick={handleCreateTask} className="w-full">
-                  Создать поручение
-                </Button>
+      <div className="flex justify-center">
+        <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
+          <DialogTrigger asChild>
+            <Button className="rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-3 px-6 shadow-lg">
+              <Plus className="mr-2 h-4 w-4" />
+              <span>Добавить поручение</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader className=" top-0 bg-background z-10 pt-2 pb-4">
+              <DialogTitle>Создать новое поручение</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="task-title">
+                  Заголовок <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="task-title"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  className={!taskTitle && "border-red-500"}
+                  placeholder="Введите заголовок поручения"
+                />
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      ) : (
-        // Десктоп — кнопка вверху списка задач
-        <div className="flex justify-center">
-          <Dialog open={showNewTask} onOpenChange={setShowNewTask}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full bg-[#4d76fd] hover:bg-[#4264d5] text-[14px] text-white font-semibold py-3 px-6 shadow-lg">
-                <Plus className="mr-2 h-4 w-4" />
-                <span>Добавить поручение</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader className=" top-0 bg-background z-10 pt-2 pb-4">
-                <DialogTitle>Создать новое поручение</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="task-title">
-                    Заголовок <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="task-title"
-                    value={taskTitle}
-                    onChange={(e) => setTaskTitle(e.target.value)}
-                    className={!taskTitle && "border-red-500"}
-                    placeholder="Введите заголовок поручения"
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="task-description">
-                    Описание <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="task-description"
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    className={cn(
-                      !taskDescription && "border-red-500",
-                      "whitespace-pre-wrap", // Это ключевое свойство
-                    )}
-                    placeholder="Введите описание поручения"
-                  />
-                </div>
-
-                {!isDuplicateMode && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="task-department">
-                        Подразделение <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={taskDepartment}
-                        onValueChange={setTaskDepartment}
-                      >
-                        <SelectTrigger
-                          className={!taskDepartment && "border-red-500"}
-                        >
-                          <SelectValue placeholder="Выберите подразделение" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.length > 0 ? (
-                            departments.map((department) => (
-                              <SelectItem
-                                key={department.id}
-                                value={department.id.toString()}
-                              >
-                                {department.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="p-2 text-center text-gray-500">
-                              У вас нет доступных подразделений
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="task-assignee">
-                        Исполнитель <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={taskAssignee}
-                        onValueChange={setTaskAssignee}
-                        disabled={!taskDepartment || isLoadingUsers}
-                      >
-                        <SelectTrigger
-                          className={!taskAssignee && "border-red-500"}
-                        >
-                          {isLoadingUsers ? (
-                            <span className="text-gray-500">
-                              Загрузка пользователей...
-                            </span>
-                          ) : (
-                            <SelectValue
-                              placeholder={
-                                !taskDepartment
-                                  ? "Сначала выберите подразделение"
-                                  : "Выберите исполнителя"
-                              }
-                            />
-                          )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dbUsers.length > 0 ? (
-                            <>
-                              {/* Сначала показываем руководителя, если он есть */}
-                              {dbUsers.some((user) =>
-                                user.fullname.includes("(Руководитель)"),
-                              ) && (
-                                <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                                  Руководитель
-                                </div>
-                              )}
-
-                              {/* Выводим руководителя */}
-                              {dbUsers
-                                .filter((user) =>
-                                  user.fullname.includes("(Руководитель)"),
-                                )
-                                .map((user) => (
-                                  <SelectItem key={user.id} value={user.id}>
-                                    {user.fullname.replace(
-                                      " (Руководитель)",
-                                      "",
-                                    )}
-                                  </SelectItem>
-                                ))}
-
-                              {/* Если есть обычные сотрудники, добавляем разделитель */}
-                              {dbUsers.some(
-                                (user) =>
-                                  !user.fullname.includes("(Руководитель)"),
-                              ) &&
-                                dbUsers.some((user) =>
-                                  user.fullname.includes("(Руководитель)"),
-                                ) && (
-                                  <div className="px-2 py-1.5 text-sm font-semibold text-gray-500 bg-gray-50">
-                                    Сотрудники
-                                  </div>
-                                )}
-
-                              {/* Выводим остальных сотрудников */}
-                              {dbUsers
-                                .filter(
-                                  (user) =>
-                                    !user.fullname.includes("(Руководитель)"),
-                                )
-                                .map((user) => (
-                                  <SelectItem key={user.id} value={user.id}>
-                                    {user.fullname}
-                                  </SelectItem>
-                                ))}
-                            </>
-                          ) : (
-                            <div className="p-2 text-center text-gray-500">
-                              {!taskDepartment
-                                ? "Сначала выберите подразделение"
-                                : "В этом подразделении нет пользователей"}
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="task-priority"
-                    checked={taskPriority === "high"}
-                    onCheckedChange={(checked) =>
-                      setTaskPriority(checked ? "high" : "medium")
-                    }
-                  />
-                  <Label htmlFor="task-priority">Высокий приоритет</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="task-protocol"
-                    checked={taskProtocol === "active"}
-                    onCheckedChange={(checked) =>
-                      setTaskProtocol(checked ? "active" : "inactive")
-                    }
-                  />
-                  <Label htmlFor="task-protocol">Добавить в протокол</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="duplicate-mode-desktop"
-                    checked={isDuplicateMode}
-                    onCheckedChange={(checked) => {
-                      setIsDuplicateMode(!!checked);
-                      if (!checked) {
-                        setSelectedDepartmentsForDuplication([]);
-                        setSelectedExecutorsForDuplication([]);
-                        setAvailableExecutors([]);
-                      }
-                    }}
-                  />
-                  <Label htmlFor="duplicate-mode-desktop">Дублировать</Label>
-                </div>
-
-                {isDuplicateMode && (
-                  <>
-                    <DepartmentSelector
-                      departments={departments}
-                      selectedDepartments={selectedDepartmentsForDuplication}
-                      onDepartmentToggle={handleDepartmentToggleForDuplication}
-                    />
-
-                    {selectedDepartmentsForDuplication.length > 0 && (
-                      <ExecutorSelector
-                        executors={availableExecutors}
-                        selectedExecutors={selectedExecutorsForDuplication}
-                        onExecutorToggle={handleExecutorToggleForDuplication}
-                        departmentNames={departments.reduce(
-                          (acc, dept) => {
-                            acc[dept.id] = dept.name;
-                            return acc;
-                          },
-                          {} as { [key: string]: string },
-                        )}
-                      />
-                    )}
-                  </>
-                )}
-
-                <div className="space-y-2">
-                  <Label>
-                    Дедлайн <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    value={
-                      taskDeadline ? format(taskDeadline, "yyyy-MM-dd") : ""
-                    }
-                    onChange={handleDateChange}
-                    className={`w-full ${!taskDeadline && "border-red-500"}`}
-                    min={format(new Date(), "yyyy-MM-dd")}
-                  />
-                </div>
-
-                <Button onClick={handleCreateTask} className="w-full">
-                  Создать поручение
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="task-description">
+                  Описание <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="task-description"
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  className={cn(
+                    !taskDescription && "border-red-500",
+                    "whitespace-pre-wrap", // Это ключевое свойство
+                  )}
+                  placeholder="Введите описание поручения"
+                />
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
+
+              <MultipleSelector
+                placeholder="Найдите исполнителей"
+                options={subordinates.map((user) => ({
+                  label: user.fullname,
+                  value: user.id.toString(),
+                }))}
+                badgeClassName="bg-blue-700 text-white"
+                onChange={(options) =>
+                  setSelectedAssignees(
+                    subordinates.filter((user) =>
+                      options.some((option) => Number(option.value) == user.id),
+                    ),
+                  )
+                }
+              />
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="task-priority"
+                  checked={taskPriority === "high"}
+                  onCheckedChange={(checked) =>
+                    setTaskPriority(checked ? "high" : "medium")
+                  }
+                />
+                <Label htmlFor="task-priority">Высокий приоритет</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="task-protocol"
+                  checked={taskProtocol === "active"}
+                  onCheckedChange={(checked) =>
+                    setTaskProtocol(checked ? "active" : "inactive")
+                  }
+                />
+                <Label htmlFor="task-protocol">Добавить в протокол</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Дедлайн <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="date"
+                  value={taskDeadline ? format(taskDeadline, "yyyy-MM-dd") : ""}
+                  onChange={handleDateChange}
+                  className={`w-full ${!taskDeadline && "border-red-500"}`}
+                  min={format(new Date(), "yyyy-MM-dd")}
+                />
+              </div>
+
+              <Button
+                onClick={() => void handleCreateTask()}
+                className="w-full"
+              >
+                Создать поручение
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

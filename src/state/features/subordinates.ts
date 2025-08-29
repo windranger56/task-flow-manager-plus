@@ -30,10 +30,10 @@ export interface SubordinatesState extends AsyncState {
 
 export const fetchSubordinates = createAsyncThunk<User[], void>(
   "subordinates/fetch",
-  (_, thunkAPI) => handleDepartmentsFetch(thunkAPI),
+  (_, thunkAPI) => handleSubordinatesFetch(thunkAPI),
 );
 
-async function handleDepartmentsFetch(
+async function handleSubordinatesFetch(
   thunkAPI: GetThunkAPI<{ state: RootState }>,
 ) {
   const user = thunkAPI.getState().user.value;

@@ -18,4 +18,4 @@ export interface ViewHistoryState {
 }
 
 export type ViewHistory = HistoryItem[];
-export type HistoryItem = "task"; // Could add more items in the future
+export type HistoryItem = "task" | "task history";
