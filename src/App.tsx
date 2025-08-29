@@ -58,9 +58,6 @@ const App = () => {
   }, [tasks, filter]);
 
   useEffect(() => listenToScreenSize(), []);
-  useEffect(() => {
-    console.log(sessionLoading, session);
-  }, [session]);
   const appDataLoading =
     tasksLoading || subordinatesLoading || notificationsLoading;
 
