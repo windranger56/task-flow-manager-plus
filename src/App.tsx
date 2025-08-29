@@ -26,9 +26,7 @@ const App = () => {
   const { value: session, loading: sessionLoading } = useAppSelector(
     (state) => state.session,
   );
-  const { value: user, loading: userLoading } = useAppSelector(
-    (state) => state.user,
-  );
+  const user = useAppSelector((state) => state.user.value);
   const { value: tasks, loading: tasksLoading } = useAppSelector(
     (state) => state.tasks,
   );
@@ -60,12 +58,13 @@ const App = () => {
   }, [tasks, filter]);
 
   useEffect(() => listenToScreenSize(), []);
+  useEffect(() => {
+    console.log(sessionLoading, session);
+  }, [session]);
+  const appDataLoading =
+    tasksLoading || subordinatesLoading || notificationsLoading;
 
-  if (
-    !sessionLoading &&
-    session &&
-    (userLoading || tasksLoading || subordinatesLoading || notificationsLoading)
-  )
+  if (sessionLoading || (session && appDataLoading))
     return (
       <div className="h-screen w-screen flex justify-center items-center">
         <Loader2 className="h-16 w-16 animate-spin text-blue-600" />

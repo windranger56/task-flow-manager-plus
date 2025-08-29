@@ -35,16 +35,22 @@ function handleSessionSetting(
 }
 
 export function listenToSession() {
+  void supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => handleNewAuthState(session));
+
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(handleNewAuthState);
+  } = supabase.auth.onAuthStateChange((someShit, session) =>
+    handleNewAuthState(session),
+  );
 
   return () => {
     subscription.unsubscribe();
   };
 }
 
-function handleNewAuthState(_: any, session: Session) {
-  store.dispatch(setSession(session));
+function handleNewAuthState(session: Session) {
+  store.dispatch(setSession(session || undefined));
   if (session) void store.dispatch(fetchUser(session.user.id));
 }
