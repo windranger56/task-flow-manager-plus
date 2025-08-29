@@ -1,6 +1,6 @@
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
-import { Check, Eye, EyeOff, Loader2, Send, Download } from "lucide-react";
+import { Eye, EyeOff, Loader2, Send, Download } from "lucide-react";
 import { ru } from "date-fns/locale";
 import { Paperclip, X, FileIcon, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -27,9 +27,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,12 +38,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useTaskContext } from "@/contexts/TaskContext";
-import { cn, getTaskStatusColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/supabase/client";
-import { setSelectedTask, Task } from "@/state/features/selected-task";
+import {
+  setSelectedTask,
+  Task,
+  TaskStatus,
+} from "@/state/features/selected-task";
 import { useAppDispatch, useAppSelector } from "@/state/hooks";
-import { updateTask } from "@/state/features/tasks";
+import { SupabaseTask, updateTask } from "@/state/features/tasks";
 
 export default function TaskDetail() {
   const dispatch = useAppDispatch();
@@ -62,23 +62,17 @@ export default function TaskDetail() {
   const [creator, setCreator] = useState<any>(null);
   const [assignee, setAssignee] = useState<any>(null);
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [nextStatus, setNextStatus] = useState<string | null>(null);
   const [statusComment, setStatusComment] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showHistory, setShowHistory] = useState(false);
   const [taskHistory, setTaskHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [subordinates, setSubordinates] = useState<any[]>([]);
   const [showOnlySystemMessages, setShowOnlySystemMessages] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [hasTaskChain, setHasTaskChain] = useState(false);
   const [department, setDepartment] = useState("");
 
   useEffect(() => {
@@ -219,26 +213,19 @@ export default function TaskDetail() {
   };
 
   const updateTaskStatus = async (
-    taskId: string,
-    newStatus: string,
-    reason?: string,
+    newStatus: TaskStatus,
     newDeadline?: Date,
   ) => {
+    toast.warning("На данный момент эта функция выключена", {
+      description: "Ошибка скоро будет исправлена",
+    });
     try {
       // Если меняем статус с 'overdue' на 'in_progress' или 'on_verification' и передан новый дедлайн, обновляем оба поля
-      const updateFields: any = { status: newStatus };
-      if (
-        newDeadline &&
-        (newStatus === "in_progress" || newStatus === "on_verification")
-      ) {
-        updateFields.deadline = newDeadline.toISOString();
-      }
-      const { error: taskError } = await supabase
-        .from("tasks")
-        .update(updateFields)
-        .eq("id", taskId);
-
-      if (taskError) throw taskError;
+      const updateFields: Partial<SupabaseTask> & { id: number } = {
+        id: selectedTask.id,
+        status: newStatus,
+      };
+      if (newDeadline) updateFields.deadline = newDeadline.toISOString();
 
       // Добавляем системное сообщение о смене статуса
       const statusLabels = {
@@ -270,18 +257,6 @@ export default function TaskDetail() {
           is_system: 1,
         },
       ]);
-
-      // Второе сообщение - комментарий (несистемное), только если есть reason
-      if (newStatus === "in_progress" && reason) {
-        await supabase.from("messages").insert([
-          {
-            content: `Комментарий: ${reason}`,
-            task_id: taskId,
-            sent_by: user.id,
-            is_system: 0,
-          },
-        ]);
-      }
 
       // Set is_new flag for status changes (except for the user who made the change)
       await updateTaskIsNew(taskId, true);
