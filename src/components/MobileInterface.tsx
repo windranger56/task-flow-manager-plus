@@ -49,7 +49,7 @@ const pages = {
 export default function MobileInterface() {
   const dispatch = useAppDispatch();
   const activeTab = useAppSelector((state) => state.mobileTab.value);
-  const [swiper, setSwiper] = useState(null);
+  const [swiper, setSwiper] = useState<Swiper>(null);
   const isSwipeInternal = useRef(false);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function MobileInterface() {
     isSwipeInternal.current = false;
   }, [activeTab]);
 
-  const handleSwipe = (swiper: any) => {
+  const handleSwipe = (swiper: Swiper) => {
     if (isSwipeInternal.current) return;
     dispatch(setMobileTab(Object.keys(pages)[swiper.activeIndex] as MobileTab));
   };
@@ -301,4 +301,9 @@ function TaskList() {
       </Drawer>
     </div>
   );
+}
+
+export interface Swiper {
+  slideTo: (index: number) => void;
+  activeIndex: number;
 }
